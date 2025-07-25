@@ -97,8 +97,7 @@ You can either **clone the repository from GitHub** or **unzip a provided zip fi
 #### Option 1: Clone from GitHub
 
 ```sh
-git clone git@github.com:CodeWaveWithAsante/Vazifa.git
-cd Vazifa
+git clone https://github.com/LatifRjdev/vazifa.git
 ```
 
 #### Option 2: Unzip the Zip File
