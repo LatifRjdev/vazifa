@@ -287,12 +287,12 @@ const TaskDetailsPage = () => {
 
             {/* Attachments */}
             <TaskAttachments
-              attachments={task.attachments!}
+              attachments={task.attachments || []}
               taskId={task._id}
             />
 
             {/* Subtasks */}
-            <SubTasksDetails subtasks={task.subtasks!} taskId={task._id} />
+            <SubTasksDetails subtasks={task.subtasks || []} taskId={task._id} />
           </div>
 
           {/* Comments section */}
@@ -301,7 +301,7 @@ const TaskDetailsPage = () => {
 
         {/* Right sidebar - Activity/History */}
         <div>
-          <WatchersList watchers={task.watchers!} />
+          <WatchersList watchers={task.watchers || []} />
 
           <TaskActivity resourceId={task._id} />
         </div>
