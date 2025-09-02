@@ -1,194 +1,284 @@
-# Vazifa - Project Management Application
+# Протокол - Система управления задачами
 
-![Project Management Application](./frontend/public/PMP.png)
+Протокол - это современная облачная платформа для управления задачами и проектами, которая помогает командам эффективно организовывать, отслеживать и выполнять работу.
 
-## Overview
+## 🚀 Возможности
 
-This project is a modern, responsive Project Management Dashboard application built with React, Vite/React Router v7, TypeScript, and Tailwind CSS v4, utilizing Shadcn UI for pre-built components. It allows users to manage workspaces, projects, and tasks, with features for collaboration and tracking progress. The application works with a NodeJs backend with Express and a MongoDB database.
+### Веб-приложение
+- 🔐 Аутентификация и авторизация пользователей
+- 👥 Управление командами и рабочими пространствами
+- 📋 Создание и управление задачами
+- 🎯 Установка приоритетов и сроков выполнения
+- 💬 Комментарии и обсуждения
+- 📎 Прикрепление файлов
+- 📊 Аналитика и отчеты
+- 🔔 Система уведомлений
+- 🌐 Многоязычная поддержка
 
-## Features
+### Мобильное приложение
+- 📱 Нативные приложения для iOS и Android
+- 🔄 Синхронизация в реальном времени с веб-версией
+- 📋 Полный функционал управления задачами
+- 🔔 Push-уведомления
+- 💾 Офлайн поддержка
+- 👤 Управление профилем
 
-### Frontend Features:
+## 🏗️ Архитектура
 
-- **Dashboard Overview:**
-  - Quick summary of total projects, tasks (total, completed, in-progress, to-do).
-  - Display of recent projects with progress bars.
-  - List of upcoming tasks.
-  - Statistical charts for task and project distributions (using Recharts).
-- **Workspace Management:**
-  - View all workspaces.
-  - View details of a specific workspace, including its projects.
-  - Create new workspaces.
-  - Invite members to workspaces.
-  - Transfer workspace to one member.
-- **Project Management:**
-  - List projects within a workspace.
-  - View project details: description, status, progress, tasks, members.
-  - Create new projects.
-  - Update project status, progress, and details.
-  - Archive/unarchive projects.
-- **Task Management:**
-  - List tasks for a project or all user tasks ("My Tasks").
-  - View task details: description, status, priority, due date, assignee, comments, attachments.
-  - Create new tasks.
-  - Update task details, status, priority, and assignee.
-  - Add comments to tasks.
-  - Add attachments to tasks.
-  - Add reactions to comments.
-  - Archive/unarchive tasks.
-- **User Profile Management:**
-  - View and update personal information (name, avatar).
-  - Change password.
-- **Notifications:**
-  - View a list of notifications (e.g., task assignments, comments, mentions).
-  - Mark notifications as read.
-  - Mark all notifications as read.
-- **Members Page:**
-  - View workspace members.
-  - Search members by name, email, or role.
-  - List and grid views for members.
-- **Achieved Items Page:**
-  - View archived projects and tasks.
-- **Authentication:**
-  - Sign in and Sign up pages.
-  - Forgot Password, Email Verification and Password Reset Pages.
-- **Responsive Design:** Adapts to various screen sizes.
+Проект состоит из трех основных компонентов:
 
-### Backend Features (API):
-
-The backend is a NodeJs and Express application `/backend`. This API is a real backend by managing data in MongoDB.
-
-- Authentication and Authorization
-- CRUD Operations (Create, Read, Update & Delete) - Workspace, Project & Tasks
-
-- **Notifications:**
-  - Email Notification with SendGrid.
-  - Security with Arcjet
-
-## Tech Stack
-
-- **Frontend:**
-
-  - **React:** JavaScript library for building user interfaces.
-  - **TypeScript:** Superset of JavaScript that adds static typing.
-  - **Vite:** Fast frontend build tool.
-  - **React Router v7:** For client-side routing.
-  - **Tailwind CSS:** Utility-first CSS framework for styling.
-  - **Shadcn UI:** Re-usable components built with Radix UI and Tailwind CSS.
-  - **Lucide React:** Icon library.
-  - **Recharts:** Composable charting library.
-  - **TanStack Query (React Query):** For data fetching, caching, and state synchronization.
-
-## Setup and Installation
-
-### Prerequisites
-
-- Node.js v20 and above (LTS version recommended)
-- npm (comes with Node.js) or yarn/pnpm
-- MongoDB database (local or cloud, e.g., MongoDB Atlas)
-- (Optional) SendGrid and Arcjet accounts for email and security features
-
----
-
-### 1. Get the Source Code
-
-You can either **clone the repository from GitHub** or **unzip a provided zip file** containing the code.
-
-#### Option 1: Clone from GitHub
-
-```sh
-git clone git@github.com:CodeWaveWithAsante/Vazifa.git
-cd Vazifa
+```
+protocol/
+├── backend/          # Node.js API сервер
+├── frontend/         # React веб-приложение
+└── mobile/           # React Native мобильное приложение
+    └── ProtocolMobile/
 ```
 
-#### Option 2: Unzip the Zip File
+### Backend (Node.js + Express + MongoDB)
+- RESTful API
+- JWT аутентификация
+- MongoDB база данных
+- Загрузка файлов
+- Email уведомления
 
-- Download the zip file containing the project.
-- Unzip it to your desired location.
-- Open a terminal and navigate to the unzipped `Vazifa` directory:
+### Frontend (React + Remix + TypeScript)
+- Современный React с Remix фреймворком
+- TypeScript для типобезопасности
+- Tailwind CSS для стилизации
+- React Query для управления состоянием
+- Responsive дизайн
 
-```sh
-cd path/to/Vazifa
+### Mobile (React Native + Expo)
+- Кроссплатформенное мобильное приложение
+- Expo для быстрой разработки
+- TypeScript поддержка
+- Навигация с React Navigation
+- Локальное хранение с AsyncStorage
+
+## 🛠️ Технологии
+
+### Backend
+- **Node.js** - JavaScript runtime
+- **Express.js** - Веб-фреймворк
+- **MongoDB** - NoSQL база данных
+- **Mongoose** - ODM для MongoDB
+- **JWT** - Аутентификация
+- **Multer** - Загрузка файлов
+- **Nodemailer** - Email отправка
+
+### Frontend
+- **React** - UI библиотека
+- **Remix** - Full-stack веб-фреймворк
+- **TypeScript** - Типизированный JavaScript
+- **Tailwind CSS** - CSS фреймворк
+- **React Query** - Управление состоянием сервера
+- **Framer Motion** - Анимации
+
+### Mobile
+- **React Native** - Мобильный фреймворк
+- **Expo** - Платформа разработки
+- **TypeScript** - Типизированный JavaScript
+- **React Navigation** - Навигация
+- **Axios** - HTTP клиент
+- **AsyncStorage** - Локальное хранилище
+
+## 🚀 Быстрый старт
+
+### Предварительные требования
+- Node.js (версия 16 или выше)
+- MongoDB
+- npm или yarn
+- Expo CLI (для мобильного приложения)
+
+### Установка и запуск
+
+#### 1. Клонирование репозитория
+```bash
+git clone https://github.com/your-username/protocol.git
+cd protocol
 ```
 
----
+#### 2. Настройка Backend
+```bash
+cd backend
+npm install
 
-### 2. Frontend Setup
+# Создайте .env файл и настройте переменные окружения
+cp .env.example .env
 
-```sh
+# Запуск сервера
+npm run dev
+```
+
+#### 3. Настройка Frontend
+```bash
 cd frontend
 npm install
-# or: yarn install
-# or: pnpm install
-```
 
-#### Create a `.env` file in the `frontend` directory:
+# Создайте .env файл
+cp .env.example .env
 
-```env
-VITE_API_URL=http://localhost:5000/api-v1
-VITE_CLOUDINARY_NAME= your cloudinary cloud name
-VITE_CLOUDINARY_UPLOAD_PRESET= cloudinary upload preset
-```
-
-#### Start the frontend development server:
-
-```sh
+# Запуск веб-приложения
 npm run dev
-# or: yarn dev
-# or: pnpm dev
 ```
 
-The app will typically be available at http://localhost:5173.
-
----
-
-### 3. Backend Setup
-
-```sh
-cd ../backend or cd backend
+#### 4. Настройка Mobile приложения
+```bash
+cd mobile/ProtocolMobile
 npm install
-# or: yarn install
-# or: pnpm install
+
+# Запуск мобильного приложения
+npm start
+# или
+expo start
 ```
 
-#### Create a `.env` file in the `backend` directory with the following variables:
+## 📱 Мобильное приложение
 
+### Особенности
+- **Кроссплатформенность**: Одна кодовая база для iOS и Android
+- **Реальное время**: Мгновенная синхронизация с веб-версией
+- **Офлайн режим**: Работа без интернета с последующей синхронизацией
+- **Push-уведомления**: Мгновенные уведомления о важных событиях
+- **Нативный UX**: Платформо-специфичный пользовательский интерфейс
+
+### Установка на устройство
+
+#### Для разработки:
+1. Установите Expo Go на свое устройство
+2. Запустите `expo start` в папке `mobile/ProtocolMobile`
+3. Отсканируйте QR-код с помощью Expo Go
+
+#### Для продакшена:
+- **iOS**: Приложение будет доступно в App Store
+- **Android**: Приложение будет доступно в Google Play Store
+
+### Синхронизация данных
+
+Мобильное приложение использует тот же API, что и веб-версия, обеспечивая:
+- ✅ Единую базу данных для всех платформ
+- ✅ Мгновенную синхронизацию изменений
+- ✅ Консистентность данных между устройствами
+- ✅ Офлайн кэширование для быстрого доступа
+
+## 🔧 Конфигурация
+
+### Переменные окружения
+
+#### Backend (.env)
 ```env
-PORT=5000
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-FRONTEND_URL=http://localhost:5173
-SENDGRID_API_KEY=your_sendgrid_api_key
-SENDGRID_FROM_EMAIL=your verified email on sendgrid
-ARCJET_KEY=your_arcjet_key
-ARCJET_ENV=development  ## Only needed in development
+PORT=5001
+MONGODB_URI=mongodb://localhost:27017/protocol
+JWT_SECRET=your-jwt-secret
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-email-password
 ```
 
-> ⚠️ **Important:**
->
-> - Replace the values above with your actual credentials and secrets.
-> - You must obtain your own MongoDB URI (e.g., from MongoDB Atlas), SendGrid API key, and Arcjet key.
-> - Never commit your `.env` files to version control.
-
-#### Start the backend server:
-
-```sh
-npm run dev
-# or: yarn dev
-# or: pnpm dev
+#### Frontend (.env)
+```env
+VITE_API_URL=http://localhost:5001/api-v1
+VITE_APP_CLOUDINARY_CLOUD_NAME=your-cloudinary-name
+VITE_APP_CLOUDINARY_UPLOAD_PRESET=your-upload-preset
 ```
 
-The backend will run on http://localhost:5000 by default.
+## 📦 Развертывание
+
+### Backend
+- Поддерживает развертывание на Heroku, DigitalOcean, AWS
+- Docker контейнеризация включена
+- MongoDB Atlas для облачной базы данных
+
+### Frontend
+- Развертывание на Vercel, Netlify, или любом статическом хостинге
+- Автоматическая сборка и оптимизация
+
+### Mobile
+- Сборка через Expo Build Service
+- Публикация в App Store и Google Play Store
+- Over-the-air обновления через Expo Updates
+
+## 🤝 Синхронизация между платформами
+
+Все платформы (веб, iOS, Android) используют единый API и базу данных:
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Web App   │    │  iOS App    │    │ Android App │
+│  (React)    │    │(React Native│    │(React Native│
+└──────┬──────┘    └──────┬──────┘    └──────┬──────┘
+       │                  │                  │
+       └──────────────────┼──────────────────┘
+                          │
+                   ┌──────▼──────┐
+                   │   Backend   │
+                   │  (Node.js)  │
+                   └──────┬──────┘
+                          │
+                   ┌──────▼──────┐
+                   │  MongoDB    │
+                   │  Database   │
+                   └─────────────┘
+```
+
+### Преимущества единой архитектуры:
+- **Консистентность**: Одинаковые данные на всех устройствах
+- **Реальное время**: Изменения мгновенно отражаются везде
+- **Простота поддержки**: Одна бизнес-логика для всех платформ
+- **Масштабируемость**: Легко добавлять новые функции
+
+## 📚 Документация
+
+- [Backend API Documentation](./backend/README.md)
+- [Frontend Documentation](./frontend/README.md)
+- [Mobile App Documentation](./mobile/ProtocolMobile/README.md)
+- [Deployment Guide](./DEPLOYMENT_GUIDE.md)
+
+## 🧪 Тестирование
+
+```bash
+# Backend тесты
+cd backend
+npm test
+
+# Frontend тесты
+cd frontend
+npm test
+
+# Mobile тесты
+cd mobile/ProtocolMobile
+npm test
+```
+
+## 🤝 Вклад в проект
+
+1. Форкните репозиторий
+2. Создайте ветку для новой функции (`git checkout -b feature/amazing-feature`)
+3. Зафиксируйте изменения (`git commit -m 'Add amazing feature'`)
+4. Отправьте в ветку (`git push origin feature/amazing-feature`)
+5. Откройте Pull Request
+
+## 📄 Лицензия
+
+Этот проект распространяется под лицензией MIT. См. файл [LICENSE](LICENSE) для подробностей.
+
+## 👥 Команда
+
+- **Backend разработка**: Node.js, Express, MongoDB
+- **Frontend разработка**: React, Remix, TypeScript
+- **Mobile разработка**: React Native, Expo
+- **UI/UX дизайн**: Современный, адаптивный интерфейс
+
+## 📞 Поддержка
+
+Если у вас есть вопросы или предложения:
+- Создайте [Issue](https://github.com/your-username/protocol/issues)
+- Напишите на email: support@protocol.com
+- Присоединяйтесь к нашему [Discord сообществу](https://discord.gg/protocol)
 
 ---
 
-### 4. Verify Environment Variables
-
-- Ensure both `frontend/.env` and `backend/.env` are correctly set up with valid values.
-- The frontend should point to the backend API URL, and the backend should have all required secrets and connection strings.
-
----
-
-This README provides a comprehensive guide to the project. If you have any questions or need further assistance, feel free to ask!
-
-Email: codewavewithasante@gmail.com
+**Протокол** - Делайте больше вместе! 🚀
+# protocol
