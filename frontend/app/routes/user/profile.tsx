@@ -38,9 +38,8 @@ import {
 } from "@/hooks/use-user";
 import { useAuth } from "@/providers/auth-context";
 import type { User } from "@/types";
-import type { Route } from "../../+types/root";
 
-export function meta({}: Route.MetaArgs) {
+export function meta() {
   return [
     { title: "TaskHub | User Profile" },
     { name: "description", content: "Profile to TaskHub!" },
@@ -64,6 +63,8 @@ const changePasswordSchema = z
 
 const profileSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
+  lastName: z.string().optional(),
+  phoneNumber: z.string().optional(),
   profilePicture: z.string().optional(),
 });
 
@@ -91,10 +92,13 @@ const ProfilePage = () => {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: user?.name || "",
+      lastName: user?.lastName || "",
       profilePicture: user?.profilePicture || "",
     },
     values: {
       name: user?.name || "",
+      lastName: user?.lastName || "",
+      phoneNumber: user?.phoneNumber || "",
       profilePicture: user?.profilePicture || "",
     },
   });
@@ -176,7 +180,12 @@ const ProfilePage = () => {
 
   const handleProfileFormSubmit = (values: ProfileFormData) => {
     updateUserProfile(
-      { name: values.name, profilePicture: values.profilePicture || "" },
+      { 
+        name: values.name, 
+        lastName: values.lastName || "",
+        phoneNumber: values.phoneNumber || "",
+        profilePicture: values.profilePicture || "" 
+      },
       {
         onSuccess: () => {
           toast.success("Profile updated successfully");
@@ -276,9 +285,39 @@ const ProfilePage = () => {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Полное имя</FormLabel>
+                    <FormLabel>Имя</FormLabel>
                     <FormControl>
                       <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={profileForm.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Фамилия</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={profileForm.control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Номер телефона</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        type="tel"
+                        placeholder="+992 XX XXX XXXX"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -307,7 +346,7 @@ const ProfilePage = () => {
                     Сохранение...
                   </>
                 ) : (
-                  "Save Changes"
+                  "Сохранить изменения"
                 )}
               </Button>
             </form>

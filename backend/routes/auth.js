@@ -9,6 +9,10 @@ import {
   verifyEmail,
   verifyResetTokenAndResetPassword,
   verify2FALogin,
+  googleAuth,
+  googleCallback,
+  appleAuth,
+  appleCallback,
 } from "../controllers/auth-controller.js";
 import {
   loginSchema,
@@ -68,5 +72,11 @@ router.post(
   }),
   verify2FALogin
 );
+
+// OAuth routes
+router.get("/google", googleAuth);
+router.get("/google/callback", googleCallback);
+router.get("/apple", appleAuth);
+router.get("/apple/callback", appleCallback);
 
 export default router;

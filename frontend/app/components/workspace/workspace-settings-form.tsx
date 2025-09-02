@@ -83,18 +83,18 @@ export const WorkspaceSettingsForm = ({ data }: { data: Workspace }) => {
 
   const handleDeleteWorkspace = () => {
     confirm({
-      title: "Delete Workspace",
+      title: "Удалить рабочую область",
       message:
-        "This action cannot be undone. This will permanently delete your workspace and remove all associated data.",
+        "Это действие невозможно отменить. Оно безвозвратно удалит ваше рабочее пространство и все связанные с ним данные.",
       onConfirm: async () => {
         deleteWorkspace(data._id, {
           onSuccess: () => {
-            toast.success("Workspace deleted successfully");
+            toast.success("Рабочая область успешно удалена");
             navigate("/workspaces");
           },
           onError: (error: any) => {
             const errorMessage =
-              error?.response?.data?.message || "Failed to delete workspace";
+              error?.response?.data?.message || "Не удалось удалить рабочее пространство.";
             toast.error(errorMessage);
           },
         });

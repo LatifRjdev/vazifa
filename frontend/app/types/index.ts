@@ -1,16 +1,20 @@
-export type TaskStatus = "To Do" | "In Progress" | "Done";
+export type TaskStatus = "To Do" | "In Progress" | "Review" | "Done";
 export type TaskPriority = "High" | "Medium" | "Low";
 
 export interface User {
   _id: string;
   name: string;
+  lastName?: string;
+  phoneNumber?: string;
   email: string;
   isEmailVerified: boolean;
   createdAt: string;
   updatedAt: string;
   profilePicture?: string;
+  role?: "super_admin" | "admin" | "manager" | "member";
 }
 
+// Оставляем Workspace для обратной совместимости
 export interface Workspace {
   _id: string;
   name: string;
@@ -72,7 +76,6 @@ export interface Task {
   title: string;
   description?: string;
   status: TaskStatus;
-  project: Project;
   createdAt: Date;
   updatedAt: Date;
   isArchived: boolean;
@@ -84,6 +87,11 @@ export interface Task {
   subtasks?: Subtask[];
   watchers?: User[];
   attachments?: Attachment[];
+  completedAt?: Date;
+  responsibleManager?: User | string;
+  isImportant?: boolean;
+  markedImportantBy?: User | string;
+  markedImportantAt?: Date;
 }
 
 export interface Attachment {
@@ -101,7 +109,22 @@ export interface Comment {
   author: User;
   text: string;
   createdAt: Date;
+  parentComment?: string;
   reactions?: CommentReaction[];
+  attachments?: {
+    fileName: string;
+    fileUrl: string;
+    fileType?: string;
+    fileSize?: number;
+  }[];
+}
+
+export interface Response {
+  _id: string;
+  author: User;
+  text?: string;
+  task: string;
+  createdAt: Date;
   attachments?: {
     fileName: string;
     fileUrl: string;

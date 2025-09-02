@@ -8,6 +8,11 @@ import {
   Settings,
   Users,
   Wrench,
+  BarChart3,
+  ClipboardList,
+  Star,
+  UserCheck,
+  MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -15,52 +20,108 @@ import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-context";
-import type { Workspace } from "@/types";
+import { useLanguage } from "@/providers/language-context";
 import { ScrollArea } from "../ui/scroll-area";
 import { SidebarNav } from "./sidebar-nav";
 
 export const SidebarComponent = ({
   className,
-  currentWorkspace,
 }: {
   className?: string;
-  currentWorkspace?: Workspace | null;
 }) => {
   const { logout, user } = useAuth();
+  const { t } = useLanguage();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const navItems = [
-    {
-      title: "Панель управления",
-      href: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "Рабочие пространства",
-      href: "/workspaces",
-      icon: Users,
-    },
-    {
-      title: "Мои задачи",
-      href: "/my-tasks",
-      icon: ListCheck,
-    },
-    {
-      title: "Участники",
-      href: `/members`,
-      icon: Users,
-    },
-    {
-      title: "Выполненные",
-      href: `/achieved`,
-      icon: CheckCircle2,
-    },
-    {
-      title: "Настройки",
-      href: "/settings",
-      icon: Settings,
-    },
-  ];
+  // Define different navigation items based on user role
+  const getNavItems = () => {
+    if (user?.role === "super_admin") {
+      // Super admin only sees specific items in specific order
+      return [
+        {
+          title: t('nav.important_tasks'),
+          href: "/important-tasks",
+          icon: Star,
+        },
+        {
+          title: t('nav.all_tasks'),
+          href: "/all-tasks",
+          icon: ClipboardList,
+        },
+        {
+          title: t('nav.analytics'),
+          href: "/analytics",
+          icon: BarChart3,
+        },
+        {
+          title: t('nav.members'),
+          href: "/members",
+          icon: Users,
+        },
+        {
+          title: t('nav.completed_tasks'),
+          href: "/achieved",
+          icon: CheckCircle2,
+        },
+      ];
+    }
+
+    // Default navigation for other roles
+    return [
+      {
+        title: t('nav.dashboard'),
+        href: "/dashboard",
+        icon: LayoutDashboard,
+      },
+      {
+        title: t('nav.my_tasks'),
+        href: "/my-tasks",
+        icon: ListCheck,
+      },
+      {
+        title: t('nav.all_tasks'),
+        href: "/all-tasks",
+        icon: ClipboardList,
+        requiresRole: ["admin", "manager", "super_admin"],
+      },
+      {
+        title: t('nav.manager_tasks'),
+        href: "/manager-tasks",
+        icon: UserCheck,
+        requiresRole: ["admin", "manager", "super_admin"],
+      },
+      {
+        title: t('nav.important_tasks'),
+        href: "/important-tasks",
+        icon: Star,
+        requiresRole: ["super_admin"],
+      },
+      {
+        title: t('nav.analytics'),
+        href: "/analytics",
+        icon: BarChart3,
+        requiresRole: ["admin", "manager", "super_admin"],
+      },
+      {
+        title: t('nav.members'),
+        href: "/members",
+        icon: Users,
+        requiresRole: ["admin", "manager", "super_admin"],
+      },
+      {
+        title: t('nav.completed_tasks'),
+        href: "/achieved",
+        icon: CheckCircle2,
+      },
+      {
+        title: t('nav.settings'),
+        href: "/settings",
+        icon: Settings,
+      },
+    ];
+  };
+
+  const navItems = getNavItems();
 
   return (
     <div
@@ -100,7 +161,7 @@ export const SidebarComponent = ({
           items={navItems}
           isCollapsed={isCollapsed}
           className={cn(isCollapsed && "items-center space-y-2")}
-          currentWorkspace={currentWorkspace}
+          userRole={user?.role}
         />
       </ScrollArea>
 
@@ -112,7 +173,7 @@ export const SidebarComponent = ({
           onClick={logout}
         >
           <LogOut className={cn("h-4 w-4", isCollapsed ? "" : "mr-2")} />
-          <span className="hidden md:block">{!isCollapsed && "Выйти"}</span>
+          <span className="hidden md:block">{!isCollapsed && t('nav.logout')}</span>
         </Button>
       </div>
     </div>

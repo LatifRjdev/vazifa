@@ -208,7 +208,7 @@ const workspaceInvitation = async (req, res) => {
       `${req.user.name} invited you to ${workspace.name}`,
       {
         workspaceId: workspace._id,
-        description: `${req.user.name} invited you to ${workspace.name}`,
+        description: `${req.user.name} пригласил вас в ${workspace.name}`,
         actorId: req.user._id,
       }
     );
@@ -223,7 +223,7 @@ const workspaceInvitation = async (req, res) => {
         invitedEmail: email,
         role: role || "member",
         invitedBy: req.user.name,
-        description: `${req.user.name} invited you to ${workspace.name}`,
+        description: `${req.user.name} пригласил вас в ${workspace.name}`,
       }
     );
 
@@ -652,7 +652,7 @@ const transferWorkspaceOwnership = async (req, res) => {
       workspaceId,
       {
         title: "Transferred workspace ownership",
-        description: `transferred the ownership of ${workspace.name} to ${newOwner.user.name}`,
+        description: `передал владение ${workspace.name} пользователю ${newOwner.user.name}`,
       }
     );
 

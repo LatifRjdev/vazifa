@@ -3,6 +3,7 @@ import {
   Navigate,
   Outlet,
   redirect,
+  useLoaderData,
   useNavigate,
   useParams,
 } from "react-router";
@@ -11,18 +12,18 @@ import { Header } from "@/components/layout/header";
 import { SidebarComponent } from "@/components/layout/sidebar-component";
 import { Loader } from "@/components/loader";
 import { CreateWorkspace } from "@/components/workspace/create-workspace";
+import { AdminChatWidget } from "@/components/chat/admin-chat-widget";
 import { fetchData } from "@/lib/fetch-utils";
 import { useAuth } from "@/providers/auth-context";
 import type { Workspace } from "@/types";
-import { useWorkspaceId } from "@/hooks/use-workspace-id";
 
 export const clientLoader = async () => {
   try {
-    const [workspaces, unreadNotificationsCount] = await Promise.all([
-      fetchData("/workspaces"),
+    const [unreadNotificationsCount, myTasks] = await Promise.all([
       fetchData("/users/notifications/unread-count"),
+      fetchData("/tasks/my-tasks"),
     ]);
-    return { workspaces, unreadNotificationsCount };
+    return { organizations: [], unreadNotificationsCount, myTasks };
       } catch (error) {
       return redirect("/sign-in");
     }
@@ -31,31 +32,43 @@ export const clientLoader = async () => {
 const DashboardLayout = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
+  const { organizations } = useLoaderData() as {
+    organizations: Workspace[];
+    unreadNotificationsCount: number;
+    myTasks: any[];
+  };
 
-  const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(
+  const [currentOrganization, setCurrentOrganization] = useState<Workspace | null>(
     null
   );
+
+  // Auto-select first organization if none is selected and organizations are available
+  useEffect(() => {
+    if (!currentOrganization && organizations && organizations.length > 0) {
+      setCurrentOrganization(organizations[0]);
+    }
+  }, [currentOrganization, organizations]);
 
   if (isLoading) return <Loader message="Loading..." />;
   if (!isAuthenticated) return <Navigate to="/sign-in" replace />;
 
-  const handleWorkspaceSelect = (workspace: Workspace | null) => {
-    setCurrentWorkspace(workspace);
+  const handleOrganizationSelect = (organization: Workspace | null) => {
+    setCurrentOrganization(organization);
   };
 
   return (
-    <div className="flex  h-screen w-full">
-      <SidebarComponent currentWorkspace={currentWorkspace} />
+    <div className="flex h-screen w-full overflow-hidden">
+      <SidebarComponent className="flex-shrink-0" />
 
-      <div className="flex-1 flex flex-col h-screen">
+      <div className="flex-1 flex flex-col h-screen min-w-0">
         <Header
-          onWorkspaceSelect={handleWorkspaceSelect}
-          selectedWorkspace={currentWorkspace}
-          onCreateWorkspace={() => setIsCreateWorkspaceOpen(true)}
+          onOrganizationSelect={handleOrganizationSelect}
+          selectedOrganization={currentOrganization}
+          onCreateOrganization={() => setIsCreateWorkspaceOpen(true)}
         />
 
-        <main className="flex-1 overflow-y-auto h-full w-full">
-          <div className="mx-auto container px-2 sm:px-6 lg:px-8 py-0 md:py-8 w-full h-full">
+        <main className="flex-1 overflow-y-auto min-h-0">
+          <div className="container mx-auto px-2 sm:px-4 lg:px-6 xl:px-8 py-2 sm:py-4 lg:py-6 xl:py-8 w-full">
             <Outlet />
           </div>
         </main>
@@ -65,6 +78,8 @@ const DashboardLayout = () => {
         isCreateWorkspaceOpen={isCreateWorkspaceOpen}
         setIsCreateWorkspaceOpen={setIsCreateWorkspaceOpen}
       />
+      
+      <AdminChatWidget />
     </div>
   );
 };

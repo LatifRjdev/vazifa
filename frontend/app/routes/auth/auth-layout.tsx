@@ -12,7 +12,7 @@ const AuthLayout = () => {
         <Loader message="Loading..." />
       </div>
     );
-  if (isAuthenticated) return <Navigate to="/workspaces" />;
+  if (isAuthenticated) return <Navigate to="/dashboard" />;
 
   return <Outlet />;
 };

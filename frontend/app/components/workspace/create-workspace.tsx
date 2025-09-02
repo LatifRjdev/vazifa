@@ -61,7 +61,7 @@ export const CreateWorkspace = ({
         toast.success("Рабочая область успешно создана");
         form.reset();
         setIsCreateWorkspaceOpen(false);
-        navigate(`/workspaces/${data?._id}`);
+        navigate("/dashboard");
       },
       onError: () => {
         toast.error("Failed to create workspace");

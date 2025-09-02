@@ -7,6 +7,7 @@ import {
   taskWatchers,
   createTask,
   commentOnTask,
+  createResponse,
   updateTaskStatus,
   getTaskById,
   archiveTask,
@@ -17,10 +18,20 @@ import {
   createSubTask,
   updateSubTask,
   getCommentsByTaskId,
+  getCompletedTasks,
+  getResponsesByTaskId,
+  replyToComment,
   getActivitiesByResourceId,
   toggleCommentReaction,
   getMyTasks,
+  getAllTasks,
+  getTasksAnalytics,
+  getArchivedTasks,
   deleteTask,
+  markTaskAsImportant,
+  getImportantTasks,
+  getManagerTasks,
+  getMyManagerTasks,
 } from "../controllers/task-controller.js";
 import {
   commentSchema,
@@ -63,6 +74,24 @@ router.post(
     body: taskAttachmentSchema,
   }),
   taskAttachments
+);
+
+router.post(
+  "/",
+  authenticateUser,
+  validateRequest({
+    body: taskSchema,
+  }),
+  createTask
+);
+
+router.post(
+  "/create",
+  authenticateUser,
+  validateRequest({
+    body: taskSchema,
+  }),
+  createTask
 );
 
 router.post(
@@ -152,13 +181,29 @@ router.post(
   toggleCommentReaction
 );
 
+// Специфичные роуты должны быть выше общих роутов с параметрами
 router.get("/my-tasks/", authenticateUser, getMyTasks);
+router.get("/all-tasks/", authenticateUser, getAllTasks);
+router.get("/analytics/", authenticateUser, getTasksAnalytics);
+router.get("/archived/", authenticateUser, getArchivedTasks);
+router.get("/completed/", authenticateUser, getCompletedTasks);
+router.get("/important/", authenticateUser, getImportantTasks);
+router.get("/my-manager-tasks/", authenticateUser, getMyManagerTasks);
 
-router.get(
-  "/:taskId",
+// Маршрут для отметки задачи как важной
+router.post(
+  "/:taskId/mark-important",
   authenticateUser,
   validateRequest({ params: z.object({ taskId: z.string() }) }),
-  getTaskById
+  markTaskAsImportant
+);
+
+// Маршрут для получения задач конкретного менеджера
+router.get(
+  "/manager/:managerId",
+  authenticateUser,
+  validateRequest({ params: z.object({ managerId: z.string() }) }),
+  getManagerTasks
 );
 
 router.get(
@@ -169,10 +214,60 @@ router.get(
 );
 
 router.get(
+  "/:taskId/responses",
+  authenticateUser,
+  validateRequest({ params: z.object({ taskId: z.string() }) }),
+  getResponsesByTaskId
+);
+
+router.post(
+  "/:taskId/responses",
+  authenticateUser,
+  validateRequest({
+    params: z.object({ taskId: z.string() }),
+    body: z.object({
+      text: z.string().optional(),
+      attachments: z.array(z.object({
+        fileName: z.string(),
+        fileUrl: z.string(),
+        fileType: z.string(),
+        fileSize: z.number()
+      })).optional()
+    })
+  }),
+  createResponse
+);
+
+router.post(
+  "/comments/:commentId/reply",
+  authenticateUser,
+  validateRequest({
+    params: z.object({ commentId: z.string() }),
+    body: z.object({
+      text: z.string().optional(),
+      attachments: z.array(z.object({
+        fileName: z.string(),
+        fileUrl: z.string(),
+        fileType: z.string(),
+        fileSize: z.number()
+      })).optional()
+    })
+  }),
+  replyToComment
+);
+
+router.get(
   "/:resourceId/activities",
   authenticateUser,
   validateRequest({ params: z.object({ resourceId: z.string() }) }),
   getActivitiesByResourceId
+);
+
+router.get(
+  "/:taskId",
+  authenticateUser,
+  validateRequest({ params: z.object({ taskId: z.string() }) }),
+  getTaskById
 );
 
 router.delete(

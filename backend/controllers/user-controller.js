@@ -22,7 +22,7 @@ const getUserProfile = async (req, res) => {
 
 const updateUserProfile = async (req, res) => {
   try {
-    const { name, profilePicture } = req.body;
+    const { name, lastName, phoneNumber, profilePicture } = req.body;
 
     const user = await User.findById(req.user._id);
 
@@ -31,7 +31,25 @@ const updateUserProfile = async (req, res) => {
     }
 
     user.name = name;
-    user.profilePicture = profilePicture;
+    if (lastName !== undefined) {
+      user.lastName = lastName;
+    }
+    if (phoneNumber !== undefined) {
+      // Basic phone number validation (optional)
+      if (phoneNumber && phoneNumber.trim() !== "") {
+        // Remove spaces and validate basic format
+        const cleanPhone = phoneNumber.replace(/\s+/g, '');
+        if (!/^[\+]?[0-9\-\(\)\s]+$/.test(cleanPhone)) {
+          return res.status(400).json({ message: "Invalid phone number format" });
+        }
+        user.phoneNumber = cleanPhone;
+      } else {
+        user.phoneNumber = "";
+      }
+    }
+    if (profilePicture !== undefined) {
+      user.profilePicture = profilePicture;
+    }
 
     await user.save();
 
@@ -111,14 +129,14 @@ const enable2FA = async (req, res) => {
     // Send OTP to email
     await sendEmail(
       user.email,
+      "Код подтверждения 2FA",
       user.name,
-      "Your 2FA Verification Code",
-      `Your verification code is: <b>${otp}</b>
+      `Ваш код подтверждения: <b>${otp}</b>
       <br>
       <br>
-      This code will expire in 10 minutes.
+      Этот код истечет через 10 минут.
       </p>`,
-      "2FA Code",
+      "Код 2FA",
       "#"
     );
 
@@ -172,6 +190,51 @@ const disable2FA = async (req, res) => {
   }
 };
 
+// Get all users (for task assignment)
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({}, 'name lastName email role profilePicture').sort({ name: 1 });
+    res.status(200).json({ users });
+  } catch (error) {
+    console.error("Error fetching all users:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Delete user (admin only)
+const deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Check if user has admin permissions
+    if (!["admin", "super_admin"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы могут удалять пользователей." });
+    }
+
+    // Prevent self-deletion
+    if (userId === req.user._id.toString()) {
+      return res.status(400).json({ message: "Нельзя удалить самого себя." });
+    }
+
+    const userToDelete = await User.findById(userId);
+    if (!userToDelete) {
+      return res.status(404).json({ message: "Пользователь не найден." });
+    }
+
+    // Prevent deletion of super admin by regular admin
+    if (userToDelete.role === "super_admin" && req.user.role !== "super_admin") {
+      return res.status(403).json({ message: "Только супер админ может удалить супер админа." });
+    }
+
+    await User.findByIdAndDelete(userId);
+
+    res.status(200).json({ message: "Пользователь успешно удален." });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+};
+
 export {
   changePassword,
   getUserProfile,
@@ -180,4 +243,6 @@ export {
   enable2FA,
   verify2FA,
   disable2FA,
+  getAllUsers,
+  deleteUser,
 };

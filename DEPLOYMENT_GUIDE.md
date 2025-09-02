@@ -1,3 +1,64 @@
+# Vazifa Deployment Guide
+
+This guide provides multiple deployment options for your Vazifa application, including Hostinger hosting and SSH server deployment.
+
+## Deployment Options
+
+1. **[Hostinger Deployment](#hostinger-deployment)** - Shared hosting deployment
+2. **[SSH Server Deployment](#ssh-server-deployment)** - VPS/Dedicated server deployment
+3. **[Docker Deployment](#docker-deployment)** - Containerized deployment
+
+---
+
+## SSH Server Deployment
+
+For VPS or dedicated server deployment with full control, use our comprehensive SSH deployment solution.
+
+### Quick SSH Deployment
+
+```bash
+# Basic SSH deployment with external .env files
+./deploy-ssh.sh \
+  --host your-server.com \
+  --user deploy \
+  --key ~/.ssh/id_rsa \
+  --domain yourdomain.com \
+  --api-domain api.yourdomain.com \
+  --env-path ./production-env
+
+# Or using environment variables
+export SSH_HOST="your-server.com"
+export SSH_USER="deploy"
+export DOMAIN="yourdomain.com"
+export API_DOMAIN="api.yourdomain.com"
+./deploy-ssh.sh
+```
+
+### SSH Deployment Features
+
+- ✅ Automated deployment with single command
+- ✅ External .env file support for secure configuration
+- ✅ PM2 process management with clustering
+- ✅ Nginx configuration with SSL support
+- ✅ Automated backups and log rotation
+- ✅ Health checks and monitoring
+- ✅ Zero-downtime deployments
+
+### SSH Deployment Requirements
+
+- Ubuntu 20.04+ / CentOS 8+ / Debian 11+
+- Node.js 18+ installed on server
+- Nginx installed and configured
+- SSH access with sudo privileges
+- Domain with DNS records configured
+
+**📖 For detailed SSH deployment instructions, see [SSH_DEPLOYMENT_GUIDE.md](SSH_DEPLOYMENT_GUIDE.md)**
+
+**🔧 For environment variable management, see [ENV_MANAGEMENT_GUIDE.md](ENV_MANAGEMENT_GUIDE.md)**
+
+---
+
+## Hostinger Deployment
 # Vazifa Deployment Guide for Hostinger
 
 This guide will help you deploy your Vazifa application to Hostinger hosting.

@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import aj from "../libs/arcjet.js";
 import User from "../models/users.js";
 import Verification from "../models/verification.js";
+import Workspace from "../models/workspace.js";
 import { sendEmail } from "../libs/send-emails.js";
 import { verifyJWT } from "../libs/jwt-verify.js";
 
@@ -69,10 +70,10 @@ const registerUser = async (req, res) => {
     try {
       const isEmailSent = await sendEmail(
         email,
-        "Email Verification",
+        "Подтверждение электронной почты",
         name,
-        "Please verify your email to continue.",
-        "Verify Email",
+        "Пожалуйста, подтвердите свою электронную почту, чтобы продолжить.",
+        "Подтвердить Email",
         verificationUrl
       );
       
@@ -119,6 +120,14 @@ const loginUser = async (req, res) => {
     }
 
     console.log("User found:", user.email, "isEmailVerified:", user.isEmailVerified);
+
+    // Check if user has a password (OAuth users might not have one)
+    if (!user.password) {
+      console.log("OAuth user trying to login with password:", email);
+      return res.status(400).json({ 
+        message: "This account was created with social login. Please use Google or Apple to sign in." 
+      });
+    }
 
     // Verify password first
     const isMatch = await bcrypt.compare(password, user.password);
@@ -297,26 +306,42 @@ const resetPasswordRequest = async (req, res) => {
 
     // send reset token to user email
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?tk=${resetToken}`;
-    const emailBody = `<p>Click the link below to reset your password:</p>
-    <a href="${resetUrl}">${resetUrl}</a>`;
-    const emailSubject = "Reset Password";
+    
+    // For development: Log the reset URL to console
+    console.log("=".repeat(80));
+    console.log("🔐 PASSWORD RESET LINK FOR:", email);
+    console.log("🔗 RESET URL:", resetUrl);
+    console.log("=".repeat(80));
 
-    const isEmailSent = await sendEmail(
-      email,
-      emailSubject,
-      user.name,
-      "Click the link below to reset your password. Please reset your password to continue.",
-      "Reset Password",
-      resetUrl
-    );
-
-    if (!isEmailSent) {
-      return res
-        .status(500)
-        .json({ message: "Failed to send reset password email" });
+    // Try to send email, but don't fail if it doesn't work
+    try {
+      const isEmailSent = await sendEmail(
+        email,
+        "Сброс пароля",
+        user.name,
+        "Нажмите на ссылку ниже, чтобы сбросить пароль. Пожалуйста, сбросьте пароль, чтобы продолжить.",
+        "Сбросить пароль",
+        resetUrl
+      );
+      
+      if (isEmailSent) {
+        console.log("✅ Reset email sent successfully to:", email);
+        res.status(200).json({ message: "Reset password email sent" });
+      } else {
+        console.log("⚠️ Reset email sending failed, but reset link is available above");
+        res.status(200).json({ 
+          message: "Reset password request processed. Please check the server console for your reset link.",
+          resetUrl: process.env.NODE_ENV === 'development' ? resetUrl : undefined
+        });
+      }
+    } catch (error) {
+      console.log("⚠️ Email service error:", error.message);
+      console.log("📝 Use the reset link above to reset your password");
+      res.status(200).json({ 
+        message: "Reset password request processed. Please check the server console for your reset link.",
+        resetUrl: process.env.NODE_ENV === 'development' ? resetUrl : undefined
+      });
     }
-
-    res.status(200).json({ message: "Reset password email sent" });
   } catch (error) {
     console.error("Reset password error:", error);
     res.status(500).json({ message: "Server error" });
@@ -424,6 +449,35 @@ const verifyEmail = async (req, res) => {
     user.isEmailVerified = true;
     await user.save();
 
+    // Add user to default workspace
+    try {
+      const defaultWorkspace = await Workspace.findOne({ 
+        name: 'Рабочее пространство' 
+      });
+
+      if (defaultWorkspace) {
+        // Check if user is already a member
+        const isMember = defaultWorkspace.members.some(
+          member => member.user.toString() === user._id.toString()
+        );
+
+        if (!isMember) {
+          defaultWorkspace.members.push({
+            user: user._id,
+            role: 'member',
+            joinedAt: new Date(),
+          });
+          await defaultWorkspace.save();
+          console.log(`✅ Added ${user.name} to default workspace`);
+        }
+      } else {
+        console.log('⚠️ Default workspace not found');
+      }
+    } catch (error) {
+      console.error('Error adding user to default workspace:', error);
+      // Don't fail the email verification if workspace addition fails
+    }
+
     // delete verification
     await Verification.findByIdAndDelete(verification._id);
 
@@ -434,6 +488,147 @@ const verifyEmail = async (req, res) => {
   }
 };
 
+// OAuth handlers
+const googleAuth = async (req, res) => {
+  try {
+    // Redirect to Google OAuth
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${process.env.GOOGLE_CLIENT_ID}&` +
+      `redirect_uri=${process.env.BACKEND_URL}/api-v1/auth/google/callback&` +
+      `response_type=code&` +
+      `scope=email profile&` +
+      `access_type=offline`;
+    
+    res.redirect(googleAuthUrl);
+  } catch (error) {
+    console.error("Google auth error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const googleCallback = async (req, res) => {
+  try {
+    const { code } = req.query;
+    
+    if (!code) {
+      return res.redirect(`${process.env.FRONTEND_URL}/sign-in?error=oauth_error`);
+    }
+
+    // Exchange code for access token
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: `${process.env.BACKEND_URL}/api-v1/auth/google/callback`,
+      }),
+    });
+
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenData.access_token) {
+      return res.redirect(`${process.env.FRONTEND_URL}/sign-in?error=oauth_error`);
+    }
+
+    // Get user info from Google
+    const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+      },
+    });
+
+    const googleUser = await userResponse.json();
+    
+    if (!googleUser.email) {
+      return res.redirect(`${process.env.FRONTEND_URL}/sign-in?error=oauth_error`);
+    }
+
+    // Check if user exists
+    let user = await User.findOne({ email: googleUser.email });
+    
+    if (!user) {
+      // Create new user
+      user = await User.create({
+        email: googleUser.email,
+        name: googleUser.name || googleUser.email.split('@')[0],
+        profilePicture: googleUser.picture,
+        isEmailVerified: true, // Google emails are pre-verified
+        authProvider: 'google',
+        googleId: googleUser.id,
+      });
+
+      // Add user to default workspace
+      try {
+        const defaultWorkspace = await Workspace.findOne({ 
+          name: 'Рабочее пространство' 
+        });
+
+        if (defaultWorkspace) {
+          defaultWorkspace.members.push({
+            user: user._id,
+            role: 'member',
+            joinedAt: new Date(),
+          });
+          await defaultWorkspace.save();
+        }
+      } catch (error) {
+        console.error('Error adding user to default workspace:', error);
+      }
+    } else {
+      // Update existing user with Google info if not set
+      if (!user.googleId) {
+        user.googleId = googleUser.id;
+        user.authProvider = 'google';
+        if (!user.profilePicture && googleUser.picture) {
+          user.profilePicture = googleUser.picture;
+        }
+        await user.save();
+      }
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Generate JWT token
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    // Redirect to frontend with token
+    res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+  } catch (error) {
+    console.error("Google callback error:", error);
+    res.redirect(`${process.env.FRONTEND_URL}/sign-in?error=oauth_error`);
+  }
+};
+
+const appleAuth = async (req, res) => {
+  try {
+    // For now, redirect with a message that Apple auth is coming soon
+    res.redirect(`${process.env.FRONTEND_URL}/sign-in?message=apple_coming_soon`);
+  } catch (error) {
+    console.error("Apple auth error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const appleCallback = async (req, res) => {
+  try {
+    // Apple OAuth implementation would go here
+    // For now, redirect with a message
+    res.redirect(`${process.env.FRONTEND_URL}/sign-in?message=apple_coming_soon`);
+  } catch (error) {
+    console.error("Apple callback error:", error);
+    res.redirect(`${process.env.FRONTEND_URL}/sign-in?error=oauth_error`);
+  }
+};
+
 export {
   registerUser,
   loginUser,
@@ -441,4 +636,8 @@ export {
   verifyEmail,
   verifyResetTokenAndResetPassword,
   verify2FALogin,
+  googleAuth,
+  googleCallback,
+  appleAuth,
+  appleCallback,
 };

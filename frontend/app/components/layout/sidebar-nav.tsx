@@ -3,41 +3,41 @@ import { useLocation, useNavigate } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { Workspace } from "@/types";
 
 interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
   items: {
     href: string;
     title: string;
     icon?: LucideIcon;
+    requiresRole?: string[];
   }[];
   isCollapsed: boolean;
-  currentWorkspace?: Workspace | null;
+  userRole?: string;
 }
 
 export const SidebarNav = ({
   className,
   items,
   isCollapsed,
-  currentWorkspace,
+  userRole,
   ...props
 }: SidebarNavProps) => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Фильтруем пункты меню по ролям
+  const filteredItems = items.filter(item => {
+    if (!item.requiresRole) return true;
+    return userRole && item.requiresRole.includes(userRole);
+  });
+
   return (
     <nav className={cn("flex flex-col space-y-2", className)} {...props}>
-      {items.map((item) => {
+      {filteredItems.map((item) => {
         const Icon = item.icon;
         const isActive = location.pathname === item.href;
         const handleClick = () => {
-          if (item.href === "/workspaces") {
-            navigate(item.href);
-          } else if (currentWorkspace && currentWorkspace._id) {
-            navigate(`${item.href}?workspaceId=${currentWorkspace._id}`);
-          } else {
-            navigate(item.href);
-          }
+          navigate(item.href);
         };
 
         return (

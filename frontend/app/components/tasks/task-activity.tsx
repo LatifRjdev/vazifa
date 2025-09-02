@@ -48,7 +48,7 @@ export const TaskActivity = ({ resourceId }: { resourceId: string }) => {
             </div>
             <div>
               <p className="text-sm">
-                <span className="font-medium">{activity?.user.name}</span>{" "}
+                <span className="font-medium">{activity?.user?.name || 'Неизвестный пользователь'}</span>{" "}
                 {activity?.details?.description}
               </p>
               <p className="text-xs text-muted-foreground">

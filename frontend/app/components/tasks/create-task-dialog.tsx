@@ -1,12 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
+import { ru } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { RussianCalendar } from "@/components/ui/russian-calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -38,23 +40,32 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateTaskMutation } from "@/hooks/use-task";
-import type { ProjectMemberRole, User } from "@/types";
-import { createTaskSchema } from "@/utils/schema";
+import { fetchData } from "@/lib/fetch-utils";
+import type { User } from "@/types";
+
+// Схема для создания задач без обязательной организации
+const createTaskSchema = z.object({
+  title: z.string().min(1, "Название обязательно"),
+  description: z.string().optional(),
+  status: z.enum(["To Do", "In Progress", "Done"]),
+  priority: z.enum(["Low", "Medium", "High"]),
+  dueDate: z.string().optional(),
+  assignees: z.array(z.string()),
+  responsibleManager: z.string().optional(),
+});
 
 interface CreateTaskDialogProps {
-  isCreateTaskOpen: boolean;
-  setIsCreateTaskOpen: (isOpen: boolean) => void;
-  projectId: string;
-  projectMembers: { user: User; role: ProjectMemberRole }[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  organizations?: any[];
 }
 
 export type TaskFormData = z.infer<typeof createTaskSchema>;
 
 export const CreateTaskDialog = ({
-  isCreateTaskOpen,
-  setIsCreateTaskOpen,
-  projectId,
-  projectMembers,
+  open,
+  onOpenChange,
+  organizations,
 }: CreateTaskDialogProps) => {
   const form = useForm<TaskFormData>({
     resolver: zodResolver(createTaskSchema),
@@ -68,29 +79,40 @@ export const CreateTaskDialog = ({
     },
   });
 
+  // Получить всех пользователей системы
+  const { data: usersData } = useQuery({
+    queryKey: ["all-users"],
+    queryFn: () => fetchData("/users/all"),
+    enabled: open,
+  }) as {
+    data: { users: User[] };
+  };
+
   const { mutate, isPending } = useCreateTaskMutation();
+
+  const allUsers = usersData?.users || [];
 
   const onSubmit = (data: TaskFormData) => {
     mutate(
-      { taskData: data, projectId },
+      { taskData: data },
       {
         onSuccess: () => {
-          toast.success("Task created successfully");
-          setIsCreateTaskOpen(false);
+          toast.success("Задача успешно создана");
+          onOpenChange(false);
           form.reset();
         },
         onError: (error) => {
-          toast.error(error.message);
+          toast.error(error.message || "Ошибка создания задачи");
         },
       }
     );
   };
 
   return (
-    <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[540px]">
         <DialogHeader>
-          <DialogTitle>Создать Новую Задачу</DialogTitle>
+          <DialogTitle>Создать новую задачу</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -139,20 +161,14 @@ export const CreateTaskDialog = ({
                           value={field.value}
                           onValueChange={field.onChange}
                         >
-                          <FormItem>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select Status" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="To Do">Сделать</SelectItem>
-                              <SelectItem value="In Progress">
-                                В процессе
-                              </SelectItem>
-                              <SelectItem value="Done">Сделано</SelectItem>
-                            </SelectContent>
-                          </FormItem>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Выберите статус" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="To Do">К выполнению</SelectItem>
+                            <SelectItem value="In Progress">В процессе</SelectItem>
+                            <SelectItem value="Done">Выполнено</SelectItem>
+                          </SelectContent>
                         </Select>
                       </FormControl>
                       <FormMessage />
@@ -171,18 +187,14 @@ export const CreateTaskDialog = ({
                           value={field.value}
                           onValueChange={field.onChange}
                         >
-                          <FormItem>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select Priority" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Low">Низкий</SelectItem>
-                              <SelectItem value="Medium">Средний</SelectItem>
-                              <SelectItem value="High">Высокий</SelectItem>
-                            </SelectContent>
-                          </FormItem>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Выберите приоритет" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Low">Низкий</SelectItem>
+                            <SelectItem value="Medium">Средний</SelectItem>
+                            <SelectItem value="High">Высокий</SelectItem>
+                          </SelectContent>
                         </Select>
                       </FormControl>
                       <FormMessage />
@@ -196,7 +208,7 @@ export const CreateTaskDialog = ({
                 name="dueDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Срок Исполнения</FormLabel>
+                    <FormLabel>Срок выполнения</FormLabel>
                     <FormControl>
                       <Popover>
                         <PopoverTrigger asChild>
@@ -209,19 +221,19 @@ export const CreateTaskDialog = ({
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {field.value ? (
-                              format(new Date(field.value), "PPP")
+                              format(new Date(field.value), "PPP", { locale: ru })
                             ) : (
                               <span>Выберите дату</span>
                             )}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
-                          <Calendar
+                          <RussianCalendar
                             mode="single"
                             selected={
                               field.value ? new Date(field.value) : undefined
                             }
-                            onSelect={(date) =>
+                            onSelect={(date: Date | undefined) =>
                               field.onChange(
                                 date ? date.toISOString() : undefined
                               )
@@ -238,12 +250,46 @@ export const CreateTaskDialog = ({
 
               <FormField
                 control={form.control}
+                name="responsibleManager"
+                render={({ field }) => {
+                  const managers = allUsers.filter(user => user && ["admin", "manager"].includes(user.role));
+                  return (
+                    <FormItem>
+                      <FormLabel>Ответственный менеджер</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value || undefined}
+                          onValueChange={(value) => {
+                            field.onChange(value === "none" ? undefined : value);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Выберите ответственного менеджера" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Не назначен</SelectItem>
+                            {managers.map((manager) => (
+                              <SelectItem key={manager._id} value={manager._id}>
+                                {manager.name} ({manager.role === "admin" ? "Админ" : "Менеджер"})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+
+              <FormField
+                control={form.control}
                 name="assignees"
                 render={({ field }) => {
                   const selectedMembers = field.value || [];
                   return (
                     <FormItem>
-                      <FormLabel>Назначенные участники</FormLabel>
+                      <FormLabel>Назначить участникам</FormLabel>
                       <FormControl>
                         <Popover>
                           <PopoverTrigger asChild>
@@ -253,19 +299,19 @@ export const CreateTaskDialog = ({
                             >
                               {selectedMembers.length === 0 ? (
                                 <span className="text-muted-foreground">
-                                  Выбрать участников
+                                  Выберите участников
                                 </span>
                               ) : selectedMembers.length <= 2 ? (
                                 selectedMembers
                                   .map((m) => {
-                                    const member = projectMembers.find(
-                                      (wm) => wm.user._id === m
+                                    const user = allUsers.find(
+                                      (u) => u && u._id === m
                                     );
-                                    return `${member?.user.name}`;
+                                    return user?.name || "Неизвестный";
                                   })
                                   .join(", ")
                               ) : (
-                                `${selectedMembers.length} assignees selected`
+                                `Выбрано участников: ${selectedMembers.length}`
                               )}
                             </Button>
                           </PopoverTrigger>
@@ -275,36 +321,37 @@ export const CreateTaskDialog = ({
                             align="start"
                           >
                             <div className="flex flex-col gap-2">
-                              {projectMembers.map((member) => {
-                                const selectedMember = selectedMembers.find(
-                                  (m) => m === member.user?._id
-                                );
+                              {allUsers.filter(user => user && user._id).map((user) => {
+                                const isSelected = selectedMembers.includes(user._id);
                                 return (
                                   <div
-                                    key={member.user._id}
+                                    key={user._id}
                                     className="flex items-center gap-2 p-2 border rounded"
                                   >
                                     <Checkbox
-                                      checked={!!selectedMember}
+                                      checked={isSelected}
                                       onCheckedChange={(checked) => {
                                         if (checked) {
                                           field.onChange([
                                             ...selectedMembers,
-
-                                            member.user._id,
+                                            user._id,
                                           ]);
                                         } else {
                                           field.onChange(
                                             selectedMembers.filter(
-                                              (m) => m !== member.user._id
+                                              (m) => m !== user._id
                                             )
                                           );
                                         }
                                       }}
-                                      id={`member-${member.user._id}`}
+                                      id={`user-${user._id}`}
                                     />
                                     <span className="truncate flex-1">
-                                      {member.user.name}
+                                      {user.name}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {user.role === "admin" ? "Админ" :
+                                       user.role === "manager" ? "Менеджер" : "Участник"}
                                     </span>
                                   </div>
                                 );
@@ -324,12 +371,12 @@ export const CreateTaskDialog = ({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsCreateTaskOpen(false)}
+                onClick={() => onOpenChange(false)}
               >
                 Отмена
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Creating..." : "Create Task"}
+                {isPending ? "Создание..." : "Создать задачу"}
               </Button>
             </DialogFooter>
           </form>

@@ -14,6 +14,7 @@ const getAllUsers = async (req, res) => {
       roles: {
         super_admin: users.filter(u => u.role === 'super_admin').length,
         admin: users.filter(u => u.role === 'admin').length,
+        manager: users.filter(u => u.role === 'manager').length,
         member: users.filter(u => u.role === 'member').length
       }
     });
@@ -30,7 +31,7 @@ const updateUserRole = async (req, res) => {
     const { role } = req.body;
 
     // Validate role
-    const validRoles = ['super_admin', 'admin', 'member'];
+    const validRoles = ['super_admin', 'admin', 'manager', 'member'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({ message: "Invalid role" });
     }

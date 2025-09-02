@@ -280,7 +280,7 @@ export const ProjectSettingsForm = ({
                 disabled={isUpdating}
                 className="w-full md:w-auto"
               >
-                {isUpdating ? "Saving..." : "Save Changes"}
+                {isUpdating ? "Сохраняю..." : "Сохранить изменения"}
               </Button>
             </div>
           </form>

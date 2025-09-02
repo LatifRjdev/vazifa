@@ -1,16 +1,12 @@
 import mongoose, { Schema } from "mongoose";
 import Comment from "./comments.js";
+import Response from "./responses.js";
 import ActivityLog from "./activity-logs.js";
 
 const taskSchema = new Schema(
   {
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true },
-    project: {
-      type: Schema.Types.ObjectId,
-      ref: "Project",
-      required: true,
-    },
     status: {
       type: String,
       enum: ["To Do", "In Progress", "Review", "Done"],
@@ -23,6 +19,10 @@ const taskSchema = new Schema(
     },
     assignees: [{ type: Schema.Types.ObjectId, ref: "User" }],
     watchers: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    responsibleManager: { type: Schema.Types.ObjectId, ref: "User" },
+    isImportant: { type: Boolean, default: false },
+    markedImportantBy: { type: Schema.Types.ObjectId, ref: "User" },
+    markedImportantAt: { type: Date },
     // startDate: { type: Date },
     dueDate: { type: Date },
     completedAt: { type: Date },
@@ -46,6 +46,7 @@ const taskSchema = new Schema(
       },
     ],
     comments: [{ type: Schema.Types.ObjectId, ref: "Comment" }],
+    responses: [{ type: Schema.Types.ObjectId, ref: "Response" }],
     attachments: [
       {
         fileName: { type: String, required: true },
@@ -70,6 +71,7 @@ taskSchema.pre(
     try {
       await Promise.all([
         Comment.deleteMany({ task: this._id }),
+        Response.deleteMany({ task: this._id }),
         ActivityLog.deleteMany({ resourceId: this._id }),
       ]);
       next();

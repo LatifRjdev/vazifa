@@ -21,7 +21,7 @@ const russianDaysShort = [
 ];
 
 /**
- * Format date in Russian locale
+ * Format date in Russian locale with numeric format
  */
 export const formatDateRussian = (date: string | Date, formatType: "short" | "medium" | "long" | "full" = "medium"): string => {
   const dateObj = typeof date === "string" ? new Date(date) : date;
@@ -30,30 +30,29 @@ export const formatDateRussian = (date: string | Date, formatType: "short" | "me
     return "Неверная дата";
   }
 
-  const day = dateObj.getDate();
-  const month = dateObj.getMonth();
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
   const year = dateObj.getFullYear();
-  const dayOfWeek = dateObj.getDay();
 
   switch (formatType) {
     case "short":
-      // "27 июля"
-      return `${day} ${russianMonths[month]}`;
+      // "27.07"
+      return `${day}.${month}`;
     
     case "medium":
-      // "27 июля 2025"
-      return `${day} ${russianMonths[month]} ${year}`;
+      // "27.07.2025"
+      return `${day}.${month}.${year}`;
     
     case "long":
-      // "27 июля 2025 г."
-      return `${day} ${russianMonths[month]} ${year} г.`;
+      // "27.07.2025"
+      return `${day}.${month}.${year}`;
     
     case "full":
-      // "пятница, 27 июля 2025 г."
-      return `${russianDays[dayOfWeek]}, ${day} ${russianMonths[month]} ${year} г.`;
+      // "27.07.2025"
+      return `${day}.${month}.${year}`;
     
     default:
-      return `${day} ${russianMonths[month]} ${year}`;
+      return `${day}.${month}.${year}`;
   }
 };
 

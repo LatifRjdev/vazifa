@@ -2,10 +2,9 @@ import { Button } from "@/components/ui/button";
 import React from "react";
 import { Link } from "react-router";
 import { motion } from "framer-motion";
-import type { Route } from "../../+types/root";
-import { CalendarCheck, CircleCheckBig, List, Users } from "lucide-react";
+import { CalendarCheck, CircleCheckBig, List, Users, Smartphone, Download } from "lucide-react";
 
-export function meta({}: Route.MetaArgs) {
+export function meta() {
   return [
     { title: "Vazifa: Cloud-based task management platform" },
     { name: "description", content: "Welcome to Vazifa!" },
@@ -120,7 +119,6 @@ const Welcome = () => {
                 transition={{ duration: 0.5, delay: 0.3 }}
               >
                 <div className="relative w-full max-w-xs sm:max-w-md md:max-w-lg">
-                  <div className="absolute -top-12 left-1/2 -translate-x-1/2 h-64 w-64 rounded-full bg-primary/20 blur-3xl hidden sm:block" />
                   <img
                     alt="Vazifa Dashboard"
                     className="relative dark:hidden rounded-xl shadow-xl border object-cover w-full max-w-full"
@@ -353,6 +351,162 @@ const Welcome = () => {
                   Создавайте проекты, назначайте задачи и отслеживайте 
                   прогресс в режиме реального времени.
                 </p>
+              </motion.div>
+            </div>
+          </motion.div>
+        </section>
+
+        {/* Mobile App Section */}
+        <section id="mobile-app" className="w-full py-12 md:py-24 lg:py-32">
+          <motion.div
+            className="container px-4 md:px-6"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+          >
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="space-y-2">
+                <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">
+                  Мобильное приложение
+                </div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-pretty">
+                  Vazifa теперь в вашем кармане
+                </h2>
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  Управляйте задачами и проектами где угодно с нашим мобильным приложением.
+                  Полная синхронизация с веб-версией в режиме реального времени.
+                </p>
+              </div>
+            </div>
+            
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12 mt-16 items-center">
+              <motion.div
+                className="flex flex-col space-y-6"
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                viewport={{ once: true }}
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-blue-600/10 p-2 rounded-full">
+                      <Smartphone className="size-6 text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-bold">Доступно на всех устройствах</h3>
+                  </div>
+                  <p className="text-muted-foreground">
+                    Нативные приложения для iOS и Android с полным функционалом веб-версии.
+                    Работайте офлайн и синхронизируйтесь при подключении к интернету.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-blue-600/10 p-2 rounded-full">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="size-6 text-blue-600"
+                      >
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                        <path d="M2 17l10 5 10-5"></path>
+                        <path d="M2 12l10 5 10-5"></path>
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-bold">Синхронизация в реальном времени</h3>
+                  </div>
+                  <p className="text-muted-foreground">
+                    Все изменения мгновенно синхронизируются между мобильным приложением и веб-версией.
+                    Начните работу на телефоне, продолжите на компьютере.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-blue-600/10 p-2 rounded-full">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="size-6 text-blue-600"
+                      >
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-bold">Push-уведомления</h3>
+                  </div>
+                  <p className="text-muted-foreground">
+                    Получайте мгновенные уведомления о новых задачах, комментариях и изменениях в проектах.
+                    Никогда не пропустите важные обновления.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                  <Button size="lg" className="flex items-center gap-2">
+                    <Download className="size-5" />
+                    Скачать для iOS
+                  </Button>
+                  <Button size="lg" variant="outline" className="flex items-center gap-2">
+                    <Download className="size-5" />
+                    Скачать для Android
+                  </Button>
+                </div>
+              </motion.div>
+
+              <motion.div
+                className="flex justify-center lg:justify-end"
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                viewport={{ once: true }}
+              >
+                <div className="relative">
+                  <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl p-8 shadow-2xl">
+                    <div className="bg-white rounded-2xl p-6 shadow-lg max-w-xs">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-bold text-gray-900">Мои задачи</h4>
+                          <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">3</span>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-4 h-4 border-2 border-blue-600 rounded"></div>
+                            <span className="text-sm text-gray-700">Обновить дизайн</span>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <div className="w-4 h-4 bg-blue-600 rounded flex items-center justify-center">
+                              <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                              </svg>
+                            </div>
+                            <span className="text-sm text-gray-500 line-through">Написать отчет</span>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <div className="w-4 h-4 border-2 border-orange-500 rounded"></div>
+                            <span className="text-sm text-gray-700">Встреча с командой</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </motion.div>
             </div>
           </motion.div>

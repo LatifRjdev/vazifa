@@ -68,7 +68,7 @@ const NotificationsPage = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Loader message="Loading notifications..." />
+        <Loader message="Загрузка уведомлений..." />
       </div>
     );
   }

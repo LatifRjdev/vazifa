@@ -104,7 +104,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsAuthenticated(true);
     setIsLoading(false);
 
-    navigate("/workspaces");
+    // Redirect super admin to important-tasks, others to dashboard
+    if (data?.user?.role === "super_admin") {
+      navigate("/important-tasks");
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   const logout = () => {

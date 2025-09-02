@@ -10,15 +10,25 @@ const userSchema = new Schema(
       trim: true,
       lowercase: true,
     },
-    password: { type: String, required: true, select: false },
+    password: { type: String, required: false, select: false }, // Not required for OAuth users
     name: { type: String, required: true, trim: true },
+    lastName: { type: String, required: false, trim: true },
+    phoneNumber: { type: String, required: false, trim: true },
     profilePicture: { type: String },
     isEmailVerified: { type: Boolean, default: false },
     lastLogin: { type: Date },
+    // OAuth fields
+    authProvider: { 
+      type: String, 
+      enum: ['local', 'google', 'apple'], 
+      default: 'local' 
+    },
+    googleId: { type: String },
+    appleId: { type: String },
     // Global role system
     role: {
       type: String,
-      enum: ['super_admin', 'admin', 'member'],
+      enum: ['super_admin', 'admin', 'manager', 'member'],
       default: 'member'
     },
     notifications: [{ type: Schema.Types.ObjectId, ref: "Notification" }],

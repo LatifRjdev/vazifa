@@ -22,14 +22,15 @@ const requireRole = (allowedRoles) => {
 
 // Specific role middlewares
 const requireSuperAdmin = requireRole(['super_admin']);
-const requireAdmin = requireRole(['super_admin', 'admin']);
-const requireMember = requireRole(['super_admin', 'admin', 'member']);
+const requireAdmin = requireRole(['super_admin', 'admin', 'manager']);
+const requireMember = requireRole(['super_admin', 'admin', 'manager', 'member']);
 
 // Role hierarchy check
 const hasPermission = (userRole, requiredRole) => {
   const roleHierarchy = {
-    'super_admin': 3,
-    'admin': 2,
+    'super_admin': 4,
+    'admin': 3,
+    'manager': 2,
     'member': 1
   };
 

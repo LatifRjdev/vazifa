@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { Loader } from "@/components/loader";
+import { useLanguage } from "@/providers/language-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,12 +42,13 @@ import type { Route } from "../../+types/root";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "TaskHub | My Tasks" },
-    { name: "description", content: "My Tasks to TaskHub!" },
+    { title: "TaskHub | Мои задачи" },
+    { name: "description", content: "Мои задачи в TaskHub!" },
   ];
 }
 
 const MyTasksPage = () => {
+  const { t } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Read initial values from URL or use defaults
@@ -63,7 +65,7 @@ const MyTasksPage = () => {
   // Keep state and URL in sync
   useEffect(() => {
     const params: Record<string, string> = {};
-    // Preserve existing params (like workspaceId)
+    // Preserve existing params (like organizationId)
     searchParams.forEach((value, key) => {
       params[key] = value;
     });
@@ -130,12 +132,12 @@ const MyTasksPage = () => {
   );
   const doneTasks = sortedTasks.filter((task) => task.status === "Done");
 
-  if (isPending) return <Loader message="Загрузка задач..." />;
+  if (isPending) return <Loader message={t('common.loading_data')} />;
 
   return (
     <div className="space-y-6">
       <div className="flex items-start md:items-center justify-between">
-        <h1 className="text-xl md:text-3xl font-bold">Мои задачи</h1>
+        <h1 className="text-xl md:text-3xl font-bold">{t('nav.my_tasks')}</h1>
         <div className="flex flex-col items-start md:items-center md:flex-row gap-2">
           <Button
             size="sm"
@@ -149,37 +151,37 @@ const MyTasksPage = () => {
             ) : (
               <SortDesc className="h-4 w-4 mr-1" />
             )}
-            {sortDirection === "asc" ? "Oldest First" : "Сначало Новые"}
+            {sortDirection === "asc" ? t('sort.oldest_first') : t('sort.newest_first')}
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="outline">
                 <Filter className="h-4 w-4 mr-1" />
-                Фильтр
+                {t('filter.filter')}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">
-              <DropdownMenuLabel>Фильтровать задачи</DropdownMenuLabel>
+              <DropdownMenuLabel>{t('filter.filter_tasks')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem onClick={() => setFilter("all")}>
-                  Все задачи
+                  {t('filter.all_tasks')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setFilter("todo")}>
-                  Сделать
+                  {t('status.todo')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setFilter("inprogress")}>
-                  В ходе выполнения
+                  {t('status.in_progress')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setFilter("done")}>
-                  Сделано
+                  {t('status.done')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setFilter("achieved")}>
-                  Выполнено
+                  {t('filter.archived')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setFilter("high")}>
-                  Высокий приоритет
+                  {t('filter.high_priority')}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
@@ -188,7 +190,7 @@ const MyTasksPage = () => {
       </div>
 
       <Input
-        placeholder="Найти задачи..."
+        placeholder={t('search.find_tasks')}
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         className="max-w-md"
@@ -196,16 +198,16 @@ const MyTasksPage = () => {
 
       <Tabs defaultValue="list">
         <TabsList>
-          <TabsTrigger value="list">Вид Списка</TabsTrigger>
-          <TabsTrigger value="board">Вид Доски</TabsTrigger>
+          <TabsTrigger value="list">{t('tabs.list')}</TabsTrigger>
+          <TabsTrigger value="board">{t('tabs.board')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle>Мои задачи</CardTitle>
+              <CardTitle>{t('nav.my_tasks')}</CardTitle>
               <CardDescription>
-                {sortedTasks.length} поставленные перед вами задачи
+                {sortedTasks.length} {t('tasks.assigned_to_you')}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
@@ -230,8 +232,8 @@ const MyTasksPage = () => {
                           )}
                         </div>
                         <div>
-                          <Link
-                            to={`/workspaces/${task.project.workspace}/projects/${task.project._id}/tasks/${task._id}`}
+                          <Link 
+                            to={`/dashboard/task/${task._id}`}
                             className="font-medium hover:text-primary hover:underline transition-colors flex items-center"
                           >
                             {task.title}
@@ -253,7 +255,7 @@ const MyTasksPage = () => {
                               </Badge>
                             )}
                             {task.isArchived && (
-                              <Badge variant="outline">В архиве</Badge>
+                              <Badge variant="outline">{t('filter.archived')}</Badge>
                             )}
                           </div>
                         </div>
@@ -264,25 +266,17 @@ const MyTasksPage = () => {
                           <div
                             className={cn(getProjectDueDateColor(task.dueDate))}
                           >
-                            Должен: {formatDueDateRussian(task.dueDate)}
+                            {t('tasks.due_date_short')}: {formatDueDateRussian(task.dueDate)}
                           </div>
                         )}
-                        {task.project && (
-                          <div>
-                            Проект:{" "}
-                            <span className="font-medium text-gray-700">
-                              {task.project.title}
-                            </span>
-                          </div>
-                        )}
-                        <div>Изменено: {formatDateDetailedRussian(task.updatedAt)}</div>
+                        <div>{t('tasks.modified')}: {formatDateDetailedRussian(task.updatedAt)}</div>
                       </div>
                     </div>
                   </div>
                 ))}
                 {sortedTasks.length === 0 && (
                   <div className="p-8 text-center text-muted-foreground">
-                    Заданий, соответствующих вашим критериям, не найдено.
+                    {t('tasks.no_matching_tasks')}
                   </div>
                 )}
               </div>
@@ -296,7 +290,7 @@ const MyTasksPage = () => {
             <Card>
               <CardHeader className="bg-muted/50 pb-3">
                 <CardTitle className="text-lg flex items-center">
-                  Сделать
+                  {t('status.todo')}
                   <Badge variant="outline" className="ml-2">
                     {todoTasks.length}
                   </Badge>
@@ -308,10 +302,7 @@ const MyTasksPage = () => {
                     key={task._id}
                     className="p-3 hover:shadow-md transition-shadow"
                   >
-                    <Link
-                      to={`/workspaces/${task.project.workspace}/projects/${task.project._id}/tasks/${task._id}`}
-                      className="block"
-                    >
+                    <div className="block">
                       <h3 className="font-medium">{task.title}</h3>
                       {task.description && (
                         <p className="text-sm text-muted-foreground mt-1 truncate">
@@ -337,12 +328,12 @@ const MyTasksPage = () => {
                           </span>
                         )}
                       </div>
-                    </Link>
+                    </div>
                   </Card>
                 ))}
                 {todoTasks.length === 0 && (
                   <div className="p-4 text-center text-muted-foreground">
-                    Нет задач
+                    {t('tasks.no_tasks')}
                   </div>
                 )}
               </CardContent>
@@ -352,7 +343,7 @@ const MyTasksPage = () => {
             <Card>
               <CardHeader className="bg-muted/50 pb-3">
                 <CardTitle className="text-lg flex items-center">
-                  В ходе выполнения
+                  {t('status.in_progress')}
                   <Badge variant="outline" className="ml-2">
                     {inProgressTasks.length}
                   </Badge>
@@ -364,10 +355,7 @@ const MyTasksPage = () => {
                     key={task._id}
                     className="p-3 hover:shadow-md transition-shadow"
                   >
-                    <Link
-                      to={`/workspaces/${task.project.workspace}/projects/${task.project._id}/tasks/${task._id}`}
-                      className="block"
-                    >
+                    <div className="block">
                       <h3 className="font-medium">{task.title}</h3>
                       {task.description && (
                         <p className="text-sm text-muted-foreground mt-1 truncate">
@@ -395,12 +383,12 @@ const MyTasksPage = () => {
                           </span>
                         )}
                       </div>
-                    </Link>
+                    </div>
                   </Card>
                 ))}
                 {inProgressTasks.length === 0 && (
                   <div className="p-4 text-center text-muted-foreground">
-                    Нет незавершенных задач
+                    {t('tasks.no_tasks_in_progress')}
                   </div>
                 )}
               </CardContent>
@@ -410,7 +398,7 @@ const MyTasksPage = () => {
             <Card>
               <CardHeader className="bg-muted/50 pb-3">
                 <CardTitle className="text-lg flex items-center">
-                  Сделано
+                  {t('status.done')}
                   <Badge variant="outline" className="ml-2">
                     {doneTasks.length}
                   </Badge>
@@ -422,10 +410,7 @@ const MyTasksPage = () => {
                     key={task._id}
                     className="p-3 hover:shadow-md transition-shadow"
                   >
-                    <Link
-                      to={`/workspaces/${task.project.workspace}/projects/${task.project._id}/tasks/${task._id}`}
-                      className="block"
-                    >
+                    <div className="block">
                       <h3 className="font-medium">{task.title}</h3>
                       {task.description && (
                         <p className="text-sm text-muted-foreground mt-1 truncate">
@@ -434,18 +419,18 @@ const MyTasksPage = () => {
                       )}
                       <div className="flex items-center mt-2">
                         <Badge variant="done" className="mr-1">
-                          Завершено
+                          {t('tasks.completed_badge')}
                         </Badge>
                         {task.isArchived && (
-                          <Badge variant="outline">В архиве</Badge>
+                          <Badge variant="outline">{t('filter.archived')}</Badge>
                         )}
                       </div>
-                    </Link>
+                    </div>
                   </Card>
                 ))}
                 {doneTasks.length === 0 && (
                   <div className="p-4 text-center text-muted-foreground">
-                    Нет выполненных задач
+                    {t('tasks.no_completed_tasks')}
                   </div>
                 )}
               </CardContent>

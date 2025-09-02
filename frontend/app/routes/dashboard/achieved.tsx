@@ -1,135 +1,418 @@
+import { useState } from "react";
+import { Link } from "react-router";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Calendar as CalendarIcon, Search, Filter, Eye, Archive, CheckCircle, CalendarDays } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useGetCompletedTasksQuery } from "@/hooks/use-task";
+import { formatDateDetailedRussian } from "@/lib/date-utils";
+import { getPriorityRussian } from "@/lib/translations";
 import { Loader } from "@/components/loader";
 import { NoDataFound } from "@/components/shared/no-data";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { fetchData } from "@/lib/fetch-utils";
-import type { Project, Task } from "@/types";
-import { useQuery } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { Link, useNavigate, useSearchParams } from "react-router";
-import type { Route } from "../../+types/root";
+import { ru } from "date-fns/locale";
+import type { Task } from "@/types";
+import { 
+  type DateFilterPeriod, 
+  getDateRangeForPeriod, 
+  getPeriodLabel, 
+  filterTasksByDateRange 
+} from "@/lib/date-filters";
 
-export function meta({}: Route.MetaArgs) {
+export function meta() {
   return [
-    { title: "TaskHub | Achieved Project & Tasks" },
-    { name: "description", content: "Achieved Project & Tasks to TaskHub!" },
+    { title: "Vazifa | Выполненные задачи" },
+    { name: "description", content: "Просмотр выполненных задач в Vazifa!" },
   ];
 }
 
-const AchievedTask = () => {
-  const [searchParams] = useSearchParams();
-  const workspaceId = searchParams.get("workspaceId");
-  const navigate = useNavigate();
+const AchievedPage = () => {
+  const [search, setSearch] = useState("");
+  const [assignee, setAssignee] = useState("");
+  const [priority, setPriority] = useState("");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  
+  // Фильтры по времени создания
+  const [dateFilter, setDateFilter] = useState<DateFilterPeriod | "all">("all");
+  const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>(undefined);
+  const [customDateTo, setCustomDateTo] = useState<Date | undefined>(undefined);
 
-  const { data, isPending } = useQuery({
-    queryKey: ["archived-items", workspaceId],
-    queryFn: () => fetchData(`/workspaces/${workspaceId}/archives`),
+  const { data, isLoading, error } = useGetCompletedTasksQuery({
+    search: search || undefined,
+    assignee: assignee || undefined,
+    priority: priority && priority !== "all" ? priority : undefined,
+    dateFrom: dateFrom ? format(dateFrom, 'yyyy-MM-dd') : undefined,
+    dateTo: dateTo ? format(dateTo, 'yyyy-MM-dd') : undefined,
   }) as {
-    data: { archivedProjects: Project[]; archivedTasks: Task[] };
-    isPending: boolean;
+    data: { completedTasks: (Task & { completedOnTime?: boolean })[] } | undefined;
+    isLoading: boolean;
+    error: any;
   };
 
-  if (isPending) {
-    return <Loader message="Загрузка архивных элементов..." />;
+  let completedTasks = data?.completedTasks || [];
+
+  // Применяем фильтр по времени создания
+  if (dateFilter !== "all") {
+    if (dateFilter === "custom") {
+      if (customDateFrom || customDateTo) {
+        const dateRange = getDateRangeForPeriod("custom", {
+          from: customDateFrom,
+          to: customDateTo
+        });
+        completedTasks = filterTasksByDateRange(completedTasks, dateRange, "createdAt");
+      }
+    } else {
+      const dateRange = getDateRangeForPeriod(dateFilter);
+      completedTasks = filterTasksByDateRange(completedTasks, dateRange, "createdAt");
+    }
   }
 
-  if (!workspaceId || !data.archivedProjects || !data.archivedTasks) {
+  if (isLoading) {
+    return <Loader message="Загрузка выполненных задач..." />;
+  }
+
+  if (error) {
     return (
-      <NoDataFound
-        title="Архивные элементы не найдены."
-        description="Вы можете архивировать проекты и задачи, чтобы они не мешались. Вы также можете восстановить их в любое время."
-        buttonText="Вернуться"
-        buttonOnClick={() => navigate(-1)}
-      />
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <h2 className="text-2xl font-semibold">Ошибка загрузки</h2>
+        <p className="text-muted-foreground">
+          Не удалось загрузить выполненные задачи
+        </p>
+      </div>
     );
   }
 
-  const { archivedProjects, archivedTasks } = data;
-
   return (
-    <div>
-      <div className="container mx-auto py-5">
-        {/* <h1 className="text-3xl font-bold mb-6">Achieved Items</h1> */}
-
-        <section className="mb-10">
-          <h2 className="text-2xl font-semibold mb-4">Архивные проекты</h2>
-
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Заголовок</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead>Прогресс</TableHead>
-                <TableHead>Обновлено в</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {archivedProjects?.map((project) => (
-                <TableRow key={project._id}>
-                  <TableCell>
-                    <Link
-                      to={`/workspaces/${project.workspace}/projects/${project._id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {project.title}
-                    </Link>
-                    <div className="text-xs text-muted-foreground">Проект</div>
-                  </TableCell>
-                  <TableCell>{project.status}</TableCell>
-                  <TableCell>{project.progress}%</TableCell>
-                  <TableCell>
-                    {format(new Date(project.updatedAt), "PP")}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-semibold mb-4">Архивированные задачи</h2>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Заголовок</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead>Приоритет</TableHead>
-                <TableHead>Проект</TableHead>
-                <TableHead>Обновлено в</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {archivedTasks?.map((task) => (
-                <TableRow key={task._id}>
-                  <TableCell>
-                    <Link
-                      to={`/workspaces/${workspaceId}/projects/${task.project?._id}/tasks/${task._id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {task?.title}
-                    </Link>
-                    <div className="text-xs text-muted-foreground">Задача</div>
-                  </TableCell>
-                  <TableCell>{task.status}</TableCell>
-                  <TableCell>{task.priority}</TableCell>
-                  <TableCell>{task.project?.title || "N/A"}</TableCell>
-                  <TableCell>
-                    {format(new Date(task.updatedAt), "PP")}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </section>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Выполненные задачи</h1>
+          <p className="text-muted-foreground">
+            Просмотр и управление выполненными задачами
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Badge variant="secondary" className="text-sm">
+            <CheckCircle className="h-4 w-4 mr-1" />
+            {completedTasks.length} выполнено
+          </Badge>
+        </div>
       </div>
+
+      {/* Фильтры */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Filter className="h-5 w-5 mr-2" />
+            Фильтры
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Поиск</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Поиск по названию или описанию..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Приоритет</label>
+              <Select value={priority} onValueChange={setPriority}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Все приоритеты" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все приоритеты</SelectItem>
+                  <SelectItem value="Low">Низкий</SelectItem>
+                  <SelectItem value="Medium">Средний</SelectItem>
+                  <SelectItem value="High">Высокий</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Исполнитель</label>
+              <Input
+                placeholder="ID исполнителя"
+                value={assignee}
+                onChange={(e) => setAssignee(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Дата выполнения (от)</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateFrom && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateFrom ? format(dateFrom, "dd.MM.yyyy", { locale: ru }) : "Выберите дату"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateFrom}
+                    onSelect={setDateFrom}
+                    initialFocus
+                    locale={ru}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Дата выполнения (до)</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateTo && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateTo ? format(dateTo, "dd.MM.yyyy", { locale: ru }) : "Выберите дату"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateTo}
+                    onSelect={setDateTo}
+                    initialFocus
+                    locale={ru}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearch("");
+                  setAssignee("");
+                  setPriority("");
+                  setDateFrom(undefined);
+                  setDateTo(undefined);
+                  setDateFilter("all");
+                  setCustomDateFrom(undefined);
+                  setCustomDateTo(undefined);
+                }}
+              >
+                Сбросить фильтры
+              </Button>
+            </div>
+          </div>
+
+          {/* Фильтры по времени создания */}
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Фильтр по времени создания</span>
+            </div>
+            
+            <div className="flex flex-col md:flex-row gap-4">
+              <Select value={dateFilter} onValueChange={(value) => setDateFilter(value as DateFilterPeriod | "all")}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Период" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все время</SelectItem>
+                  <SelectItem value="today">За сегодня</SelectItem>
+                  <SelectItem value="week">За неделю</SelectItem>
+                  <SelectItem value="month">За месяц</SelectItem>
+                  <SelectItem value="6months">За 6 месяцев</SelectItem>
+                  <SelectItem value="year">За год</SelectItem>
+                  <SelectItem value="custom">Произвольный период</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {dateFilter === "custom" && (
+                <>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full md:w-48 justify-start text-left font-normal",
+                          !customDateFrom && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {customDateFrom ? format(customDateFrom, "dd.MM.yyyy", { locale: ru }) : "Дата от"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={customDateFrom}
+                        onSelect={setCustomDateFrom}
+                        initialFocus
+                        locale={ru}
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full md:w-48 justify-start text-left font-normal",
+                          !customDateTo && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {customDateTo ? format(customDateTo, "dd.MM.yyyy", { locale: ru }) : "Дата до"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={customDateTo}
+                        onSelect={setCustomDateTo}
+                        initialFocus
+                        locale={ru}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </>
+              )}
+
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDateFilter("all");
+                  setCustomDateFrom(undefined);
+                  setCustomDateTo(undefined);
+                }}
+                className="w-full md:w-auto"
+              >
+                Сбросить период
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Таблица задач */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Список выполненных задач</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {completedTasks.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>№</TableHead>
+                  <TableHead>Название задачи</TableHead>
+                  <TableHead>Исполнители</TableHead>
+                  <TableHead>Приоритет</TableHead>
+                  <TableHead>Дата выполнения</TableHead>
+                  <TableHead>В срок</TableHead>
+                  <TableHead>Действия</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {completedTasks.map((task, index) => (
+                  <TableRow key={task._id}>
+                    <TableCell className="font-medium">
+                      {index + 1}
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <Link
+                          to={`/dashboard/task/${task._id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {task.title}
+                        </Link>
+                        {task.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {task.description}
+                          </p>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {task.assignees?.map((assignee) => (
+                          <Badge key={assignee._id} variant="secondary" className="text-xs">
+                            {assignee.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          task.priority === "High" ? "destructive" :
+                          task.priority === "Medium" ? "default" : "secondary"
+                        }
+                      >
+                        {getPriorityRussian(task.priority)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {task.completedAt ? formatDateDetailedRussian(task.completedAt) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {task.completedOnTime !== null ? (
+                        <Badge variant={task.completedOnTime ? "default" : "destructive"}>
+                          {task.completedOnTime ? "В срок" : "Просрочено"}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <Link to={`/dashboard/task/${task._id}`}>
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <NoDataFound
+              title="Нет выполненных задач"
+              description="Выполненные задачи будут отображаться здесь"
+              buttonText="Назад"
+              buttonOnClick={() => window.history.back()}
+            />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
-export default AchievedTask;
+export default AchievedPage;

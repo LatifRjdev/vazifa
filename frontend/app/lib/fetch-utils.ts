@@ -47,10 +47,22 @@ const fetchData = async <T>(url: string): Promise<T> => {
   return response.data;
 };
 
+const fetchDataFresh = async <T>(url: string): Promise<T> => {
+  const response = await api.get(url, {
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
+  });
+
+  return response.data;
+};
+
 const deleteData = async <T>(url: string): Promise<T> => {
   const response = await api.delete(url);
 
   return response.data;
 };
 
-export { postData, fetchData, updateData, deleteData };
+export { postData, fetchData, fetchDataFresh, updateData, deleteData };

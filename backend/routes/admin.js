@@ -19,8 +19,8 @@ router.get("/stats", requireAdmin, getUserStats);
 // Get all users (admin and super admin)
 router.get("/users", requireAdmin, getAllUsers);
 
-// Update user role (super admin only)
-router.put("/users/:userId/role", requireSuperAdmin, updateUserRole);
+// Update user role (admin and super admin)
+router.put("/users/:userId/role", requireAdmin, updateUserRole);
 
 // Delete user (super admin only)
 router.delete("/users/:userId", requireSuperAdmin, deleteUser);
