@@ -32,7 +32,49 @@ protocol/
 ├── backend/          # Node.js API сервер
 ├── frontend/         # React веб-приложение
 └── mobile/           # React Native мобильное приложение
-    └── ProtocolMobile/
+    └── VazifaMobile/
+```
+
+### Backend Features (API):
+
+The backend is a NodeJs and Express application `/backend`. This API is a real backend by managing data in MongoDB.
+
+- Authentication and Authorization
+- CRUD Operations (Create, Read, Update & Delete) - Workspace, Project & Tasks
+- **Notifications:**
+  - Email Notification with SendGrid.
+  - Security with Arcjet
+
+## Tech Stack
+
+- **Frontend:**
+  - **React:** JavaScript library for building user interfaces.
+  - **TypeScript:** Superset of JavaScript that adds static typing.
+  - **Vite:** Fast frontend build tool.
+  - **React Router v7:** For client-side routing.
+  - **Tailwind CSS:** Utility-first CSS framework for styling.
+  - **Shadcn UI:** Re-usable components built with Radix UI and Tailwind CSS.
+  - **Lucide React:** Icon library.
+  - **Recharts:** Composable charting library.
+  - **TanStack Query (React Query):** For data fetching, caching, and state synchronization.
+
+## Setup and Installation
+
+### Prerequisites
+
+- Node.js v20 and above (LTS version recommended)
+- npm (comes with Node.js) or yarn/pnpm
+- MongoDB database (local or cloud, e.g., MongoDB Atlas)
+- (Optional) SendGrid and Arcjet accounts for email and security features
+
+### 1. Get the Source Code
+
+You can either **clone the repository from GitHub** or **unzip a provided zip file** containing the code.
+
+#### Option 1: Clone from GitHub
+
+```sh
+git clone https://github.com/LatifRjdev/vazifa.git
 ```
 
 ### Backend (Node.js + Express + MongoDB)
@@ -95,7 +137,7 @@ protocol/
 
 #### 1. Клонирование репозитория
 ```bash
-git clone https://github.com/your-username/protocol.git
+git clone https://github.com/LatifRjdev/vazifa.git
 cd protocol
 ```
 
@@ -125,7 +167,7 @@ npm run dev
 
 #### 4. Настройка Mobile приложения
 ```bash
-cd mobile/ProtocolMobile
+cd mobile/VazifaMobile
 npm install
 
 # Запуск мобильного приложения
@@ -147,7 +189,7 @@ expo start
 
 #### Для разработки:
 1. Установите Expo Go на свое устройство
-2. Запустите `expo start` в папке `mobile/ProtocolMobile`
+2. Запустите `expo start` в папке `mobile/VazifaMobile`
 3. Отсканируйте QR-код с помощью Expo Go
 
 #### Для продакшена:
@@ -179,7 +221,7 @@ EMAIL_PASS=your-email-password
 
 #### Frontend (.env)
 ```env
-VITE_API_URL=http://localhost:5001/api-v1
+VITE_API_URL=https://ptapi.oci.tj/api-v1
 VITE_APP_CLOUDINARY_CLOUD_NAME=your-cloudinary-name
 VITE_APP_CLOUDINARY_UPLOAD_PRESET=your-upload-preset
 ```
@@ -233,8 +275,9 @@ VITE_APP_CLOUDINARY_UPLOAD_PRESET=your-upload-preset
 
 - [Backend API Documentation](./backend/README.md)
 - [Frontend Documentation](./frontend/README.md)
-- [Mobile App Documentation](./mobile/ProtocolMobile/README.md)
+- [Mobile App Documentation](./mobile/VazifaMobile/README.md)
 - [Deployment Guide](./DEPLOYMENT_GUIDE.md)
+- [API Migration Changes](./API_MIGRATION_CHANGES.md)
 
 ## 🧪 Тестирование
 
@@ -248,7 +291,7 @@ cd frontend
 npm test
 
 # Mobile тесты
-cd mobile/ProtocolMobile
+cd mobile/VazifaMobile
 npm test
 ```
 
@@ -274,11 +317,10 @@ npm test
 ## 📞 Поддержка
 
 Если у вас есть вопросы или предложения:
-- Создайте [Issue](https://github.com/your-username/protocol/issues)
+- Создайте [Issue](https://github.com/LatifRjdev/vazifa/issues)
 - Напишите на email: support@protocol.com
 - Присоединяйтесь к нашему [Discord сообществу](https://discord.gg/protocol)
 
 ---
 
 **Протокол** - Делайте больше вместе! 🚀
-# protocol
