@@ -9,8 +9,8 @@ import {
   ApiResponse 
 } from '../types';
 
-// Используем localhost для разработки - в продакшене это будет ваш домен
-const API_BASE_URL = 'http://localhost:5001/api-v1';
+// Using external API endpoint
+const API_BASE_URL = 'https://ptapi.oci.tj/api-v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
