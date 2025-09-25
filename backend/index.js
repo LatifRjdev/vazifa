@@ -27,7 +27,11 @@ const corsOptions = {
       "https://protocol.oci.tj",
       "https://www.protocol.oci.tj",
       "http://localhost:3000",
-      "http://localhost:5000"
+      "http://localhost:5000",
+      "http://localhost:8081", // Expo web server
+      "http://localhost:19006", // Alternative Expo port
+      "exp://localhost:8081", // Expo development server
+      "exp://192.168.1.78:8081" // Expo LAN development server (adjust IP as needed)
     ];
     
     console.log('CORS check - Origin:', origin);
