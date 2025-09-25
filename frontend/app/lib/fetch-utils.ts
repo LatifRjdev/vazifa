@@ -1,12 +1,15 @@
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api-v1";
+const BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_PRODUCTION_API_URL || "https://ptapi.oci.tj/api-v1";
 
 const api = axios.create({
   baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
+    "Accept": "application/json",
   },
+  withCredentials: true,
+  timeout: 30000, // 30 seconds timeout
 });
 
 api.interceptors.request.use((config) => {

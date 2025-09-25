@@ -23,7 +23,11 @@ const corsOptions = {
       process.env.FRONTEND_URL || "http://localhost:5173",
       "http://localhost:5174",
       "https://vazifa.online",
-      "https://www.vazifa.online"
+      "https://www.vazifa.online",
+      "https://protocol.oci.tj",
+      "https://www.protocol.oci.tj",
+      "http://localhost:3000",
+      "http://localhost:5000"
     ];
     
     console.log('CORS check - Origin:', origin);
@@ -40,8 +44,25 @@ const corsOptions = {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "Cache-Control", "Pragma", "Expires", "X-Requested-With"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: [
+    "Content-Type", 
+    "Authorization", 
+    "Cache-Control", 
+    "Pragma", 
+    "Expires", 
+    "X-Requested-With",
+    "Accept",
+    "Origin",
+    "User-Agent",
+    "DNT",
+    "Keep-Alive",
+    "X-Requested-With",
+    "If-Modified-Since",
+    "Cache-Control",
+    "Content-Range",
+    "Range"
+  ],
   credentials: true,
   preflightContinue: false,
   optionsSuccessStatus: 200

@@ -1,95 +1,87 @@
-// Production Configuration for Vazifa Project
-// Domain: https://vazifa.online
-
-const productionConfig = {
-  // Frontend Configuration
-  frontend: {
-    domain: "https://vazifa.online",
-    buildCommand: "npm run build",
-    outputDir: "dist",
-    environmentVariables: {
-      VITE_API_URL: "https://api.vazifa.online/api-v1",
-      VITE_PRODUCTION_API_URL: "https://api.vazifa.online/api-v1",
-      VITE_DOMAIN: "https://vazifa.online",
-      VITE_APP_CLOUDINARY_CLOUD_NAME: "dlvubqfkj",
-      VITE_APP_CLOUDINARY_UPLOAD_PRESET: "da121806-44c2-4a62-8ca1-5af331bc8d38"
-    }
+// Production Configuration for Vazifa Application
+module.exports = {
+  // Domain Configuration
+  domains: {
+    frontend: 'https://protocol.oci.tj',
+    backend: 'https://ptapi.oci.tj',
+    api: 'https://ptapi.oci.tj/api-v1'
   },
 
-  // Backend Configuration
-  backend: {
-    domain: "https://api.vazifa.online",
-    port: process.env.PORT || 5001,
-    environmentVariables: {
-      NODE_ENV: "production",
-      FRONTEND_URL: "https://vazifa.online",
-      PRODUCTION_FRONTEND_URL: "https://vazifa.online",
-      BACKEND_URL: "https://api.vazifa.online",
-      PRODUCTION_BACKEND_URL: "https://api.vazifa.online",
-      // Database and other sensitive configs should be set in production environment
-      MONGODB_URI: process.env.MONGODB_URI,
-      JWT_SECRET: process.env.JWT_SECRET,
-      SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
-      SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL,
-      ARCJET_KEY: process.env.ARCJET_KEY,
-      ARCJET_ENV: "production"
-    }
-  },
-
-  // CORS Configuration
-  cors: {
-    allowedOrigins: [
-      "https://vazifa.online",
-      "https://www.vazifa.online",
-      "https://vazifa.online/",
-      "https://www.vazifa.online/"
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true
-  },
-
-  // File Upload Configuration
-  uploads: {
-    maxFileSize: "10MB",
-    allowedTypes: ["image/*", "application/pdf", "text/*", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
-    uploadPath: "/uploads",
-    staticFileServing: {
-      cacheControl: "public, max-age=31536000",
-      corsHeaders: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET",
-        "Access-Control-Allow-Headers": "Content-Type"
+  // Server Configuration
+  server: {
+    backend: {
+      port: 5001,
+      host: '0.0.0.0',
+      cors: {
+        origin: ['https://protocol.oci.tj'],
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
       }
+    },
+    frontend: {
+      port: 3000,
+      host: '0.0.0.0'
     }
   },
 
   // Security Configuration
   security: {
-    trustProxy: true,
-    headers: {
-      "X-Content-Type-Options": "nosniff",
-      "X-Frame-Options": "DENY",
-      "X-XSS-Protection": "1; mode=block",
-      "Referrer-Policy": "strict-origin-when-cross-origin"
+    helmet: {
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com"],
+          imgSrc: ["'self'", "data:", "https:", "blob:"],
+          scriptSrc: ["'self'"],
+          connectSrc: ["'self'", "https://ptapi.oci.tj"]
+        }
+      },
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true
+      }
+    },
+    rateLimit: {
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 100, // limit each IP to 100 requests per windowMs
+      message: 'Too many requests from this IP, please try again later.'
     }
   },
 
-  // Deployment Notes
-  deployment: {
-    notes: [
-      "1. Set NODE_ENV=production in production environment",
-      "2. Configure SSL certificates for HTTPS",
-      "3. Set up reverse proxy (nginx) if needed",
-      "4. Configure environment variables in production",
-      "5. Set up MongoDB connection for production",
-      "6. Configure SendGrid for email functionality",
-      "7. Set up file upload directory with proper permissions",
-      "8. Configure Arcjet for production security",
-      "9. Test CORS configuration with production domain",
-      "10. Set up monitoring and logging for production"
-    ]
+  // Database Configuration
+  database: {
+    mongodb: {
+      options: {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+        bufferMaxEntries: 0,
+        bufferCommands: false
+      }
+    }
+  },
+
+  // Logging Configuration
+  logging: {
+    level: 'info',
+    format: 'combined',
+    files: {
+      error: '/var/log/vazifa/error.log',
+      combined: '/var/log/vazifa/access.log'
+    }
+  },
+
+  // Performance Configuration
+  performance: {
+    compression: true,
+    cache: {
+      maxAge: 86400000, // 1 day
+      staticAssets: 31536000000 // 1 year
+    }
   }
 };
-
-export default productionConfig;
