@@ -58,14 +58,16 @@ const registerUser = async (req, res) => {
     });
 
     // send verification token to user email - use production URL in production environment
-    const frontendUrl = process.env.NODE_ENV === 'production' 
-      ? process.env.PRODUCTION_FRONTEND_URL 
-      : process.env.FRONTEND_URL;
+    const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
     const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
     
-    // For development: Log the verification URL to console
+    // Debug logging for URL generation
     console.log("=".repeat(80));
     console.log("📧 EMAIL VERIFICATION LINK FOR:", email);
+    console.log("🌍 NODE_ENV:", process.env.NODE_ENV);
+    console.log("🔗 FRONTEND_URL:", process.env.FRONTEND_URL);
+    console.log("🔗 PRODUCTION_FRONTEND_URL:", process.env.PRODUCTION_FRONTEND_URL);
+    console.log("✅ FINAL FRONTEND URL:", frontendUrl);
     console.log("🔗 VERIFICATION URL:", verificationUrl);
     console.log("=".repeat(80));
 
@@ -308,14 +310,16 @@ const resetPasswordRequest = async (req, res) => {
     });
 
     // send reset token to user email - use production URL in production environment
-    const frontendUrl = process.env.NODE_ENV === 'production' 
-      ? process.env.PRODUCTION_FRONTEND_URL 
-      : process.env.FRONTEND_URL;
+    const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
     const resetUrl = `${frontendUrl}/reset-password?tk=${resetToken}`;
     
-    // For development: Log the reset URL to console
+    // Debug logging for URL generation
     console.log("=".repeat(80));
     console.log("🔐 PASSWORD RESET LINK FOR:", email);
+    console.log("🌍 NODE_ENV:", process.env.NODE_ENV);
+    console.log("🔗 FRONTEND_URL:", process.env.FRONTEND_URL);
+    console.log("🔗 PRODUCTION_FRONTEND_URL:", process.env.PRODUCTION_FRONTEND_URL);
+    console.log("✅ FINAL FRONTEND URL:", frontendUrl);
     console.log("🔗 RESET URL:", resetUrl);
     console.log("=".repeat(80));
 
@@ -517,9 +521,7 @@ const googleCallback = async (req, res) => {
     const { code } = req.query;
     
     if (!code) {
-      const frontendUrl = process.env.NODE_ENV === 'production' 
-        ? process.env.PRODUCTION_FRONTEND_URL 
-        : process.env.FRONTEND_URL;
+      const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
       return res.redirect(`${frontendUrl}/sign-in?error=oauth_error`);
     }
 
@@ -541,9 +543,7 @@ const googleCallback = async (req, res) => {
     const tokenData = await tokenResponse.json();
     
     if (!tokenData.access_token) {
-      const frontendUrl = process.env.NODE_ENV === 'production' 
-        ? process.env.PRODUCTION_FRONTEND_URL 
-        : process.env.FRONTEND_URL;
+      const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
       return res.redirect(`${frontendUrl}/sign-in?error=oauth_error`);
     }
 
@@ -557,9 +557,7 @@ const googleCallback = async (req, res) => {
     const googleUser = await userResponse.json();
     
     if (!googleUser.email) {
-      const frontendUrl = process.env.NODE_ENV === 'production' 
-        ? process.env.PRODUCTION_FRONTEND_URL 
-        : process.env.FRONTEND_URL;
+      const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
       return res.redirect(`${frontendUrl}/sign-in?error=oauth_error`);
     }
 
@@ -616,15 +614,11 @@ const googleCallback = async (req, res) => {
     });
 
     // Redirect to frontend with token - use production URL in production environment
-    const frontendUrl = process.env.NODE_ENV === 'production' 
-      ? process.env.PRODUCTION_FRONTEND_URL 
-      : process.env.FRONTEND_URL;
+    const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
     res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
   } catch (error) {
     console.error("Google callback error:", error);
-    const frontendUrl = process.env.NODE_ENV === 'production' 
-      ? process.env.PRODUCTION_FRONTEND_URL 
-      : process.env.FRONTEND_URL;
+    const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
     res.redirect(`${frontendUrl}/sign-in?error=oauth_error`);
   }
 };
@@ -632,9 +626,7 @@ const googleCallback = async (req, res) => {
 const appleAuth = async (req, res) => {
   try {
     // For now, redirect with a message that Apple auth is coming soon
-    const frontendUrl = process.env.NODE_ENV === 'production' 
-      ? process.env.PRODUCTION_FRONTEND_URL 
-      : process.env.FRONTEND_URL;
+    const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
     res.redirect(`${frontendUrl}/sign-in?message=apple_coming_soon`);
   } catch (error) {
     console.error("Apple auth error:", error);
@@ -646,15 +638,11 @@ const appleCallback = async (req, res) => {
   try {
     // Apple OAuth implementation would go here
     // For now, redirect with a message
-    const frontendUrl = process.env.NODE_ENV === 'production' 
-      ? process.env.PRODUCTION_FRONTEND_URL 
-      : process.env.FRONTEND_URL;
+    const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
     res.redirect(`${frontendUrl}/sign-in?message=apple_coming_soon`);
   } catch (error) {
     console.error("Apple callback error:", error);
-    const frontendUrl = process.env.NODE_ENV === 'production' 
-      ? process.env.PRODUCTION_FRONTEND_URL 
-      : process.env.FRONTEND_URL;
+    const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
     res.redirect(`${frontendUrl}/sign-in?error=oauth_error`);
   }
 };

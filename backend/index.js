@@ -19,8 +19,10 @@ app.set('trust proxy', 1);
 // CORS configuration - must be before other middleware
 const corsOptions = {
   origin: function (origin, callback) {
+    const productionFrontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
     const allowedOrigins = [
-      process.env.FRONTEND_URL || "http://localhost:5173",
+      productionFrontendUrl,
+      "http://localhost:5173",
       "http://localhost:5174",
       "https://vazifa.online",
       "https://www.vazifa.online",
@@ -142,19 +144,16 @@ mongoose
 
 // Routes
 app.get("/", async (req, res) => {
-  const frontendUrl = process.env.NODE_ENV === 'production' 
-    ? process.env.PRODUCTION_FRONTEND_URL || 'https://vazifa.online'
-    : process.env.FRONTEND_URL || 'http://localhost:5173';
+  const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
+  const backendUrl = process.env.PRODUCTION_BACKEND_URL || process.env.BACKEND_URL || 'https://ptapi.oci.tj';
     
   res.status(200).json({
     message:
       "Welcome to the API of Vazifa Pro Management System. Please refer to the documentation for more information.",
     live: frontendUrl,
     documentation: `${frontendUrl}/docs`,
-    domain: "https://vazifa.online",
-    api: process.env.NODE_ENV === 'production' 
-      ? 'https://api.vazifa.online' 
-      : `http://localhost:${process.env.PORT || 5001}`,
+    domain: frontendUrl,
+    api: backendUrl,
   });
 });
 

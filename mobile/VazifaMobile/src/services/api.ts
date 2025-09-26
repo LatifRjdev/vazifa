@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { 
   User, 
   Task, 
@@ -9,8 +10,11 @@ import {
   ApiResponse 
 } from '../types';
 
-// Using external API endpoint
-const API_BASE_URL = 'https://ptapi.oci.tj/api-v1';
+// Get API URL from app configuration
+const API_BASE_URL = Constants.expoConfig?.extra?.apiUrl || 'https://ptapi.oci.tj/api-v1';
+
+console.log('API Base URL:', API_BASE_URL);
+console.log('Environment:', Constants.expoConfig?.extra?.environment);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
