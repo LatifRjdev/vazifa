@@ -1,8 +1,14 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+import dotenv from "dotenv";
 import User from "./models/users.js";
 
+// Load environment variables
+dotenv.config();
+
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/vazifa";
+
+console.log("Using MongoDB URI:", MONGODB_URI.replace(/\/\/.*@/, '//***:***@')); // Hide credentials in log
 
 async function createVerifiedSuperAdmin() {
   try {
