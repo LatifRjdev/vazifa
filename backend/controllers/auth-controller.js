@@ -57,8 +57,11 @@ const registerUser = async (req, res) => {
       expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000),
     });
 
-    // send verification token to user email
-    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+    // send verification token to user email - use production URL in production environment
+    const frontendUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.PRODUCTION_FRONTEND_URL 
+      : process.env.FRONTEND_URL;
+    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
     
     // For development: Log the verification URL to console
     console.log("=".repeat(80));
@@ -304,8 +307,11 @@ const resetPasswordRequest = async (req, res) => {
       expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
 
-    // send reset token to user email
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?tk=${resetToken}`;
+    // send reset token to user email - use production URL in production environment
+    const frontendUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.PRODUCTION_FRONTEND_URL 
+      : process.env.FRONTEND_URL;
+    const resetUrl = `${frontendUrl}/reset-password?tk=${resetToken}`;
     
     // For development: Log the reset URL to console
     console.log("=".repeat(80));
@@ -511,7 +517,10 @@ const googleCallback = async (req, res) => {
     const { code } = req.query;
     
     if (!code) {
-      return res.redirect(`${process.env.FRONTEND_URL}/sign-in?error=oauth_error`);
+      const frontendUrl = process.env.NODE_ENV === 'production' 
+        ? process.env.PRODUCTION_FRONTEND_URL 
+        : process.env.FRONTEND_URL;
+      return res.redirect(`${frontendUrl}/sign-in?error=oauth_error`);
     }
 
     // Exchange code for access token
@@ -532,7 +541,10 @@ const googleCallback = async (req, res) => {
     const tokenData = await tokenResponse.json();
     
     if (!tokenData.access_token) {
-      return res.redirect(`${process.env.FRONTEND_URL}/sign-in?error=oauth_error`);
+      const frontendUrl = process.env.NODE_ENV === 'production' 
+        ? process.env.PRODUCTION_FRONTEND_URL 
+        : process.env.FRONTEND_URL;
+      return res.redirect(`${frontendUrl}/sign-in?error=oauth_error`);
     }
 
     // Get user info from Google
@@ -545,7 +557,10 @@ const googleCallback = async (req, res) => {
     const googleUser = await userResponse.json();
     
     if (!googleUser.email) {
-      return res.redirect(`${process.env.FRONTEND_URL}/sign-in?error=oauth_error`);
+      const frontendUrl = process.env.NODE_ENV === 'production' 
+        ? process.env.PRODUCTION_FRONTEND_URL 
+        : process.env.FRONTEND_URL;
+      return res.redirect(`${frontendUrl}/sign-in?error=oauth_error`);
     }
 
     // Check if user exists
@@ -600,18 +615,27 @@ const googleCallback = async (req, res) => {
       expiresIn: "7d",
     });
 
-    // Redirect to frontend with token
-    res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+    // Redirect to frontend with token - use production URL in production environment
+    const frontendUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.PRODUCTION_FRONTEND_URL 
+      : process.env.FRONTEND_URL;
+    res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
   } catch (error) {
     console.error("Google callback error:", error);
-    res.redirect(`${process.env.FRONTEND_URL}/sign-in?error=oauth_error`);
+    const frontendUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.PRODUCTION_FRONTEND_URL 
+      : process.env.FRONTEND_URL;
+    res.redirect(`${frontendUrl}/sign-in?error=oauth_error`);
   }
 };
 
 const appleAuth = async (req, res) => {
   try {
     // For now, redirect with a message that Apple auth is coming soon
-    res.redirect(`${process.env.FRONTEND_URL}/sign-in?message=apple_coming_soon`);
+    const frontendUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.PRODUCTION_FRONTEND_URL 
+      : process.env.FRONTEND_URL;
+    res.redirect(`${frontendUrl}/sign-in?message=apple_coming_soon`);
   } catch (error) {
     console.error("Apple auth error:", error);
     res.status(500).json({ message: "Server error" });
@@ -622,10 +646,16 @@ const appleCallback = async (req, res) => {
   try {
     // Apple OAuth implementation would go here
     // For now, redirect with a message
-    res.redirect(`${process.env.FRONTEND_URL}/sign-in?message=apple_coming_soon`);
+    const frontendUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.PRODUCTION_FRONTEND_URL 
+      : process.env.FRONTEND_URL;
+    res.redirect(`${frontendUrl}/sign-in?message=apple_coming_soon`);
   } catch (error) {
     console.error("Apple callback error:", error);
-    res.redirect(`${process.env.FRONTEND_URL}/sign-in?error=oauth_error`);
+    const frontendUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.PRODUCTION_FRONTEND_URL 
+      : process.env.FRONTEND_URL;
+    res.redirect(`${frontendUrl}/sign-in?error=oauth_error`);
   }
 };
 
