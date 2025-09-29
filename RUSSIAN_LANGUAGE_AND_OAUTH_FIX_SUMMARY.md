@@ -34,10 +34,10 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 SMTP_HOST=172.16.55.75
 SMTP_PORT=25
 SMTP_SECURE=false
-SMTP_USER=protocol@oci.tj
-SMTP_PASS=Pro1o$ol
-SMTP_FROM_EMAIL=protocol@oci.tj
-SMTP_FROM_NAME=Protocol
+SMTP_USER=your-smtp-user
+SMTP_PASS=your-smtp-password
+SMTP_FROM_EMAIL=your-from-email
+SMTP_FROM_NAME=Your-App-Name
 ```
 
 ## 🇷🇺 Russian Language Standardization
