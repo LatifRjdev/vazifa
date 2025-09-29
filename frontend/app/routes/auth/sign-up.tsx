@@ -27,6 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useSignUpMutation } from "@/hooks/use-auth";
 import { signupSchema } from "@/utils/schema";
+import { toastMessages } from "@/lib/toast-messages";
 import type { Route } from "../../+types/root";
 
 export type SignupValues = z.infer<typeof signupSchema>;
@@ -61,8 +62,8 @@ const SignUp = () => {
       signUp(values, {
         onSuccess: () => {
           setIsSuccess(true);
-          toast.success("User Sign Up Successfully", {
-            description: "Please check your email for verification",
+          toast.success(toastMessages.auth.signUpSuccess, {
+            description: toastMessages.auth.signUpSuccessDescription,
           });
 
           form.reset();
@@ -77,7 +78,7 @@ const SignUp = () => {
           setIsSuccess(false);
           const message = error.response.data.message || error.message;
           setError(message);
-          toast.error("User Sign Up Failed", {
+          toast.error(toastMessages.auth.signUpFailed, {
             description: message,
           });
         },
@@ -87,9 +88,9 @@ const SignUp = () => {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("An unknown error occurred");
-        toast.error("User Sign Up Failed", {
-          description: "An unknown error occurred",
+        setError(toastMessages.errors.unknownError);
+        toast.error(toastMessages.auth.signUpFailed, {
+          description: toastMessages.errors.unknownError,
         });
       }
     }

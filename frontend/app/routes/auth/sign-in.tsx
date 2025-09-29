@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { useLoginMutation } from "@/hooks/use-auth";
 import { useAuth } from "@/providers/auth-context";
 import { loginSchema } from "@/utils/schema";
+import { toastMessages } from "@/lib/toast-messages";
 import type { Route } from "../../+types/root";
 
 export function meta({}: Route.MetaArgs) {
@@ -65,13 +66,13 @@ const SignIn = () => {
         if (data.twoFARequired) {
           setTwoFARequired(true);
           setEmailFor2FA(values.email);
-          toast.info("A verification code has been sent to your email.");
+          toast.info(toastMessages.auth.emailVerificationSent);
         } else {
           login(data);
         }
       },
       onError: (error: any) => {
-        toast.error(error.response?.data?.message || "Login failed");
+        toast.error(error.response?.data?.message || toastMessages.auth.loginFailed);
       },
     });
   };
@@ -83,7 +84,7 @@ const SignIn = () => {
 
   const handleAppleLogin = () => {
     // Показываем сообщение о том, что Apple аутентификация скоро будет доступна
-    toast.info("Apple аутентификация будет добавлена в следующем обновлении");
+    toast.info(toastMessages.auth.appleComingSoon);
   };
 
   return (

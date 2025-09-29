@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 const createTransporter = () => {
   const config = {
     host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT) || 587,
+    port: parseInt(process.env.SMTP_PORT) || 25,
     secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
     auth: {
       user: process.env.SMTP_USER,
@@ -37,7 +37,7 @@ const createTransporter = () => {
     };
   }
 
-  return nodemailer.createTransport(config);
+  return nodemailer.createTransporter(config);
 };
 
 let transporter = createTransporter();

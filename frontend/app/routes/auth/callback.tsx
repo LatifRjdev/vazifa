@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { Loader } from "@/components/loader";
 import { useAuth } from "@/providers/auth-context";
+import { toastMessages } from "@/lib/toast-messages";
 
 export function meta() {
   return [
@@ -21,7 +22,7 @@ const AuthCallback = () => {
     const error = searchParams.get('error');
 
     if (error) {
-      toast.error('Ошибка аутентификации. Попробуйте снова.');
+      toast.error(toastMessages.auth.oauthError);
       navigate('/sign-in');
       return;
     }
@@ -41,7 +42,7 @@ const AuthCallback = () => {
         .then(data => {
           if (data.user) {
             login({ user: data.user, token });
-            toast.success('Успешный вход через OAuth!');
+            toast.success(toastMessages.auth.oauthSuccess);
             navigate('/dashboard');
           } else {
             throw new Error('Invalid user data');
@@ -49,16 +50,16 @@ const AuthCallback = () => {
         })
         .catch(error => {
           console.error('OAuth callback error:', error);
-          toast.error('Ошибка при получении данных пользователя');
+          toast.error(toastMessages.errors.serverError);
           navigate('/sign-in');
         });
       } catch (error) {
         console.error('Token parsing error:', error);
-        toast.error('Неверный токен аутентификации');
+        toast.error(toastMessages.auth.invalidToken);
         navigate('/sign-in');
       }
     } else {
-      toast.error('Токен аутентификации не найден');
+      toast.error(toastMessages.auth.tokenNotFound);
       navigate('/sign-in');
     }
   }, [searchParams, navigate, login]);
