@@ -83,8 +83,11 @@ const verifyConnection = async () => {
   }
 };
 
-// Initialize connection verification
-verifyConnection();
+// Initialize connection verification (non-blocking)
+verifyConnection().catch(error => {
+  console.warn("⚠️ SMTP connection verification failed during startup, but continuing...");
+  console.warn("Email functionality may be limited until SMTP is properly configured.");
+});
 
 export const sendEmail = async (
   to,
