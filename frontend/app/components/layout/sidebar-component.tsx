@@ -13,6 +13,7 @@ import {
   Star,
   UserCheck,
   MessageSquare,
+  User,
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -40,27 +41,27 @@ export const SidebarComponent = ({
       return [
         {
           title: t('nav.important_tasks'),
-          href: "/important-tasks",
+          href: "/dashboard/important-tasks",
           icon: Star,
         },
         {
           title: t('nav.all_tasks'),
-          href: "/all-tasks",
+          href: "/dashboard/all-tasks",
           icon: ClipboardList,
         },
         {
           title: t('nav.analytics'),
-          href: "/analytics",
+          href: "/dashboard/analytics",
           icon: BarChart3,
         },
         {
           title: t('nav.members'),
-          href: "/members",
+          href: "/dashboard/members",
           icon: Users,
         },
         {
           title: t('nav.completed_tasks'),
-          href: "/achieved",
+          href: "/dashboard/achieved",
           icon: CheckCircle2,
         },
       ];
@@ -75,47 +76,47 @@ export const SidebarComponent = ({
       },
       {
         title: t('nav.my_tasks'),
-        href: "/my-tasks",
+        href: "/dashboard/my-tasks",
         icon: ListCheck,
       },
       {
         title: t('nav.all_tasks'),
-        href: "/all-tasks",
+        href: "/dashboard/all-tasks",
         icon: ClipboardList,
         requiresRole: ["admin", "manager", "super_admin"],
       },
       {
         title: t('nav.manager_tasks'),
-        href: "/manager-tasks",
+        href: "/dashboard/manager-tasks",
         icon: UserCheck,
         requiresRole: ["admin", "manager", "super_admin"],
       },
       {
         title: t('nav.important_tasks'),
-        href: "/important-tasks",
+        href: "/dashboard/important-tasks",
         icon: Star,
         requiresRole: ["super_admin"],
       },
       {
         title: t('nav.analytics'),
-        href: "/analytics",
+        href: "/dashboard/analytics",
         icon: BarChart3,
         requiresRole: ["admin", "manager", "super_admin"],
       },
       {
         title: t('nav.members'),
-        href: "/members",
+        href: "/dashboard/members",
         icon: Users,
         requiresRole: ["admin", "manager", "super_admin"],
       },
       {
         title: t('nav.completed_tasks'),
-        href: "/achieved",
+        href: "/dashboard/achieved",
         icon: CheckCircle2,
       },
       {
         title: t('nav.settings'),
-        href: "/settings",
+        href: "/dashboard/settings",
         icon: Settings,
       },
     ];
@@ -166,6 +167,16 @@ export const SidebarComponent = ({
       </ScrollArea>
 
       <div className="border-t p-4 flex flex-col gap-2">
+        <Link to="/user/profile">
+          <Button
+            variant="ghost"
+            size={isCollapsed ? "icon" : "default"}
+            className="justify-start w-full"
+          >
+            <User className={cn("h-4 w-4", isCollapsed ? "" : "mr-2")} />
+            <span className="hidden md:block">{!isCollapsed && t('nav.profile')}</span>
+          </Button>
+        </Link>
         <Button
           variant="ghost"
           size={isCollapsed ? "icon" : "default"}

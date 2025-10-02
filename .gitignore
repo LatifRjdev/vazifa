@@ -2,6 +2,8 @@ frontend/node_modules
 backend/node_modules
 frontend/dist
 backend/dist
+frontend/build
+backend/build
 
 # Environment files - ignore all .env variants
 frontend/.env*
