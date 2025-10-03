@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/providers/auth-context";
 import { useLanguage } from "@/providers/language-context";
 import { cn } from "@/lib/utils";
+import { fetchData, postData, updateData } from "@/lib/fetch-utils";
 
 interface AdminMessage {
   _id: string;
@@ -52,6 +53,12 @@ interface AdminChatWidgetProps {
 export const AdminChatWidget = ({ className }: AdminChatWidgetProps) => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  
+  // Early return - only show for admins and super admins
+  if (!user || !user._id || !user.role || !["admin", "super_admin"].includes(user.role)) {
+    return null;
+  }
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<AdminMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -61,11 +68,6 @@ export const AdminChatWidget = ({ className }: AdminChatWidgetProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [replyTo, setReplyTo] = useState<AdminMessage | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Only show for admins and super admins
-  if (!user || !user._id || !user.role || !["admin", "super_admin"].includes(user.role)) {
-    return null;
-  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -105,15 +107,20 @@ export const AdminChatWidget = ({ className }: AdminChatWidgetProps) => {
     try {
       const response = await fetch("/api-v1/admin-messages", {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
         },
       });
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(data.messages);
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch messages: HTTP ${response.status}`);
+        return;
       }
+
+      const data = await response.json();
+      setMessages(data.messages);
     } catch (error) {
-      console.error("Error fetching messages:", error);
+      console.warn("Error fetching messages:", error);
     }
   };
 
@@ -121,15 +128,22 @@ export const AdminChatWidget = ({ className }: AdminChatWidgetProps) => {
     try {
       const response = await fetch("/api-v1/admin-messages/unread-count", {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
         },
       });
-      if (response.ok) {
-        const data = await response.json();
-        setUnreadCount(data.unreadCount);
+
+      if (!response.ok) {
+        // Silently handle error - widget is optional
+        console.warn(`Failed to fetch unread count: HTTP ${response.status}`);
+        return;
       }
+
+      const data = await response.json();
+      setUnreadCount(data.unreadCount);
     } catch (error) {
-      console.error("Error fetching unread count:", error);
+      // Silently handle error - widget is optional
+      console.warn("Error fetching unread count:", error);
     }
   };
 
@@ -137,15 +151,20 @@ export const AdminChatWidget = ({ className }: AdminChatWidgetProps) => {
     try {
       const response = await fetch("/api-v1/admin-messages/online-admins", {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
         },
       });
-      if (response.ok) {
-        const data = await response.json();
-        setOnlineAdmins(data.admins);
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch online admins: HTTP ${response.status}`);
+        return;
       }
+
+      const data = await response.json();
+      setOnlineAdmins(data.admins);
     } catch (error) {
-      console.error("Error fetching online admins:", error);
+      console.warn("Error fetching online admins:", error);
     }
   };
 
@@ -154,48 +173,27 @@ export const AdminChatWidget = ({ className }: AdminChatWidgetProps) => {
 
     setIsLoading(true);
     try {
-      const messageData = {
-        message: newMessage,
-        messageType: selectedRecipient ? "direct" : "broadcast",
-        recipient: selectedRecipient,
-        priority: "normal",
-        language: "ru",
-      };
-
       if (replyTo) {
-        const response = await fetch(`/api-v1/admin-messages/${replyTo._id}/reply`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({
-            message: newMessage,
-            priority: "normal",
-            language: "ru",
-          }),
+        await postData(`/admin-messages/${replyTo._id}/reply`, {
+          message: newMessage,
+          priority: "normal",
+          language: "ru",
         });
-
-        if (response.ok) {
-          setNewMessage("");
-          setReplyTo(null);
-          fetchMessages();
-        }
+        setNewMessage("");
+        setReplyTo(null);
+        fetchMessages();
       } else {
-        const response = await fetch("/api-v1/admin-messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify(messageData),
-        });
-
-        if (response.ok) {
-          setNewMessage("");
-          fetchMessages();
-          fetchUnreadCount();
-        }
+        const messageData = {
+          message: newMessage,
+          messageType: selectedRecipient ? "direct" : "broadcast",
+          recipient: selectedRecipient,
+          priority: "normal",
+          language: "ru",
+        };
+        await postData("/admin-messages", messageData);
+        setNewMessage("");
+        fetchMessages();
+        fetchUnreadCount();
       }
     } catch (error) {
       console.error("Error sending message:", error);
@@ -206,12 +204,7 @@ export const AdminChatWidget = ({ className }: AdminChatWidgetProps) => {
 
   const markAsRead = async (messageId: string) => {
     try {
-      await fetch(`/api-v1/admin-messages/${messageId}/read`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      await updateData(`/admin-messages/${messageId}/read`, {});
       fetchMessages();
       fetchUnreadCount();
     } catch (error) {
@@ -221,14 +214,7 @@ export const AdminChatWidget = ({ className }: AdminChatWidgetProps) => {
 
   const addReaction = async (messageId: string, emoji: string) => {
     try {
-      await fetch(`/api-v1/admin-messages/${messageId}/reaction`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({ emoji }),
-      });
+      await postData(`/admin-messages/${messageId}/reaction`, { emoji });
       fetchMessages();
     } catch (error) {
       console.error("Error adding reaction:", error);
