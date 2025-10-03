@@ -16,14 +16,14 @@ export default [
   ]),
   layout("routes/dashboard/dashboard-layout.tsx", [
     route("dashboard", "routes/dashboard/index.tsx"),
-    route("my-tasks", "routes/dashboard/my-tasks.tsx"),
-    route("achieved", "routes/dashboard/achieved.tsx"),
-    route("all-tasks", "routes/dashboard/all-tasks.tsx"),
-    route("manager-tasks", "routes/dashboard/manager-tasks.tsx"),
-    route("important-tasks", "routes/dashboard/important-tasks.tsx"),
-    route("analytics", "routes/dashboard/analytics.tsx"),
-    route("members", "routes/dashboard/members.tsx"),
-    route("settings", "routes/dashboard/workspace-setting.tsx"),
+    route("dashboard/my-tasks", "routes/dashboard/my-tasks.tsx"),
+    route("dashboard/achieved", "routes/dashboard/achieved.tsx"),
+    route("dashboard/all-tasks", "routes/dashboard/all-tasks.tsx"),
+    route("dashboard/manager-tasks", "routes/dashboard/manager-tasks.tsx"),
+    route("dashboard/important-tasks", "routes/dashboard/important-tasks.tsx"),
+    route("dashboard/analytics", "routes/dashboard/analytics.tsx"),
+    route("dashboard/members", "routes/dashboard/members.tsx"),
+    route("dashboard/settings", "routes/dashboard/workspace-setting.tsx"),
     route("dashboard/task/:taskId", "routes/dashboard/task.$taskId.tsx"),
   ]),
   layout("routes/user/user-layout.tsx", [
@@ -31,7 +31,6 @@ export default [
     route("user/profile", "routes/user/profile.tsx"),
   ]),
 
-  route("my-tasks", "routes/my-tasks.tsx"),
   route("reset-password", "routes/auth/reset-password.tsx"),
   route("*", "routes/not-found.tsx"),
 ] satisfies RouteConfig;
