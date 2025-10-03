@@ -426,6 +426,11 @@ const updateTaskTitle = async (req, res) => {
     const { taskId } = req.params;
     const { title } = req.body;
 
+    // Проверить права доступа (только админы, супер админы и менеджеры могут редактировать название задачи)
+    if (!["admin", "super_admin", "manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут редактировать название задачи." });
+    }
+
     const task = await Task.findById(taskId);
 
     if (!task) {
@@ -453,6 +458,11 @@ const updateTaskDescription = async (req, res) => {
   try {
     const { taskId } = req.params;
     const { description } = req.body;
+
+    // Проверить права доступа (только админы, супер админы и менеджеры могут редактировать описание задачи)
+    if (!["admin", "super_admin", "manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут редактировать описание задачи." });
+    }
 
     const task = await Task.findById(taskId);
 
