@@ -24,9 +24,11 @@ export const clientLoader = async () => {
       fetchData("/tasks/my-tasks"),
     ]);
     return { organizations: [], unreadNotificationsCount, myTasks };
-      } catch (error) {
-      return redirect("/sign-in");
-    }
+  } catch (error) {
+    console.error("Dashboard loader error:", error);
+    // Return default values instead of redirecting to allow page to load
+    return { organizations: [], unreadNotificationsCount: 0, myTasks: [] };
+  }
 };
 
 const DashboardLayout = () => {

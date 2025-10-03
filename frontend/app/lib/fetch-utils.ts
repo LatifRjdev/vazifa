@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_PRODUCTION_API_URL || "https://ptapi.oci.tj/api-v1";
+// Use relative path to go through frontend server proxy
+const BASE_URL = "/api-v1";
 
 const api = axios.create({
   baseURL: BASE_URL,

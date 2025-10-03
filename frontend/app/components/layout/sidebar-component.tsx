@@ -116,7 +116,7 @@ export const SidebarComponent = ({
       },
       {
         title: t('nav.settings'),
-        href: "/dashboard/settings",
+        href: "/dashboard/workspace-setting",
         icon: Settings,
       },
     ];
