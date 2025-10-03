@@ -44,39 +44,72 @@ npm --version   # Должно быть 10.x.x
 
 ---
 
-## Часть 3: Установка PostgreSQL
+## Часть 3: Установка MongoDB
 
-### 3.1 Установите PostgreSQL
+### 3.1 Импортируйте публичный ключ MongoDB
 ```bash
-sudo apt install -y postgresql postgresql-contrib
+curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
+   sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg \
+   --dearmor
 ```
 
-### 3.2 Проверьте статус
+### 3.2 Создайте список источников для MongoDB
 ```bash
-sudo systemctl status postgresql
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
 ```
 
-### 3.3 Создайте базу данных и пользователя
+### 3.3 Обновите список пакетов
 ```bash
-# Войдите как пользователь postgres
-sudo -u postgres psql
-
-# В консоли PostgreSQL выполните:
-CREATE DATABASE vazifa_db;
-CREATE USER vazifa_user WITH PASSWORD 'your_secure_password_here';
-GRANT ALL PRIVILEGES ON DATABASE vazifa_db TO vazifa_user;
-\q
+sudo apt update
 ```
 
-### 3.4 Настройте доступ (если нужно)
+### 3.4 Установите MongoDB
 ```bash
-# Отредактируйте pg_hba.conf если нужен доступ не только с localhost
-sudo nano /etc/postgresql/16/main/pg_hba.conf
-# Добавьте строку:
-# host    all             all             127.0.0.1/32            md5
+sudo apt install -y mongodb-org
+```
 
-# Перезапустите PostgreSQL
-sudo systemctl restart postgresql
+### 3.5 Запустите MongoDB
+```bash
+sudo systemctl start mongod
+sudo systemctl enable mongod
+```
+
+### 3.6 Проверьте статус
+```bash
+sudo systemctl status mongod
+```
+
+### 3.7 Создайте базу данных и пользователя
+```bash
+# Войдите в MongoDB shell
+mongosh
+
+# В консоли MongoDB выполните:
+use vazifa-production
+
+db.createUser({
+  user: "vazifa",
+  pwd: "your_secure_password_here",
+  roles: [
+    { role: "readWrite", db: "vazifa-production" }
+  ]
+})
+
+# Выйдите
+exit
+```
+
+### 3.8 Включите аутентификацию (опционально для production)
+```bash
+# Отредактируйте конфиг MongoDB
+sudo nano /etc/mongod.conf
+
+# Найдите секцию security и раскомментируйте/добавьте:
+# security:
+#   authorization: enabled
+
+# Перезапустите MongoDB
+sudo systemctl restart mongod
 ```
 
 ---
@@ -132,18 +165,23 @@ nano .env.production
 
 Вставьте следующее содержимое:
 ```env
-# Database Configuration
-DATABASE_URL=postgresql://vazifa_user:your_secure_password_here@localhost:5432/vazifa_db
-
 # Server Configuration
 PORT=5001
 NODE_ENV=production
+
+# Database Configuration (MongoDB)
+MONGODB_URI=mongodb://vazifa:your_secure_password_here@localhost:27017/vazifa-production
 
 # JWT Secret (замените на случайную строку)
 JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
 
 # Frontend URL
 FRONTEND_URL=http://protocol.oci.tj
+PRODUCTION_FRONTEND_URL=http://protocol.oci.tj
+
+# Backend URL
+BACKEND_URL=http://protocol.oci.tj/api-v1
+PRODUCTION_BACKEND_URL=http://protocol.oci.tj/api-v1
 
 # SMTP Configuration (опционально, для email уведомлений)
 SMTP_HOST=smtp.gmail.com
@@ -151,7 +189,13 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your-email@gmail.com
 SMTP_PASSWORD=your-app-password
-SMTP_FROM=noreply@vazifa.tj
+SMTP_FROM_EMAIL=noreply@vazifa.tj
+SMTP_FROM_NAME=Vazifa
+
+# Cloudinary (для загрузки файлов, опционально)
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
 ```
 
 ### 6.4 Инициализируйте базу данных
@@ -399,8 +443,8 @@ pm2 logs
 sudo tail -f /var/log/nginx/access.log
 sudo tail -f /var/log/nginx/error.log
 
-# PostgreSQL логи
-sudo tail -f /var/log/postgresql/postgresql-16-main.log
+# MongoDB логи
+sudo tail -f /var/log/mongodb/mongod.log
 ```
 
 ### Перезапуск сервисов
@@ -411,8 +455,8 @@ pm2 restart all
 # NGINX
 sudo systemctl restart nginx
 
-# PostgreSQL
-sudo systemctl restart postgresql
+# MongoDB
+sudo systemctl restart mongod
 ```
 
 ### Обновление проекта
@@ -446,11 +490,14 @@ pm2 logs vazifa-backend --lines 50
 
 ### Проблема: База данных не подключается
 ```bash
-# Проверьте статус PostgreSQL
-sudo systemctl status postgresql
+# Проверьте статус MongoDB
+sudo systemctl status mongod
 
 # Проверьте подключение
-psql -h localhost -U vazifa_user -d vazifa_db
+mongosh mongodb://vazifa:your_password@localhost:27017/vazifa-production
+
+# Проверьте логи MongoDB
+sudo tail -50 /var/log/mongodb/mongod.log
 ```
 
 ### Проблема: NGINX 502 Bad Gateway
@@ -483,7 +530,7 @@ sudo netstat -tlnp | grep :80
 # Статус всех сервисов
 pm2 status
 sudo systemctl status nginx
-sudo systemctl status postgresql
+sudo systemctl status mongod
 
 # Использование ресурсов
 pm2 monit
