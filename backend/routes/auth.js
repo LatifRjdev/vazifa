@@ -15,6 +15,13 @@ import {
   appleCallback,
 } from "../controllers/auth-controller.js";
 import {
+  sendPhoneVerificationCode,
+  verifyPhoneCode,
+  registerWithPhone,
+  loginWithPhone,
+  resetPasswordWithPhone,
+} from "../controllers/phone-auth-controller.js";
+import {
   loginSchema,
   registerSchema,
   resetPasswordSchema,
@@ -71,6 +78,66 @@ router.post(
     }),
   }),
   verify2FALogin
+);
+
+// Phone authentication routes
+router.post(
+  "/phone/send-code",
+  validateRequest({
+    body: z.object({
+      phoneNumber: z.string().regex(/^\+992\d{9}$/, "Invalid phone number format"),
+      type: z.enum(["registration", "login", "password_reset", "phone_update"]).optional(),
+    }),
+  }),
+  sendPhoneVerificationCode
+);
+
+router.post(
+  "/phone/verify-code",
+  validateRequest({
+    body: z.object({
+      phoneNumber: z.string().regex(/^\+992\d{9}$/, "Invalid phone number format"),
+      code: z.string().length(6),
+      type: z.enum(["registration", "login", "password_reset", "phone_update"]).optional(),
+    }),
+  }),
+  verifyPhoneCode
+);
+
+router.post(
+  "/phone/register",
+  validateRequest({
+    body: z.object({
+      phoneNumber: z.string().regex(/^\+992\d{9}$/, "Invalid phone number format"),
+      password: z.string().min(6),
+      name: z.string().min(1),
+      verificationCode: z.string().length(6),
+    }),
+  }),
+  registerWithPhone
+);
+
+router.post(
+  "/phone/login",
+  validateRequest({
+    body: z.object({
+      phoneNumber: z.string().regex(/^\+992\d{9}$/, "Invalid phone number format"),
+      password: z.string().min(6),
+    }),
+  }),
+  loginWithPhone
+);
+
+router.post(
+  "/phone/reset-password",
+  validateRequest({
+    body: z.object({
+      phoneNumber: z.string().regex(/^\+992\d{9}$/, "Invalid phone number format"),
+      verificationCode: z.string().length(6),
+      newPassword: z.string().min(6),
+    }),
+  }),
+  resetPasswordWithPhone
 );
 
 // OAuth routes

@@ -347,7 +347,7 @@ sudo systemctl enable nginx
 
 ### 10.2 Найдите ваш Instance
 1. Меню → **Compute** → **Instances**
-2. Найдите сервер с IP 193.111.11.98
+2. Найдите сервер с IP 193.111.11.100
 
 ### 10.3 Откройте Security List
 1. Кликните на имя сервера

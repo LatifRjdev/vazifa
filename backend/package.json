@@ -17,6 +17,7 @@
     "@arcjet/inspect": "^1.0.0-beta.7",
     "@arcjet/node": "^1.0.0-beta.7",
     "bcrypt": "^6.0.0",
+    "bull": "^4.16.5",
     "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -26,6 +27,8 @@
     "morgan": "^1.10.0",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.6",
+    "redis": "^5.9.0",
+    "smpp": "^0.6.0-rc.4",
     "uuid": "^11.1.0",
     "zod": "^3.24.4",
     "zod-express-middleware": "^1.4.0"

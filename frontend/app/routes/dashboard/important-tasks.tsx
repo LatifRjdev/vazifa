@@ -7,10 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchData } from "@/lib/fetch-utils";
 import type { Task } from "@/types";
 import { useAuth } from "@/providers/auth-context";
+import { useLanguage } from "@/providers/language-context";
+import { getTaskStatus, getPriority } from "@/lib/translations";
 import { formatDueDateRussian, formatDateDetailedRussian } from "@/lib/date-utils";
 
 export default function ImportantTasksPage() {
   const { user } = useAuth();
+  const { t, language } = useLanguage();
 
   const { data: importantTasks, isLoading } = useQuery({
     queryKey: ["important-tasks"],
@@ -25,7 +28,7 @@ export default function ImportantTasksPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-muted-foreground">
-          У вас нет доступа к этой странице. Только супер админы могут просматривать важные задачи.
+          {t('important_tasks.no_access')}
         </p>
       </div>
     );
@@ -65,16 +68,26 @@ export default function ImportantTasksPage() {
     }
   };
 
+  // Format date based on language
+  const formatDate = (date: string) => {
+    const d = new Date(date);
+    if (language === 'tj') {
+      // Tajik date format
+      return d.toLocaleDateString('tg-TJ', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    return d.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <Star className="h-8 w-8 text-yellow-500 fill-current" />
-            Важные задачи
+            {t('important_tasks.title')}
           </h1>
           <p className="text-muted-foreground">
-            Задачи, отмеченные администраторами как важные
+            {t('important_tasks.description')}
           </p>
         </div>
       </div>
@@ -84,10 +97,10 @@ export default function ImportantTasksPage() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <AlertTriangle className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">
-              Нет важных задач
+              {t('important_tasks.no_tasks_title')}
             </h3>
             <p className="text-muted-foreground text-center">
-              Пока нет задач, отмеченных как важные
+              {t('important_tasks.no_tasks_description')}
             </p>
           </CardContent>
         </Card>
@@ -114,11 +127,11 @@ export default function ImportantTasksPage() {
                     )}
                     {task.markedImportantBy && task.markedImportantAt && (
                       <p className="text-xs text-muted-foreground">
-                        Отмечено как важное{" "}
+                        {t('important_tasks.marked_important')}{" "}
                         {typeof task.markedImportantBy === "object" 
                           ? task.markedImportantBy.name 
-                          : "администратором"}{" "}
-                        {new Date(task.markedImportantAt).toLocaleDateString("ru-RU")}
+                          : t('important_tasks.by_admin')}{" "}
+                        {formatDate(task.markedImportantAt)}
                       </p>
                     )}
                   </div>
@@ -127,23 +140,13 @@ export default function ImportantTasksPage() {
                       variant="outline"
                       className={getPriorityColor(task.priority)}
                     >
-                      {task.priority === "High"
-                        ? "Высокий"
-                        : task.priority === "Medium"
-                        ? "Средний"
-                        : "Низкий"}
+                      {getPriority(task.priority, language)}
                     </Badge>
                     <Badge
                       variant="outline"
                       className={getStatusColor(task.status)}
                     >
-                      {task.status === "To Do"
-                        ? "К выполнению"
-                        : task.status === "In Progress"
-                        ? "В процессе"
-                        : task.status === "Review"
-                        ? "На проверке"
-                        : "Выполнено"}
+                      {getTaskStatus(task.status, language)}
                     </Badge>
                   </div>
                 </div>
@@ -157,7 +160,7 @@ export default function ImportantTasksPage() {
                         <span>
                           {task.assignees.length === 1
                             ? task.assignees[0].name
-                            : `${task.assignees.length} исполнителей`}
+                            : `${task.assignees.length} ${t('important_tasks.assignees')}`}
                         </span>
                       </div>
                     )}
@@ -165,10 +168,10 @@ export default function ImportantTasksPage() {
                       <div className="flex items-center gap-1">
                         <User className="h-4 w-4" />
                         <span>
-                          Менеджер:{" "}
+                          {t('important_tasks.manager')}{" "}
                           {typeof task.responsibleManager === "object"
                             ? task.responsibleManager.name
-                            : "Не указан"}
+                            : t('important_tasks.not_specified')}
                         </span>
                       </div>
                     )}
@@ -176,7 +179,7 @@ export default function ImportantTasksPage() {
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
                         <span>
-                          {formatDueDateRussian(task.dueDate)}
+                          {formatDueDateRussian(String(task.dueDate))}
                         </span>
                       </div>
                     )}
@@ -184,7 +187,7 @@ export default function ImportantTasksPage() {
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
                     <span>
-                      {formatDateDetailedRussian(task.createdAt)}
+                      {formatDateDetailedRussian(String(task.createdAt))}
                     </span>
                   </div>
                 </div>

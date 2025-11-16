@@ -1,7 +1,7 @@
 import { jsx, jsxs, Fragment } from "react/jsx-runtime";
 import { PassThrough } from "node:stream";
 import { createReadableStreamFromReadable } from "@react-router/node";
-import { ServerRouter, useMatches, useActionData, useLoaderData, useParams, useRouteError, useNavigate, useLocation, Outlet, Meta, Links, ScrollRestoration, Scripts, isRouteErrorResponse, Navigate, Link, useSearchParams, useRevalidator, redirect } from "react-router";
+import { ServerRouter, useMatches, useActionData, useLoaderData, useParams, useRouteError, useNavigate, useLocation, Outlet, Meta, Links, ScrollRestoration, Scripts, isRouteErrorResponse, Navigate, Link, useSearchParams, useRevalidator } from "react-router";
 import { isbot } from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
 import * as React from "react";
@@ -16,7 +16,7 @@ import { cva } from "class-variance-authority";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { motion } from "framer-motion";
-import { CircleCheckBig, Users, CalendarCheck, Smartphone, Download, AlertCircle, CheckCircle, Loader2, ArrowLeft, CheckCircle2, XCircle, CheckIcon, XIcon, ChevronDownIcon, ChevronUpIcon, CalendarIcon, Languages, Check, Plus, Bell, Wrench, ChevronsRight, ChevronsLeft, LogOut, Star, ClipboardList, BarChart3, LayoutDashboard, ListCheck, UserCheck, Settings, MessageCircle, X, Send, SortAsc, SortDesc, Filter, Clock, ArrowUpRight, LayoutGrid, CirclePlus, Search, Calendar as Calendar$1, CalendarDays, Eye, User, AlertTriangle, TrendingUp, Printer, Crown, Shield, MoreHorizontal, Database, Palette, Edit, Paperclip, UploadCloud, Link2, Smile, Mic, Upload, LogIn, UserMinus, UserPlus, MessageSquare, Building2, FolderEdit, FolderPlus, FileEdit, CheckSquare, EyeOff, Flag, Archive } from "lucide-react";
+import { CircleCheckBig, Users, CalendarCheck, Smartphone, Download, AlertCircle, CheckCircle, Loader2, ArrowLeft, CheckCircle2, XCircle, CheckIcon, XIcon, ChevronDownIcon, ChevronUpIcon, CalendarIcon, Languages, Check, Plus, Bell, Wrench, ChevronsRight, ChevronsLeft, User, LogOut, Star, ClipboardList, BarChart3, LayoutDashboard, ListCheck, UserCheck, Settings, MessageCircle, X, Send, SortAsc, SortDesc, Filter, Clock, ArrowUpRight, LayoutGrid, CirclePlus, Search, Calendar as Calendar$1, CalendarDays, Eye, AlertTriangle, TrendingUp, Printer, Crown, Shield, MoreHorizontal, Database, Palette, Edit, Paperclip, UploadCloud, Link2, Smile, Mic, Upload, LogIn, UserMinus, UserPlus, MessageSquare, Building2, FolderEdit, FolderPlus, FileEdit, CheckSquare, EyeOff, Flag, Archive } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormProvider, Controller, useFormContext, useFormState, useForm } from "react-hook-form";
 import * as LabelPrimitive from "@radix-ui/react-label";
@@ -98,12 +98,16 @@ function withErrorBoundaryProps(ErrorBoundary3) {
     return createElement(ErrorBoundary3, props);
   };
 }
-const BASE_URL = "https://api.vazifa.online/api-v1";
+const BASE_URL = "/api-v1";
 const api = axios.create({
   baseURL: BASE_URL,
   headers: {
-    "Content-Type": "application/json"
-  }
+    "Content-Type": "application/json",
+    "Accept": "application/json"
+  },
+  withCredentials: true,
+  timeout: 3e4
+  // 30 seconds timeout
 });
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
@@ -2207,6 +2211,175 @@ const resetPasswordSchema = z.object({
   message: "Пароли не совпадают",
   path: ["confirmPassword"]
 });
+const toastMessages = {
+  // Authentication messages
+  auth: {
+    signUpSuccess: "Пользователь успешно зарегистрирован",
+    signUpSuccessDescription: "Пожалуйста, проверьте свою электронную почту для подтверждения",
+    signUpFailed: "Ошибка регистрации",
+    loginSuccess: "Успешный вход в систему",
+    loginFailed: "Ошибка входа",
+    logoutSuccess: "Вы успешно вышли из системы",
+    emailVerificationSent: "Код подтверждения отправлен на вашу электронную почту",
+    emailVerified: "Электронная почта успешно подтверждена",
+    passwordResetSent: "Ссылка для сброса пароля отправлена на вашу электронную почту",
+    passwordResetSuccess: "Пароль успешно изменен",
+    invalidCredentials: "Неверные учетные данные",
+    accountNotVerified: "Пожалуйста, подтвердите свою электронную почту",
+    twoFARequired: "Требуется двухфакторная аутентификация",
+    twoFAEnabled: "Двухфакторная аутентификация успешно включена",
+    twoFADisabled: "Двухфакторная аутентификация отключена",
+    invalidCode: "Неверный код подтверждения",
+    oauthSuccess: "Успешный вход через OAuth",
+    oauthError: "Ошибка аутентификации. Попробуйте снова",
+    appleComingSoon: "Аутентификация Apple будет добавлена в следующем обновлении",
+    tokenNotFound: "Токен аутентификации не найден",
+    invalidToken: "Неверный токен аутентификации"
+  },
+  // Profile messages
+  profile: {
+    updateSuccess: "Профиль успешно обновлен",
+    updateFailed: "Не удалось обновить профиль",
+    passwordUpdateSuccess: "Пароль успешно обновлен. Вы будете перенаправлены на страницу входа",
+    passwordUpdateFailed: "Не удалось обновить пароль",
+    avatarUploadSuccess: "Аватар успешно загружен",
+    avatarUploadFailed: "Не удалось загрузить аватар. Попробуйте снова",
+    fileSizeError: "Размер файла должен быть менее 1 МБ"
+  },
+  // Task messages
+  tasks: {
+    createSuccess: "Задача успешно создана",
+    createFailed: "Ошибка создания задачи",
+    updateSuccess: "Задача успешно обновлена",
+    updateFailed: "Не удалось обновить задачу",
+    deleteSuccess: "Задача успешно удалена",
+    deleteFailed: "Не удалось удалить задачу",
+    statusUpdated: "Статус задачи обновлен",
+    statusUpdateFailed: "Не удалось обновить статус задачи",
+    priorityUpdated: "Приоритет задачи обновлен",
+    priorityUpdateFailed: "Не удалось обновить приоритет задачи",
+    titleUpdated: "Название задачи успешно обновлено",
+    titleUpdateFailed: "Не удалось обновить название задачи",
+    descriptionUpdated: "Описание задачи успешно обновлено",
+    descriptionUpdateFailed: "Не удалось обновить описание задачи",
+    assigneesUpdated: "Исполнители задачи обновлены",
+    assigneesUpdateFailed: "Не удалось обновить исполнителей задачи",
+    watchStatusUpdated: "Статус отслеживания обновлен",
+    watchStatusUpdateFailed: "Не удалось обновить статус отслеживания",
+    archived: "Задача заархивирована",
+    unarchived: "Задача разархивирована",
+    archiveUpdateFailed: "Не удалось обновить статус архива",
+    addedToWatchers: "Добавлено в наблюдатели",
+    removedFromWatchers: "Удалено из наблюдателей"
+  },
+  // Subtask messages
+  subtasks: {
+    createSuccess: "Подзадача успешно создана",
+    createFailed: "Не удалось создать подзадачу",
+    updateSuccess: "Подзадача успешно обновлена",
+    updateFailed: "Не удалось обновить подзадачу"
+  },
+  // Comment and Response messages
+  comments: {
+    addSuccess: "Комментарий успешно добавлен",
+    addFailed: "Не удалось добавить комментарий",
+    responseAddSuccess: "Ответ успешно добавлен",
+    responseAddFailed: "Не удалось добавить ответ",
+    reactionAddSuccess: "Реакция успешно добавлена",
+    reactionAddFailed: "Не удалось добавить реакцию",
+    contentRequired: "Добавьте текст или прикрепите файл",
+    voiceMessageAdded: "Голосовое сообщение добавлено",
+    voiceMessageFailed: "Не удалось загрузить голосовое сообщение"
+  },
+  // File upload messages
+  files: {
+    uploadSuccess: "Файл успешно загружен",
+    uploadFailed: "Не удалось загрузить файл",
+    fileSizeError: "Файл превышает лимит в 50 МБ",
+    fileTypeError: "Неподдерживаемый тип файла"
+  },
+  // Audio recording messages
+  audio: {
+    recordingStarted: "Запись началась...",
+    recordingStopped: "Запись остановлена",
+    recordingFailed: "Не удалось начать запись. Проверьте подключение микрофона",
+    microphoneAccessDenied: "Доступ к микрофону запрещен. Разрешите доступ к микрофону в настройках браузера",
+    microphoneNotFound: "Микрофон не найден. Подключите микрофон и попробуйте снова",
+    microphoneBusy: "Микрофон занят другим приложением. Закройте другие приложения и попробуйте снова",
+    microphoneNotSupported: "Микрофон не поддерживает требуемые настройки",
+    securityError: "Запись аудио заблокирована по соображениям безопасности. Используйте HTTPS соединение",
+    browserNotSupported: "Ваш браузер не поддерживает запись аудио"
+  },
+  // Project messages
+  projects: {
+    createSuccess: "Проект успешно создан",
+    createFailed: "Не удалось создать проект",
+    updateSuccess: "Проект успешно обновлен",
+    updateFailed: "Не удалось обновить проект",
+    deleteSuccess: "Проект успешно удален",
+    deleteFailed: "Не удалось удалить проект",
+    archived: "Проект заархивирован",
+    unarchived: "Проект разархивирован",
+    archiveUpdateFailed: "Не удалось обновить статус архива проекта",
+    membersAddSuccess: "Участники успешно добавлены",
+    membersAddFailed: "Не удалось добавить участников",
+    memberRemoveSuccess: "Участник успешно удален",
+    memberRemoveFailed: "Не удалось удалить участника"
+  },
+  // Workspace messages
+  workspaces: {
+    createSuccess: "Рабочая область успешно создана",
+    createFailed: "Не удалось создать рабочую область",
+    updateSuccess: "Рабочая область успешно обновлена",
+    updateFailed: "Не удалось обновить рабочую область",
+    deleteSuccess: "Рабочая область успешно удалена",
+    deleteFailed: "Не удалось удалить рабочую область",
+    joinSuccess: "Вы успешно присоединились к рабочей области",
+    joinFailed: "Не удалось присоединиться к рабочей области",
+    inviteSuccess: "Приглашение успешно отправлено",
+    inviteFailed: "Не удалось отправить приглашение",
+    inviteLinkCopied: "Ссылка приглашения скопирована в буфер обмена",
+    inviteDeclined: "Приглашение отклонено",
+    ownershipTransferred: "Владение рабочей областью успешно передано",
+    ownershipTransferFailed: "Не удалось передать владение рабочей областью",
+    selectMemberError: "Пожалуйста, выберите участника для передачи владения",
+    workspaceNotSelected: "Рабочая область не выбрана"
+  },
+  // Member management messages
+  members: {
+    roleUpdateSuccess: "Роль пользователя успешно изменена",
+    roleUpdateFailed: "Ошибка изменения роли",
+    removeSuccess: "Участник успешно удален",
+    removeFailed: "Не удалось удалить участника"
+  },
+  // Notification messages
+  notifications: {
+    markAllReadSuccess: "Все уведомления отмечены как прочитанные",
+    markAllReadFailed: "Произошла ошибка при отметке уведомлений",
+    markReadSuccess: "Уведомление отмечено как прочитанное",
+    markReadFailed: "Произошла ошибка при отметке уведомления"
+  },
+  // Settings messages
+  settings: {
+    saveSuccess: "Настройки успешно сохранены",
+    saveFailed: "Не удалось сохранить настройки"
+  },
+  // General error messages
+  errors: {
+    networkError: "Ошибка сети. Проверьте подключение к интернету",
+    serverError: "Ошибка сервера. Попробуйте позже",
+    unknownError: "Произошла неизвестная ошибка",
+    unauthorized: "Нет доступа",
+    notFound: "Не найдено",
+    validationError: "Ошибка валидации данных"
+  },
+  // Success messages
+  success: {
+    operationCompleted: "Операция успешно выполнена",
+    changesSaved: "Изменения сохранены",
+    actionCompleted: "Действие выполнено"
+  }
+};
 function meta$g({}) {
   return [{
     title: "TaskHub | Sign Up"
@@ -2238,8 +2411,8 @@ const SignUp = () => {
       signUp2(values, {
         onSuccess: () => {
           setIsSuccess(true);
-          toast.success("User Sign Up Successfully", {
-            description: "Please check your email for verification"
+          toast.success(toastMessages.auth.signUpSuccess, {
+            description: toastMessages.auth.signUpSuccessDescription
           });
           form.reset();
           setError(null);
@@ -2252,7 +2425,7 @@ const SignUp = () => {
           setIsSuccess(false);
           const message = error2.response.data.message || error2.message;
           setError(message);
-          toast.error("User Sign Up Failed", {
+          toast.error(toastMessages.auth.signUpFailed, {
             description: message
           });
         }
@@ -2262,9 +2435,9 @@ const SignUp = () => {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("An unknown error occurred");
-        toast.error("User Sign Up Failed", {
-          description: "An unknown error occurred"
+        setError(toastMessages.errors.unknownError);
+        toast.error(toastMessages.auth.signUpFailed, {
+          description: toastMessages.errors.unknownError
         });
       }
     }
@@ -2510,22 +2683,22 @@ const SignIn = () => {
         if (data.twoFARequired) {
           setTwoFARequired(true);
           setEmailFor2FA(values.email);
-          toast.info("A verification code has been sent to your email.");
+          toast.info(toastMessages.auth.emailVerificationSent);
         } else {
           login(data);
         }
       },
       onError: (error2) => {
         var _a, _b;
-        toast.error(((_b = (_a = error2.response) == null ? void 0 : _a.data) == null ? void 0 : _b.message) || "Login failed");
+        toast.error(((_b = (_a = error2.response) == null ? void 0 : _a.data) == null ? void 0 : _b.message) || toastMessages.auth.loginFailed);
       }
     });
   };
   const handleGoogleLogin = () => {
-    window.location.href = `${"https://api.vazifa.online/api-v1"}/auth/google`;
+    window.location.href = `${"https://ptapi.oci.tj/api-v1"}/auth/google`;
   };
   const handleAppleLogin = () => {
-    toast.info("Apple аутентификация будет добавлена в следующем обновлении");
+    toast.info(toastMessages.auth.appleComingSoon);
   };
   return /* @__PURE__ */ jsx("div", {
     className: "min-h-screen flex flex-col items-center justify-center bg-muted/40 p-4",
@@ -2980,14 +3153,14 @@ const AuthCallback = () => {
     const token = searchParams.get("token");
     const error = searchParams.get("error");
     if (error) {
-      toast.error("Ошибка аутентификации. Попробуйте снова.");
+      toast.error(toastMessages.auth.oauthError);
       navigate("/sign-in");
       return;
     }
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        fetch(`${"https://api.vazifa.online/api-v1"}/users/me`, {
+        fetch(`${"https://ptapi.oci.tj/api-v1"}/users/me`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -2997,23 +3170,23 @@ const AuthCallback = () => {
               user: data.user,
               token
             });
-            toast.success("Успешный вход через OAuth!");
+            toast.success(toastMessages.auth.oauthSuccess);
             navigate("/dashboard");
           } else {
             throw new Error("Invalid user data");
           }
         }).catch((error2) => {
           console.error("OAuth callback error:", error2);
-          toast.error("Ошибка при получении данных пользователя");
+          toast.error(toastMessages.errors.serverError);
           navigate("/sign-in");
         });
       } catch (error2) {
         console.error("Token parsing error:", error2);
-        toast.error("Неверный токен аутентификации");
+        toast.error(toastMessages.auth.invalidToken);
         navigate("/sign-in");
       }
     } else {
-      toast.error("Токен аутентификации не найден");
+      toast.error(toastMessages.auth.tokenNotFound);
       navigate("/sign-in");
     }
   }, [searchParams, navigate, login]);
@@ -4239,27 +4412,27 @@ const SidebarComponent = ({
       return [
         {
           title: t("nav.important_tasks"),
-          href: "/important-tasks",
+          href: "/dashboard/important-tasks",
           icon: Star
         },
         {
           title: t("nav.all_tasks"),
-          href: "/all-tasks",
+          href: "/dashboard/all-tasks",
           icon: ClipboardList
         },
         {
           title: t("nav.analytics"),
-          href: "/analytics",
+          href: "/dashboard/analytics",
           icon: BarChart3
         },
         {
           title: t("nav.members"),
-          href: "/members",
+          href: "/dashboard/members",
           icon: Users
         },
         {
           title: t("nav.completed_tasks"),
-          href: "/achieved",
+          href: "/dashboard/achieved",
           icon: CheckCircle2
         }
       ];
@@ -4272,47 +4445,47 @@ const SidebarComponent = ({
       },
       {
         title: t("nav.my_tasks"),
-        href: "/my-tasks",
+        href: "/dashboard/my-tasks",
         icon: ListCheck
       },
       {
         title: t("nav.all_tasks"),
-        href: "/all-tasks",
+        href: "/dashboard/all-tasks",
         icon: ClipboardList,
         requiresRole: ["admin", "manager", "super_admin"]
       },
       {
         title: t("nav.manager_tasks"),
-        href: "/manager-tasks",
+        href: "/dashboard/manager-tasks",
         icon: UserCheck,
         requiresRole: ["admin", "manager", "super_admin"]
       },
       {
         title: t("nav.important_tasks"),
-        href: "/important-tasks",
+        href: "/dashboard/important-tasks",
         icon: Star,
         requiresRole: ["super_admin"]
       },
       {
         title: t("nav.analytics"),
-        href: "/analytics",
+        href: "/dashboard/analytics",
         icon: BarChart3,
         requiresRole: ["admin", "manager", "super_admin"]
       },
       {
         title: t("nav.members"),
-        href: "/members",
+        href: "/dashboard/members",
         icon: Users,
         requiresRole: ["admin", "manager", "super_admin"]
       },
       {
         title: t("nav.completed_tasks"),
-        href: "/achieved",
+        href: "/dashboard/achieved",
         icon: CheckCircle2
       },
       {
         title: t("nav.settings"),
-        href: "/settings",
+        href: "/dashboard/settings",
         icon: Settings
       }
     ];
@@ -4355,19 +4528,33 @@ const SidebarComponent = ({
             userRole: user == null ? void 0 : user.role
           }
         ) }),
-        /* @__PURE__ */ jsx("div", { className: "border-t p-4 flex flex-col gap-2", children: /* @__PURE__ */ jsxs(
-          Button,
-          {
-            variant: "ghost",
-            size: isCollapsed ? "icon" : "default",
-            className: "justify-start",
-            onClick: logout,
-            children: [
-              /* @__PURE__ */ jsx(LogOut, { className: cn("h-4 w-4", isCollapsed ? "" : "mr-2") }),
-              /* @__PURE__ */ jsx("span", { className: "hidden md:block", children: !isCollapsed && t("nav.logout") })
-            ]
-          }
-        ) })
+        /* @__PURE__ */ jsxs("div", { className: "border-t p-4 flex flex-col gap-2", children: [
+          /* @__PURE__ */ jsx(Link, { to: "/user/profile", children: /* @__PURE__ */ jsxs(
+            Button,
+            {
+              variant: "ghost",
+              size: isCollapsed ? "icon" : "default",
+              className: "justify-start w-full",
+              children: [
+                /* @__PURE__ */ jsx(User, { className: cn("h-4 w-4", isCollapsed ? "" : "mr-2") }),
+                /* @__PURE__ */ jsx("span", { className: "hidden md:block", children: !isCollapsed && t("nav.profile") })
+              ]
+            }
+          ) }),
+          /* @__PURE__ */ jsxs(
+            Button,
+            {
+              variant: "ghost",
+              size: isCollapsed ? "icon" : "default",
+              className: "justify-start",
+              onClick: logout,
+              children: [
+                /* @__PURE__ */ jsx(LogOut, { className: cn("h-4 w-4", isCollapsed ? "" : "mr-2") }),
+                /* @__PURE__ */ jsx("span", { className: "hidden md:block", children: !isCollapsed && t("nav.logout") })
+              ]
+            }
+          )
+        ] })
       ]
     }
   );
@@ -4634,6 +4821,9 @@ const CreateWorkspace = ({
 const AdminChatWidget = ({ className }) => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  if (!user || !user._id || !user.role || !["admin", "super_admin"].includes(user.role)) {
+    return null;
+  }
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
@@ -4643,9 +4833,6 @@ const AdminChatWidget = ({ className }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
   const messagesEndRef = useRef(null);
-  if (!user || !user._id || !user.role || !["admin", "super_admin"].includes(user.role)) {
-    return null;
-  }
   const scrollToBottom = () => {
     var _a;
     (_a = messagesEndRef.current) == null ? void 0 : _a.scrollIntoView({ behavior: "smooth" });
@@ -4678,90 +4865,81 @@ const AdminChatWidget = ({ className }) => {
     try {
       const response = await fetch("/api-v1/admin-messages", {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json"
         }
       });
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(data.messages);
+      if (!response.ok) {
+        console.warn(`Failed to fetch messages: HTTP ${response.status}`);
+        return;
       }
+      const data = await response.json();
+      setMessages(data.messages);
     } catch (error) {
-      console.error("Error fetching messages:", error);
+      console.warn("Error fetching messages:", error);
     }
   };
   const fetchUnreadCount = async () => {
     try {
       const response = await fetch("/api-v1/admin-messages/unread-count", {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json"
         }
       });
-      if (response.ok) {
-        const data = await response.json();
-        setUnreadCount(data.unreadCount);
+      if (!response.ok) {
+        console.warn(`Failed to fetch unread count: HTTP ${response.status}`);
+        return;
       }
+      const data = await response.json();
+      setUnreadCount(data.unreadCount);
     } catch (error) {
-      console.error("Error fetching unread count:", error);
+      console.warn("Error fetching unread count:", error);
     }
   };
   const fetchOnlineAdmins = async () => {
     try {
       const response = await fetch("/api-v1/admin-messages/online-admins", {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json"
         }
       });
-      if (response.ok) {
-        const data = await response.json();
-        setOnlineAdmins(data.admins);
+      if (!response.ok) {
+        console.warn(`Failed to fetch online admins: HTTP ${response.status}`);
+        return;
       }
+      const data = await response.json();
+      setOnlineAdmins(data.admins);
     } catch (error) {
-      console.error("Error fetching online admins:", error);
+      console.warn("Error fetching online admins:", error);
     }
   };
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
     setIsLoading(true);
     try {
-      const messageData = {
-        message: newMessage,
-        messageType: selectedRecipient ? "direct" : "broadcast",
-        recipient: selectedRecipient,
-        priority: "normal",
-        language: "ru"
-      };
       if (replyTo) {
-        const response = await fetch(`/api-v1/admin-messages/${replyTo._id}/reply`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`
-          },
-          body: JSON.stringify({
-            message: newMessage,
-            priority: "normal",
-            language: "ru"
-          })
+        await postData(`/admin-messages/${replyTo._id}/reply`, {
+          message: newMessage,
+          priority: "normal",
+          language: "ru"
         });
-        if (response.ok) {
-          setNewMessage("");
-          setReplyTo(null);
-          fetchMessages();
-        }
+        setNewMessage("");
+        setReplyTo(null);
+        fetchMessages();
       } else {
-        const response = await fetch("/api-v1/admin-messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`
-          },
-          body: JSON.stringify(messageData)
-        });
-        if (response.ok) {
-          setNewMessage("");
-          fetchMessages();
-          fetchUnreadCount();
-        }
+        const messageData = {
+          message: newMessage,
+          messageType: selectedRecipient ? "direct" : "broadcast",
+          recipient: selectedRecipient,
+          priority: "normal",
+          language: "ru"
+        };
+        await postData("/admin-messages", messageData);
+        setNewMessage("");
+        fetchMessages();
+        fetchUnreadCount();
       }
     } catch (error) {
       console.error("Error sending message:", error);
@@ -4771,12 +4949,7 @@ const AdminChatWidget = ({ className }) => {
   };
   const markAsRead = async (messageId) => {
     try {
-      await fetch(`/api-v1/admin-messages/${messageId}/read`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`
-        }
-      });
+      await updateData(`/admin-messages/${messageId}/read`, {});
       fetchMessages();
       fetchUnreadCount();
     } catch (error) {
@@ -4785,14 +4958,7 @@ const AdminChatWidget = ({ className }) => {
   };
   const addReaction = async (messageId, emoji) => {
     try {
-      await fetch(`/api-v1/admin-messages/${messageId}/reaction`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`
-        },
-        body: JSON.stringify({ emoji })
-      });
+      await postData(`/admin-messages/${messageId}/reaction`, { emoji });
       fetchMessages();
     } catch (error) {
       console.error("Error adding reaction:", error);
@@ -5068,7 +5234,12 @@ const clientLoader = async () => {
       myTasks: myTasks2
     };
   } catch (error) {
-    return redirect("/sign-in");
+    console.error("Dashboard loader error:", error);
+    return {
+      organizations: [],
+      unreadNotificationsCount: 0,
+      myTasks: []
+    };
   }
 };
 const DashboardLayout = () => {
@@ -5734,10 +5905,10 @@ const MyTasksPage = () => {
     })]
   });
 };
-const myTasks$1 = withComponentProps(MyTasksPage);
+const myTasks = withComponentProps(MyTasksPage);
 const route10 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  default: myTasks$1,
+  default: myTasks,
   meta: meta$a
 }, Symbol.toStringTag, { value: "Module" }));
 function Table({ className, ...props }) {
@@ -8929,7 +9100,7 @@ const TaskAttachments = ({
       setUploading(true);
       setUploadProgress(0);
       try {
-        const url = `${"https://api.vazifa.online/api-v1"}/upload`;
+        const url = `${"https://ptapi.oci.tj/api-v1"}/upload`;
         const formData = new FormData();
         formData.append("file", file);
         const token = localStorage.getItem("token");
@@ -9297,7 +9468,7 @@ const CommentSection = ({
       try {
         const formData = new FormData();
         formData.append("file", file);
-        const response = await fetch(`${"https://api.vazifa.online/api-v1"}/upload`, {
+        const response = await fetch(`${"https://ptapi.oci.tj/api-v1"}/upload`, {
           method: "POST",
           body: formData,
           headers: {
@@ -9349,7 +9520,7 @@ const CommentSection = ({
         formData.append("file", file);
         try {
           setIsUploading(true);
-          const response = await fetch(`${"https://api.vazifa.online/api-v1"}/upload`, {
+          const response = await fetch(`${"https://ptapi.oci.tj/api-v1"}/upload`, {
             method: "POST",
             body: formData,
             headers: {
@@ -9852,7 +10023,7 @@ const ResponseSection = ({
       try {
         const formData = new FormData();
         formData.append("file", file);
-        const response = await fetch(`${"https://api.vazifa.online/api-v1"}/upload`, {
+        const response = await fetch(`${"https://ptapi.oci.tj/api-v1"}/upload`, {
           method: "POST",
           body: formData,
           headers: {
@@ -9900,7 +10071,7 @@ const ResponseSection = ({
         formData.append("file", file);
         try {
           setIsUploading(true);
-          const response = await fetch(`${"https://api.vazifa.online/api-v1"}/upload`, {
+          const response = await fetch(`${"https://ptapi.oci.tj/api-v1"}/upload`, {
             method: "POST",
             body: formData,
             headers: {
@@ -11253,6 +11424,7 @@ const profileSchema = z.object({
     message: "Name is required"
   }),
   lastName: z.string().optional(),
+  phoneNumber: z.string().optional(),
   profilePicture: z.string().optional()
 });
 const ProfilePage = () => {
@@ -11283,6 +11455,7 @@ const ProfilePage = () => {
     values: {
       name: (user == null ? void 0 : user.name) || "",
       lastName: (user == null ? void 0 : user.lastName) || "",
+      phoneNumber: (user == null ? void 0 : user.phoneNumber) || "",
       profilePicture: (user == null ? void 0 : user.profilePicture) || ""
     }
   });
@@ -11358,6 +11531,7 @@ const ProfilePage = () => {
     updateUserProfile({
       name: values.name,
       lastName: values.lastName || "",
+      phoneNumber: values.phoneNumber || "",
       profilePicture: values.profilePicture || ""
     }, {
       onSuccess: () => {
@@ -11473,6 +11647,22 @@ const ProfilePage = () => {
                 }), /* @__PURE__ */ jsx(FormControl, {
                   children: /* @__PURE__ */ jsx(Input, {
                     ...field
+                  })
+                }), /* @__PURE__ */ jsx(FormMessage, {})]
+              })
+            }), /* @__PURE__ */ jsx(FormField, {
+              control: profileForm.control,
+              name: "phoneNumber",
+              render: ({
+                field
+              }) => /* @__PURE__ */ jsxs(FormItem, {
+                children: [/* @__PURE__ */ jsx(FormLabel, {
+                  children: "Номер телефона"
+                }), /* @__PURE__ */ jsx(FormControl, {
+                  children: /* @__PURE__ */ jsx(Input, {
+                    ...field,
+                    type: "tel",
+                    placeholder: "+992 XX XXX XXXX"
                   })
                 }), /* @__PURE__ */ jsx(FormMessage, {})]
               })
@@ -11598,17 +11788,6 @@ const route21 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   __proto__: null,
   default: profile,
   meta: meta$2
-}, Symbol.toStringTag, { value: "Module" }));
-async function loader() {
-  return redirect("/dashboard/my-tasks");
-}
-const myTasks = withComponentProps(function MyTasksRedirect() {
-  return null;
-});
-const route22 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  default: myTasks,
-  loader
 }, Symbol.toStringTag, { value: "Module" }));
 function meta$1({}) {
   return [{
@@ -11779,7 +11958,7 @@ const ResetPasswordPage = () => {
   });
 };
 const resetPassword = withComponentProps(ResetPasswordPage);
-const route23 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route22 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: resetPassword,
   meta: meta$1
@@ -11816,12 +11995,12 @@ const NotFound = () => {
   });
 };
 const notFound = withComponentProps(NotFound);
-const route24 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route23 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: notFound,
   meta
 }, Symbol.toStringTag, { value: "Module" }));
-const serverManifest = { "entry": { "module": "/assets/entry.client-bOjdwq2D.js", "imports": ["/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/index-CnVBUu3y.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": true, "module": "/assets/root-BiQ5Kzqg.js", "imports": ["/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/index-CnVBUu3y.js", "/assets/with-props-DyG_vBPJ.js", "/assets/auth-context-B5vrc64i.js", "/assets/language-context-DQqIPPDP.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/index-CNgNZYQm.js", "/assets/index-DgMzxt3E.js", "/assets/differenceInCalendarDays-D7TXt3rl.js"], "css": ["/assets/root-BQXT4ge8.css"], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/auth-layout": { "id": "routes/auth/auth-layout", "parentId": "root", "path": void 0, "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/auth-layout-Dn74Bc1a.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/loader-B2rr_xqw.js", "/assets/auth-context-B5vrc64i.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/index-CNgNZYQm.js", "/assets/index-CnVBUu3y.js", "/assets/index-DgMzxt3E.js", "/assets/differenceInCalendarDays-D7TXt3rl.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/root/welcome": { "id": "routes/root/welcome", "parentId": "routes/auth/auth-layout", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/welcome-BJe9-Bx-.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/button-CYnDp3Q-.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/circle-check-big-CiMFBpoa.js", "/assets/users-C3qiH94-.js", "/assets/createLucideIcon-DYOGCEiU.js", "/assets/download-D4F4ZKAG.js", "/assets/utils-DIzSUSji.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/sign-up": { "id": "routes/auth/sign-up", "parentId": "routes/auth/auth-layout", "path": "sign-up", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/sign-up-DKo5IWSB.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/form-BmyV6FyK.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/index-CNgNZYQm.js", "/assets/alert-DlLWaqXv.js", "/assets/button-CYnDp3Q-.js", "/assets/card-DunmZ-Mm.js", "/assets/input-BPm_T_uW.js", "/assets/use-auth-BFmN1zjT.js", "/assets/schema-vgN0g95I.js", "/assets/circle-alert-CzTjZiAb.js", "/assets/circle-check-big-CiMFBpoa.js", "/assets/loader-circle-DPdm6C66.js", "/assets/utils-DIzSUSji.js", "/assets/label-URIJR8-n.js", "/assets/index-DTIwNWd2.js", "/assets/index-CnVBUu3y.js", "/assets/useMutation-CUJSGQ7R.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/createLucideIcon-DYOGCEiU.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/sign-in": { "id": "routes/auth/sign-in", "parentId": "routes/auth/auth-layout", "path": "sign-in", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/sign-in-DC9k6ah9.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/form-BmyV6FyK.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/index-CNgNZYQm.js", "/assets/use-auth-BFmN1zjT.js", "/assets/auth-context-B5vrc64i.js", "/assets/alert-DlLWaqXv.js", "/assets/button-CYnDp3Q-.js", "/assets/input-BPm_T_uW.js", "/assets/circle-alert-CzTjZiAb.js", "/assets/loader-circle-DPdm6C66.js", "/assets/card-DunmZ-Mm.js", "/assets/schema-vgN0g95I.js", "/assets/utils-DIzSUSji.js", "/assets/label-URIJR8-n.js", "/assets/index-DTIwNWd2.js", "/assets/index-CnVBUu3y.js", "/assets/useMutation-CUJSGQ7R.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/index-DgMzxt3E.js", "/assets/differenceInCalendarDays-D7TXt3rl.js", "/assets/createLucideIcon-DYOGCEiU.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/forgot-password": { "id": "routes/auth/forgot-password", "parentId": "routes/auth/auth-layout", "path": "forgot-password", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/forgot-password-DA3b7_O1.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/button-CYnDp3Q-.js", "/assets/input-BPm_T_uW.js", "/assets/card-DunmZ-Mm.js", "/assets/form-BmyV6FyK.js", "/assets/alert-DlLWaqXv.js", "/assets/use-auth-BFmN1zjT.js", "/assets/arrow-left-BZk8-X3l.js", "/assets/circle-check-c3MMHh6m.js", "/assets/circle-alert-CzTjZiAb.js", "/assets/loader-circle-DPdm6C66.js", "/assets/utils-DIzSUSji.js", "/assets/label-URIJR8-n.js", "/assets/index-DTIwNWd2.js", "/assets/index-CnVBUu3y.js", "/assets/useMutation-CUJSGQ7R.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/index-CNgNZYQm.js", "/assets/createLucideIcon-DYOGCEiU.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/verify-email": { "id": "routes/auth/verify-email", "parentId": "routes/auth/auth-layout", "path": "verify-email", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/verify-email-Su1eLMdI.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/button-CYnDp3Q-.js", "/assets/card-DunmZ-Mm.js", "/assets/use-auth-BFmN1zjT.js", "/assets/arrow-left-BZk8-X3l.js", "/assets/loader-circle-DPdm6C66.js", "/assets/circle-check-c3MMHh6m.js", "/assets/createLucideIcon-DYOGCEiU.js", "/assets/utils-DIzSUSji.js", "/assets/useMutation-CUJSGQ7R.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/index-CNgNZYQm.js", "/assets/index-CnVBUu3y.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/callback": { "id": "routes/auth/callback", "parentId": "routes/auth/auth-layout", "path": "auth/callback", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/callback-DwvfSJxF.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/index-CNgNZYQm.js", "/assets/loader-B2rr_xqw.js", "/assets/auth-context-B5vrc64i.js", "/assets/index-CnVBUu3y.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/index-DgMzxt3E.js", "/assets/differenceInCalendarDays-D7TXt3rl.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/dashboard-layout": { "id": "routes/dashboard/dashboard-layout", "parentId": "root", "path": void 0, "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": true, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/dashboard-layout-BEQUbzIO.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/avatar-B8lmOvvi.js", "/assets/button-CYnDp3Q-.js", "/assets/dropdown-menu-C2T7FvO_.js", "/assets/auth-context-B5vrc64i.js", "/assets/language-context-DQqIPPDP.js", "/assets/form-BmyV6FyK.js", "/assets/index-CNgNZYQm.js", "/assets/useQuery-CkwzADaB.js", "/assets/utils-DIzSUSji.js", "/assets/DayPicker-B79OQGaG.js", "/assets/popover-Ct-mlSgl.js", "/assets/index-wu72o1Zw.js", "/assets/Combination-BUzufNIs.js", "/assets/select-CDLpyc4Q.js", "/assets/index-BIYj4ebj.js", "/assets/index-Dspms17g.js", "/assets/index-DTIwNWd2.js", "/assets/dialog-Bw6wHjQP.js", "/assets/input-BPm_T_uW.js", "/assets/textarea-2qDDOoVt.js", "/assets/use-task-ClqRGOoq.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/calendar-Dcbq6X4X.js", "/assets/createLucideIcon-DYOGCEiU.js", "/assets/bell-BXNMs8qH.js", "/assets/scroll-area-N5jEjwpk.js", "/assets/star-Cq7vPmKH.js", "/assets/users-C3qiH94-.js", "/assets/circle-check-c3MMHh6m.js", "/assets/settings-WfLMetyi.js", "/assets/loader-B2rr_xqw.js", "/assets/useMutation-CUJSGQ7R.js", "/assets/schema-vgN0g95I.js", "/assets/card-DunmZ-Mm.js", "/assets/badge-BR4L36Rg.js", "/assets/index-BhFca_hj.js", "/assets/index-DgMzxt3E.js", "/assets/differenceInCalendarDays-D7TXt3rl.js", "/assets/label-URIJR8-n.js", "/assets/index-CnVBUu3y.js", "/assets/en-US-DuGUIuVI.js", "/assets/index-BdQq_4o_.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/index": { "id": "routes/dashboard/index", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/index-CaSDUwWF.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/loader-B2rr_xqw.js", "/assets/auth-context-B5vrc64i.js", "/assets/language-context-DQqIPPDP.js", "/assets/use-task-ClqRGOoq.js", "/assets/useQuery-CkwzADaB.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/index-CNgNZYQm.js", "/assets/index-CnVBUu3y.js", "/assets/index-DgMzxt3E.js", "/assets/differenceInCalendarDays-D7TXt3rl.js", "/assets/useMutation-CUJSGQ7R.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/my-tasks": { "id": "routes/dashboard/my-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "my-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/my-tasks-BuLIA489.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/loader-B2rr_xqw.js", "/assets/language-context-DQqIPPDP.js", "/assets/badge-BR4L36Rg.js", "/assets/button-CYnDp3Q-.js", "/assets/card-DunmZ-Mm.js", "/assets/dropdown-menu-C2T7FvO_.js", "/assets/input-BPm_T_uW.js", "/assets/index-wu72o1Zw.js", "/assets/index-Dspms17g.js", "/assets/index-DTIwNWd2.js", "/assets/index-BhFca_hj.js", "/assets/Combination-BUzufNIs.js", "/assets/utils-DIzSUSji.js", "/assets/use-task-ClqRGOoq.js", "/assets/index-DgMzxt3E.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/translations-D806p-9r.js", "/assets/arrow-up-narrow-wide-DEjoBurv.js", "/assets/funnel-7g3NhcIA.js", "/assets/circle-check-c3MMHh6m.js", "/assets/clock-DtXE6-Nx.js", "/assets/createLucideIcon-DYOGCEiU.js", "/assets/index-BIYj4ebj.js", "/assets/index-CnVBUu3y.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/useQuery-CkwzADaB.js", "/assets/differenceInCalendarDays-D7TXt3rl.js", "/assets/useMutation-CUJSGQ7R.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/achieved": { "id": "routes/dashboard/achieved", "parentId": "routes/dashboard/dashboard-layout", "path": "achieved", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/achieved-FSEjGCq8.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/badge-BR4L36Rg.js", "/assets/button-CYnDp3Q-.js", "/assets/card-DunmZ-Mm.js", "/assets/input-BPm_T_uW.js", "/assets/select-CDLpyc4Q.js", "/assets/table-DP2a9-SM.js", "/assets/date-filters-lJ-rVYS_.js", "/assets/popover-Ct-mlSgl.js", "/assets/use-task-ClqRGOoq.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/translations-D806p-9r.js", "/assets/loader-B2rr_xqw.js", "/assets/createLucideIcon-DYOGCEiU.js", "/assets/utils-DIzSUSji.js", "/assets/circle-check-big-CiMFBpoa.js", "/assets/funnel-7g3NhcIA.js", "/assets/calendar-Dcbq6X4X.js", "/assets/eye-BcJvAFHL.js", "/assets/DayPicker-B79OQGaG.js", "/assets/index-CnVBUu3y.js", "/assets/index-BdQq_4o_.js", "/assets/index-wu72o1Zw.js", "/assets/index-BIYj4ebj.js", "/assets/index-DTIwNWd2.js", "/assets/index-BhFca_hj.js", "/assets/Combination-BUzufNIs.js", "/assets/endOfMonth-B9jd4p3w.js", "/assets/differenceInCalendarDays-D7TXt3rl.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/en-US-DuGUIuVI.js", "/assets/index-Dspms17g.js", "/assets/useQuery-CkwzADaB.js", "/assets/useMutation-CUJSGQ7R.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/all-tasks": { "id": "routes/dashboard/all-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "all-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/all-tasks-DJ0yp-DM.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/loader-B2rr_xqw.js", "/assets/language-context-DQqIPPDP.js", "/assets/badge-BR4L36Rg.js", "/assets/button-CYnDp3Q-.js", "/assets/card-DunmZ-Mm.js", "/assets/utils-DIzSUSji.js", "/assets/input-BPm_T_uW.js", "/assets/select-CDLpyc4Q.js", "/assets/table-DP2a9-SM.js", "/assets/avatar-B8lmOvvi.js", "/assets/date-filters-lJ-rVYS_.js", "/assets/popover-Ct-mlSgl.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/translations-D806p-9r.js", "/assets/auth-context-B5vrc64i.js", "/assets/use-task-ClqRGOoq.js", "/assets/circle-alert-CzTjZiAb.js", "/assets/calendar-Dcbq6X4X.js", "/assets/arrow-up-narrow-wide-DEjoBurv.js", "/assets/eye-BcJvAFHL.js", "/assets/DayPicker-B79OQGaG.js", "/assets/index-CnVBUu3y.js", "/assets/index-BdQq_4o_.js", "/assets/index-wu72o1Zw.js", "/assets/index-BIYj4ebj.js", "/assets/index-DTIwNWd2.js", "/assets/index-BhFca_hj.js", "/assets/Combination-BUzufNIs.js", "/assets/createLucideIcon-DYOGCEiU.js", "/assets/endOfMonth-B9jd4p3w.js", "/assets/differenceInCalendarDays-D7TXt3rl.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/en-US-DuGUIuVI.js", "/assets/index-Dspms17g.js", "/assets/index-CNgNZYQm.js", "/assets/index-DgMzxt3E.js", "/assets/useQuery-CkwzADaB.js", "/assets/useMutation-CUJSGQ7R.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/manager-tasks": { "id": "routes/dashboard/manager-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "manager-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/manager-tasks-DWgkxhDb.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/useQuery-CkwzADaB.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/badge-BR4L36Rg.js", "/assets/card-DunmZ-Mm.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/auth-context-B5vrc64i.js", "/assets/language-context-DQqIPPDP.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/user-DIG-VwFC.js", "/assets/star-Cq7vPmKH.js", "/assets/calendar-Dcbq6X4X.js", "/assets/clock-DtXE6-Nx.js", "/assets/differenceInCalendarDays-D7TXt3rl.js", "/assets/utils-DIzSUSji.js", "/assets/index-CNgNZYQm.js", "/assets/index-CnVBUu3y.js", "/assets/index-DgMzxt3E.js", "/assets/createLucideIcon-DYOGCEiU.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/important-tasks": { "id": "routes/dashboard/important-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "important-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/important-tasks-Bm3yTOL-.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/useQuery-CkwzADaB.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/badge-BR4L36Rg.js", "/assets/card-DunmZ-Mm.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/auth-context-B5vrc64i.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/star-Cq7vPmKH.js", "/assets/createLucideIcon-DYOGCEiU.js", "/assets/user-DIG-VwFC.js", "/assets/calendar-Dcbq6X4X.js", "/assets/clock-DtXE6-Nx.js", "/assets/differenceInCalendarDays-D7TXt3rl.js", "/assets/utils-DIzSUSji.js", "/assets/index-CNgNZYQm.js", "/assets/index-CnVBUu3y.js", "/assets/index-DgMzxt3E.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/analytics": { "id": "routes/dashboard/analytics", "parentId": "routes/dashboard/dashboard-layout", "path": "analytics", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/analytics-GQ0ZZO5G.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/loader-B2rr_xqw.js", "/assets/card-DunmZ-Mm.js", "/assets/index-wu72o1Zw.js", "/assets/index-DTIwNWd2.js", "/assets/utils-DIzSUSji.js", "/assets/button-CYnDp3Q-.js", "/assets/select-CDLpyc4Q.js", "/assets/auth-context-B5vrc64i.js", "/assets/useQuery-CkwzADaB.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/language-context-DQqIPPDP.js", "/assets/circle-alert-CzTjZiAb.js", "/assets/createLucideIcon-DYOGCEiU.js", "/assets/circle-check-big-CiMFBpoa.js", "/assets/clock-DtXE6-Nx.js", "/assets/index-CnVBUu3y.js", "/assets/index-BdQq_4o_.js", "/assets/index-BIYj4ebj.js", "/assets/index-BhFca_hj.js", "/assets/Combination-BUzufNIs.js", "/assets/index-CNgNZYQm.js", "/assets/index-DgMzxt3E.js", "/assets/differenceInCalendarDays-D7TXt3rl.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/members": { "id": "routes/dashboard/members", "parentId": "routes/dashboard/dashboard-layout", "path": "members", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/members-B4qoE9Td.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/index-CNgNZYQm.js", "/assets/loader-B2rr_xqw.js", "/assets/avatar-B8lmOvvi.js", "/assets/badge-BR4L36Rg.js", "/assets/button-CYnDp3Q-.js", "/assets/card-DunmZ-Mm.js", "/assets/dropdown-menu-C2T7FvO_.js", "/assets/input-BPm_T_uW.js", "/assets/select-CDLpyc4Q.js", "/assets/table-DP2a9-SM.js", "/assets/dialog-Bw6wHjQP.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/auth-context-B5vrc64i.js", "/assets/useQuery-CkwzADaB.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/useMutation-CUJSGQ7R.js", "/assets/circle-alert-CzTjZiAb.js", "/assets/users-C3qiH94-.js", "/assets/createLucideIcon-DYOGCEiU.js", "/assets/shield-DZkN-RC5.js", "/assets/user-DIG-VwFC.js", "/assets/clock-DtXE6-Nx.js", "/assets/circle-check-big-CiMFBpoa.js", "/assets/settings-WfLMetyi.js", "/assets/index-CnVBUu3y.js", "/assets/index-wu72o1Zw.js", "/assets/index-DTIwNWd2.js", "/assets/utils-DIzSUSji.js", "/assets/Combination-BUzufNIs.js", "/assets/index-BIYj4ebj.js", "/assets/index-BhFca_hj.js", "/assets/index-Dspms17g.js", "/assets/index-BdQq_4o_.js", "/assets/index-DgMzxt3E.js", "/assets/differenceInCalendarDays-D7TXt3rl.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/workspace-setting": { "id": "routes/dashboard/workspace-setting", "parentId": "routes/dashboard/dashboard-layout", "path": "settings", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/workspace-setting-D1Zm2cOE.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/button-CYnDp3Q-.js", "/assets/card-DunmZ-Mm.js", "/assets/input-BPm_T_uW.js", "/assets/label-URIJR8-n.js", "/assets/separator-CWSlA8lv.js", "/assets/auth-context-B5vrc64i.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/index-CNgNZYQm.js", "/assets/settings-WfLMetyi.js", "/assets/createLucideIcon-DYOGCEiU.js", "/assets/user-DIG-VwFC.js", "/assets/shield-DZkN-RC5.js", "/assets/bell-BXNMs8qH.js", "/assets/utils-DIzSUSji.js", "/assets/index-DTIwNWd2.js", "/assets/index-CnVBUu3y.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/index-DgMzxt3E.js", "/assets/differenceInCalendarDays-D7TXt3rl.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/task.$taskId": { "id": "routes/dashboard/task.$taskId", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/task/:taskId", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/task._taskId-DnkzHlIi.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/useQuery-CkwzADaB.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/useMutation-CUJSGQ7R.js", "/assets/use-task-ClqRGOoq.js", "/assets/loader-B2rr_xqw.js", "/assets/badge-BR4L36Rg.js", "/assets/button-CYnDp3Q-.js", "/assets/card-DunmZ-Mm.js", "/assets/input-BPm_T_uW.js", "/assets/select-CDLpyc4Q.js", "/assets/dialog-Bw6wHjQP.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/translations-D806p-9r.js", "/assets/auth-context-B5vrc64i.js", "/assets/index-CNgNZYQm.js", "/assets/loader-circle-DPdm6C66.js", "/assets/createLucideIcon-DYOGCEiU.js", "/assets/textarea-2qDDOoVt.js", "/assets/avatar-B8lmOvvi.js", "/assets/scroll-area-N5jEjwpk.js", "/assets/separator-CWSlA8lv.js", "/assets/popover-Ct-mlSgl.js", "/assets/index-DgMzxt3E.js", "/assets/formatDistanceToNow-DfO8AiA2.js", "/assets/download-D4F4ZKAG.js", "/assets/eye-BcJvAFHL.js", "/assets/circle-check-c3MMHh6m.js", "/assets/circle-check-big-CiMFBpoa.js", "/assets/arrow-left-BZk8-X3l.js", "/assets/star-Cq7vPmKH.js", "/assets/user-DIG-VwFC.js", "/assets/users-C3qiH94-.js", "/assets/calendar-Dcbq6X4X.js", "/assets/clock-DtXE6-Nx.js", "/assets/differenceInCalendarDays-D7TXt3rl.js", "/assets/utils-DIzSUSji.js", "/assets/index-CnVBUu3y.js", "/assets/index-BdQq_4o_.js", "/assets/index-wu72o1Zw.js", "/assets/index-BIYj4ebj.js", "/assets/index-DTIwNWd2.js", "/assets/index-BhFca_hj.js", "/assets/Combination-BUzufNIs.js", "/assets/index-Dspms17g.js", "/assets/en-US-DuGUIuVI.js", "/assets/endOfMonth-B9jd4p3w.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/user/user-layout": { "id": "routes/user/user-layout", "parentId": "root", "path": void 0, "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/user-layout-DDp6kvAX.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/loader-B2rr_xqw.js", "/assets/auth-context-B5vrc64i.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/index-CNgNZYQm.js", "/assets/index-CnVBUu3y.js", "/assets/index-DgMzxt3E.js", "/assets/differenceInCalendarDays-D7TXt3rl.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/user/notifications": { "id": "routes/user/notifications", "parentId": "routes/user/user-layout", "path": "user/notifications", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/notifications-oiJKwezn.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/index-CNgNZYQm.js", "/assets/loader-B2rr_xqw.js", "/assets/use-user-TsMmcXVD.js", "/assets/avatar-B8lmOvvi.js", "/assets/badge-BR4L36Rg.js", "/assets/button-CYnDp3Q-.js", "/assets/scroll-area-N5jEjwpk.js", "/assets/formatDistanceToNow-DfO8AiA2.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/index-CnVBUu3y.js", "/assets/useQuery-CkwzADaB.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/differenceInCalendarDays-D7TXt3rl.js", "/assets/useMutation-CUJSGQ7R.js", "/assets/auth-context-B5vrc64i.js", "/assets/index-DgMzxt3E.js", "/assets/index-wu72o1Zw.js", "/assets/index-DTIwNWd2.js", "/assets/utils-DIzSUSji.js", "/assets/index-Dspms17g.js", "/assets/index-BhFca_hj.js", "/assets/index-BdQq_4o_.js", "/assets/en-US-DuGUIuVI.js", "/assets/endOfMonth-B9jd4p3w.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/user/profile": { "id": "routes/user/profile", "parentId": "routes/user/user-layout", "path": "user/profile", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/profile-CnQ6H_SM.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/form-BmyV6FyK.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/index-CNgNZYQm.js", "/assets/loader-B2rr_xqw.js", "/assets/card-DunmZ-Mm.js", "/assets/button-CYnDp3Q-.js", "/assets/input-BPm_T_uW.js", "/assets/label-URIJR8-n.js", "/assets/use-user-TsMmcXVD.js", "/assets/dialog-Bw6wHjQP.js", "/assets/loader-circle-DPdm6C66.js", "/assets/alert-DlLWaqXv.js", "/assets/avatar-B8lmOvvi.js", "/assets/separator-CWSlA8lv.js", "/assets/auth-context-B5vrc64i.js", "/assets/circle-alert-CzTjZiAb.js", "/assets/utils-DIzSUSji.js", "/assets/index-CnVBUu3y.js", "/assets/index-DTIwNWd2.js", "/assets/useQuery-CkwzADaB.js", "/assets/differenceInCalendarDays-D7TXt3rl.js", "/assets/useMutation-CUJSGQ7R.js", "/assets/index-wu72o1Zw.js", "/assets/Combination-BUzufNIs.js", "/assets/index-Dspms17g.js", "/assets/createLucideIcon-DYOGCEiU.js", "/assets/index-DgMzxt3E.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/my-tasks": { "id": "routes/my-tasks", "parentId": "root", "path": "my-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/my-tasks-Bjv4IjKn.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/chunk-D4RADZKF-By21buN-.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/reset-password": { "id": "routes/auth/reset-password", "parentId": "root", "path": "reset-password", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/reset-password-DPBtiod4.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/form-BmyV6FyK.js", "/assets/button-CYnDp3Q-.js", "/assets/card-DunmZ-Mm.js", "/assets/input-BPm_T_uW.js", "/assets/alert-DlLWaqXv.js", "/assets/fetch-utils-CEdl9sdl.js", "/assets/schema-vgN0g95I.js", "/assets/use-auth-BFmN1zjT.js", "/assets/arrow-left-BZk8-X3l.js", "/assets/circle-check-c3MMHh6m.js", "/assets/circle-alert-CzTjZiAb.js", "/assets/loader-circle-DPdm6C66.js", "/assets/utils-DIzSUSji.js", "/assets/label-URIJR8-n.js", "/assets/index-DTIwNWd2.js", "/assets/index-CnVBUu3y.js", "/assets/useMutation-CUJSGQ7R.js", "/assets/index-CNgNZYQm.js", "/assets/createLucideIcon-DYOGCEiU.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/not-found": { "id": "routes/not-found", "parentId": "root", "path": "*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/not-found-DiiQsBPz.js", "imports": ["/assets/with-props-DyG_vBPJ.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-D4RADZKF-By21buN-.js", "/assets/button-CYnDp3Q-.js", "/assets/utils-DIzSUSji.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 } }, "url": "/assets/manifest-f0082007.js", "version": "f0082007", "sri": void 0 };
+const serverManifest = { "entry": { "module": "/assets/entry.client-ChfswXNM.js", "imports": ["/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/index-DPgvUOtM.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": true, "module": "/assets/root-BRWexPcq.js", "imports": ["/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/index-DPgvUOtM.js", "/assets/with-props-DrY_Tf_H.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/language-context-y1Oex2Hk.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-BfaWVdkx.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": ["/assets/root-D763u9Ot.css"], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/auth-layout": { "id": "routes/auth/auth-layout", "parentId": "root", "path": void 0, "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/auth-layout-CDQBsl64.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/loader-CSFfw6Ah.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-BfaWVdkx.js", "/assets/index-DPgvUOtM.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/root/welcome": { "id": "routes/root/welcome", "parentId": "routes/auth/auth-layout", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/welcome-Cq5HLbdJ.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/button-XR5pxM8N.js", "/assets/circle-check-big-BgF8B2gk.js", "/assets/users-CgampM0I.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/download-DM7fB3e0.js", "/assets/utils-Banh-JWj.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/sign-up": { "id": "routes/auth/sign-up", "parentId": "routes/auth/auth-layout", "path": "sign-up", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/sign-up-_Mg5C6s5.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/form-D6FB8BOG.js", "/assets/index-BfaWVdkx.js", "/assets/alert-BKRtGY9T.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/input-CJCQfRcV.js", "/assets/use-auth-C3zh5VIL.js", "/assets/schema-C4qaBX0V.js", "/assets/toast-messages-BMbI_7GX.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/circle-check-big-BgF8B2gk.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/utils-Banh-JWj.js", "/assets/label-DaFJ9alP.js", "/assets/index-DG-_N8_5.js", "/assets/index-DPgvUOtM.js", "/assets/useMutation-68EnYOhG.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/createLucideIcon-BJPWR32b.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/sign-in": { "id": "routes/auth/sign-in", "parentId": "routes/auth/auth-layout", "path": "sign-in", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/sign-in-BCfcZyBJ.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/form-D6FB8BOG.js", "/assets/index-BfaWVdkx.js", "/assets/use-auth-C3zh5VIL.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/alert-BKRtGY9T.js", "/assets/button-XR5pxM8N.js", "/assets/input-CJCQfRcV.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/card-8YhapM5f.js", "/assets/schema-C4qaBX0V.js", "/assets/toast-messages-BMbI_7GX.js", "/assets/utils-Banh-JWj.js", "/assets/label-DaFJ9alP.js", "/assets/index-DG-_N8_5.js", "/assets/index-DPgvUOtM.js", "/assets/useMutation-68EnYOhG.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/createLucideIcon-BJPWR32b.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/forgot-password": { "id": "routes/auth/forgot-password", "parentId": "routes/auth/auth-layout", "path": "forgot-password", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/forgot-password-DmInC5o9.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/button-XR5pxM8N.js", "/assets/input-CJCQfRcV.js", "/assets/card-8YhapM5f.js", "/assets/form-D6FB8BOG.js", "/assets/alert-BKRtGY9T.js", "/assets/use-auth-C3zh5VIL.js", "/assets/arrow-left-DiY0Ij7t.js", "/assets/circle-check-DquTaWt4.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/utils-Banh-JWj.js", "/assets/label-DaFJ9alP.js", "/assets/index-DG-_N8_5.js", "/assets/index-DPgvUOtM.js", "/assets/useMutation-68EnYOhG.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-BfaWVdkx.js", "/assets/createLucideIcon-BJPWR32b.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/verify-email": { "id": "routes/auth/verify-email", "parentId": "routes/auth/auth-layout", "path": "verify-email", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/verify-email-D_i7ugKL.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/use-auth-C3zh5VIL.js", "/assets/arrow-left-DiY0Ij7t.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/circle-check-DquTaWt4.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/utils-Banh-JWj.js", "/assets/useMutation-68EnYOhG.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-BfaWVdkx.js", "/assets/index-DPgvUOtM.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/callback": { "id": "routes/auth/callback", "parentId": "routes/auth/auth-layout", "path": "auth/callback", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/callback-DkoJF_0f.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/index-BfaWVdkx.js", "/assets/loader-CSFfw6Ah.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/toast-messages-BMbI_7GX.js", "/assets/index-DPgvUOtM.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/dashboard-layout": { "id": "routes/dashboard/dashboard-layout", "parentId": "root", "path": void 0, "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": true, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/dashboard-layout-jJLnHQ-j.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/avatar-dkEnamGe.js", "/assets/button-XR5pxM8N.js", "/assets/dropdown-menu-DSlBohCQ.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/language-context-y1Oex2Hk.js", "/assets/form-D6FB8BOG.js", "/assets/index-BfaWVdkx.js", "/assets/useQuery-WJV2oBDk.js", "/assets/utils-Banh-JWj.js", "/assets/DayPicker-CTTChjSm.js", "/assets/popover-DpkBJQAM.js", "/assets/index-B3RsySn-.js", "/assets/Combination-4wCguz1d.js", "/assets/select-SnUs58Gt.js", "/assets/index-Bl6jwTEF.js", "/assets/index-B5yWDCnx.js", "/assets/index-DG-_N8_5.js", "/assets/dialog-BxxNwsNx.js", "/assets/input-CJCQfRcV.js", "/assets/textarea-zYoYtde5.js", "/assets/use-task-DdLHKsnT.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/calendar-1DqX6RAU.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/bell-DUF-WIjj.js", "/assets/scroll-area-Dah6NjMx.js", "/assets/user-D8gbe0zo.js", "/assets/star-CF1HDe57.js", "/assets/users-CgampM0I.js", "/assets/circle-check-DquTaWt4.js", "/assets/settings-DVPXezI9.js", "/assets/loader-CSFfw6Ah.js", "/assets/useMutation-68EnYOhG.js", "/assets/schema-C4qaBX0V.js", "/assets/card-8YhapM5f.js", "/assets/badge-Bm2oiHoJ.js", "/assets/index-CQDohrZ2.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/label-DaFJ9alP.js", "/assets/index-DPgvUOtM.js", "/assets/en-US-DuGUIuVI.js", "/assets/index-BdQq_4o_.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/index": { "id": "routes/dashboard/index", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/index-CjOfJfsX.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/loader-CSFfw6Ah.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/language-context-y1Oex2Hk.js", "/assets/use-task-DdLHKsnT.js", "/assets/useQuery-WJV2oBDk.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/index-BfaWVdkx.js", "/assets/index-DPgvUOtM.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/useMutation-68EnYOhG.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/my-tasks": { "id": "routes/dashboard/my-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/my-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/my-tasks-vww1U5y7.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/loader-CSFfw6Ah.js", "/assets/language-context-y1Oex2Hk.js", "/assets/badge-Bm2oiHoJ.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/dropdown-menu-DSlBohCQ.js", "/assets/input-CJCQfRcV.js", "/assets/index-B3RsySn-.js", "/assets/index-B5yWDCnx.js", "/assets/index-DG-_N8_5.js", "/assets/index-CQDohrZ2.js", "/assets/Combination-4wCguz1d.js", "/assets/utils-Banh-JWj.js", "/assets/use-task-DdLHKsnT.js", "/assets/index-umI_Eshd.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/translations-D806p-9r.js", "/assets/arrow-up-narrow-wide-7UJo0gks.js", "/assets/funnel-CX0Olupr.js", "/assets/circle-check-DquTaWt4.js", "/assets/clock-C5QVHLxB.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/index-Bl6jwTEF.js", "/assets/index-DPgvUOtM.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/useQuery-WJV2oBDk.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/useMutation-68EnYOhG.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/achieved": { "id": "routes/dashboard/achieved", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/achieved", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/achieved-DhEHIUvr.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/badge-Bm2oiHoJ.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/input-CJCQfRcV.js", "/assets/select-SnUs58Gt.js", "/assets/table-BqJU3lrN.js", "/assets/date-filters-C8xhM8iO.js", "/assets/popover-DpkBJQAM.js", "/assets/use-task-DdLHKsnT.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/translations-D806p-9r.js", "/assets/loader-CSFfw6Ah.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/utils-Banh-JWj.js", "/assets/circle-check-big-BgF8B2gk.js", "/assets/funnel-CX0Olupr.js", "/assets/calendar-1DqX6RAU.js", "/assets/eye-CU1csZNp.js", "/assets/DayPicker-CTTChjSm.js", "/assets/index-DPgvUOtM.js", "/assets/index-BdQq_4o_.js", "/assets/index-B3RsySn-.js", "/assets/index-Bl6jwTEF.js", "/assets/index-DG-_N8_5.js", "/assets/index-CQDohrZ2.js", "/assets/Combination-4wCguz1d.js", "/assets/endOfMonth-CFYlpobd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/en-US-DuGUIuVI.js", "/assets/index-B5yWDCnx.js", "/assets/useQuery-WJV2oBDk.js", "/assets/useMutation-68EnYOhG.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/all-tasks": { "id": "routes/dashboard/all-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/all-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/all-tasks-BD5BoWlp.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/loader-CSFfw6Ah.js", "/assets/language-context-y1Oex2Hk.js", "/assets/badge-Bm2oiHoJ.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/utils-Banh-JWj.js", "/assets/input-CJCQfRcV.js", "/assets/select-SnUs58Gt.js", "/assets/table-BqJU3lrN.js", "/assets/avatar-dkEnamGe.js", "/assets/date-filters-C8xhM8iO.js", "/assets/popover-DpkBJQAM.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/translations-D806p-9r.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/use-task-DdLHKsnT.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/calendar-1DqX6RAU.js", "/assets/arrow-up-narrow-wide-7UJo0gks.js", "/assets/eye-CU1csZNp.js", "/assets/DayPicker-CTTChjSm.js", "/assets/index-DPgvUOtM.js", "/assets/index-BdQq_4o_.js", "/assets/index-B3RsySn-.js", "/assets/index-Bl6jwTEF.js", "/assets/index-DG-_N8_5.js", "/assets/index-CQDohrZ2.js", "/assets/Combination-4wCguz1d.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/endOfMonth-CFYlpobd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/en-US-DuGUIuVI.js", "/assets/index-B5yWDCnx.js", "/assets/index-BfaWVdkx.js", "/assets/index-umI_Eshd.js", "/assets/useQuery-WJV2oBDk.js", "/assets/useMutation-68EnYOhG.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/manager-tasks": { "id": "routes/dashboard/manager-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/manager-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/manager-tasks-yRZO0zUn.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/useQuery-WJV2oBDk.js", "/assets/badge-Bm2oiHoJ.js", "/assets/card-8YhapM5f.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/language-context-y1Oex2Hk.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/user-D8gbe0zo.js", "/assets/star-CF1HDe57.js", "/assets/calendar-1DqX6RAU.js", "/assets/clock-C5QVHLxB.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/utils-Banh-JWj.js", "/assets/index-BfaWVdkx.js", "/assets/index-DPgvUOtM.js", "/assets/index-umI_Eshd.js", "/assets/createLucideIcon-BJPWR32b.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/important-tasks": { "id": "routes/dashboard/important-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/important-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/important-tasks-JFrOGefJ.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/useQuery-WJV2oBDk.js", "/assets/badge-Bm2oiHoJ.js", "/assets/card-8YhapM5f.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/star-CF1HDe57.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/user-D8gbe0zo.js", "/assets/calendar-1DqX6RAU.js", "/assets/clock-C5QVHLxB.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/utils-Banh-JWj.js", "/assets/index-BfaWVdkx.js", "/assets/index-DPgvUOtM.js", "/assets/index-umI_Eshd.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/analytics": { "id": "routes/dashboard/analytics", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/analytics", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/analytics-DuqsssSC.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/loader-CSFfw6Ah.js", "/assets/card-8YhapM5f.js", "/assets/index-B3RsySn-.js", "/assets/index-DG-_N8_5.js", "/assets/utils-Banh-JWj.js", "/assets/button-XR5pxM8N.js", "/assets/select-SnUs58Gt.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/useQuery-WJV2oBDk.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/language-context-y1Oex2Hk.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/circle-check-big-BgF8B2gk.js", "/assets/clock-C5QVHLxB.js", "/assets/index-DPgvUOtM.js", "/assets/index-BdQq_4o_.js", "/assets/index-Bl6jwTEF.js", "/assets/index-CQDohrZ2.js", "/assets/Combination-4wCguz1d.js", "/assets/index-BfaWVdkx.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/members": { "id": "routes/dashboard/members", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/members", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/members-CWfvePCY.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/index-BfaWVdkx.js", "/assets/loader-CSFfw6Ah.js", "/assets/avatar-dkEnamGe.js", "/assets/badge-Bm2oiHoJ.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/dropdown-menu-DSlBohCQ.js", "/assets/input-CJCQfRcV.js", "/assets/select-SnUs58Gt.js", "/assets/table-BqJU3lrN.js", "/assets/dialog-BxxNwsNx.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/useQuery-WJV2oBDk.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/useMutation-68EnYOhG.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/users-CgampM0I.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/shield-C_AkyCic.js", "/assets/user-D8gbe0zo.js", "/assets/clock-C5QVHLxB.js", "/assets/circle-check-big-BgF8B2gk.js", "/assets/settings-DVPXezI9.js", "/assets/index-DPgvUOtM.js", "/assets/index-B3RsySn-.js", "/assets/index-DG-_N8_5.js", "/assets/utils-Banh-JWj.js", "/assets/Combination-4wCguz1d.js", "/assets/index-Bl6jwTEF.js", "/assets/index-CQDohrZ2.js", "/assets/index-B5yWDCnx.js", "/assets/index-BdQq_4o_.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/workspace-setting": { "id": "routes/dashboard/workspace-setting", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/settings", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/workspace-setting-Bu4jjtox.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/input-CJCQfRcV.js", "/assets/label-DaFJ9alP.js", "/assets/separator-BnDnEvZ9.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/index-BfaWVdkx.js", "/assets/settings-DVPXezI9.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/user-D8gbe0zo.js", "/assets/shield-C_AkyCic.js", "/assets/bell-DUF-WIjj.js", "/assets/utils-Banh-JWj.js", "/assets/index-DG-_N8_5.js", "/assets/index-DPgvUOtM.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/task.$taskId": { "id": "routes/dashboard/task.$taskId", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/task/:taskId", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/task._taskId-CtFKHALP.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/useQuery-WJV2oBDk.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/useMutation-68EnYOhG.js", "/assets/use-task-DdLHKsnT.js", "/assets/loader-CSFfw6Ah.js", "/assets/badge-Bm2oiHoJ.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/input-CJCQfRcV.js", "/assets/select-SnUs58Gt.js", "/assets/dialog-BxxNwsNx.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/translations-D806p-9r.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/index-BfaWVdkx.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/textarea-zYoYtde5.js", "/assets/avatar-dkEnamGe.js", "/assets/scroll-area-Dah6NjMx.js", "/assets/separator-BnDnEvZ9.js", "/assets/popover-DpkBJQAM.js", "/assets/index-umI_Eshd.js", "/assets/formatDistanceToNow-CPvBVtqK.js", "/assets/download-DM7fB3e0.js", "/assets/eye-CU1csZNp.js", "/assets/circle-check-DquTaWt4.js", "/assets/circle-check-big-BgF8B2gk.js", "/assets/arrow-left-DiY0Ij7t.js", "/assets/star-CF1HDe57.js", "/assets/user-D8gbe0zo.js", "/assets/users-CgampM0I.js", "/assets/calendar-1DqX6RAU.js", "/assets/clock-C5QVHLxB.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/utils-Banh-JWj.js", "/assets/index-DPgvUOtM.js", "/assets/index-BdQq_4o_.js", "/assets/index-B3RsySn-.js", "/assets/index-Bl6jwTEF.js", "/assets/index-DG-_N8_5.js", "/assets/index-CQDohrZ2.js", "/assets/Combination-4wCguz1d.js", "/assets/index-B5yWDCnx.js", "/assets/en-US-DuGUIuVI.js", "/assets/endOfMonth-CFYlpobd.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/user/user-layout": { "id": "routes/user/user-layout", "parentId": "root", "path": void 0, "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/user-layout-CnEKLxLm.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/loader-CSFfw6Ah.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-BfaWVdkx.js", "/assets/index-DPgvUOtM.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/user/notifications": { "id": "routes/user/notifications", "parentId": "routes/user/user-layout", "path": "user/notifications", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/notifications-B2YbO_S_.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/index-BfaWVdkx.js", "/assets/loader-CSFfw6Ah.js", "/assets/use-user-DwE4U3dx.js", "/assets/avatar-dkEnamGe.js", "/assets/badge-Bm2oiHoJ.js", "/assets/button-XR5pxM8N.js", "/assets/scroll-area-Dah6NjMx.js", "/assets/formatDistanceToNow-CPvBVtqK.js", "/assets/index-DPgvUOtM.js", "/assets/useQuery-WJV2oBDk.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/useMutation-68EnYOhG.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/index-umI_Eshd.js", "/assets/index-B3RsySn-.js", "/assets/index-DG-_N8_5.js", "/assets/utils-Banh-JWj.js", "/assets/index-B5yWDCnx.js", "/assets/index-CQDohrZ2.js", "/assets/index-BdQq_4o_.js", "/assets/en-US-DuGUIuVI.js", "/assets/endOfMonth-CFYlpobd.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/user/profile": { "id": "routes/user/profile", "parentId": "routes/user/user-layout", "path": "user/profile", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/profile-DBbyh0j9.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/form-D6FB8BOG.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-BfaWVdkx.js", "/assets/loader-CSFfw6Ah.js", "/assets/card-8YhapM5f.js", "/assets/button-XR5pxM8N.js", "/assets/input-CJCQfRcV.js", "/assets/label-DaFJ9alP.js", "/assets/use-user-DwE4U3dx.js", "/assets/dialog-BxxNwsNx.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/alert-BKRtGY9T.js", "/assets/avatar-dkEnamGe.js", "/assets/separator-BnDnEvZ9.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/utils-Banh-JWj.js", "/assets/index-DPgvUOtM.js", "/assets/index-DG-_N8_5.js", "/assets/useQuery-WJV2oBDk.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/useMutation-68EnYOhG.js", "/assets/index-B3RsySn-.js", "/assets/Combination-4wCguz1d.js", "/assets/index-B5yWDCnx.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/index-umI_Eshd.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/reset-password": { "id": "routes/auth/reset-password", "parentId": "root", "path": "reset-password", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/reset-password-BUsphyfM.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/form-D6FB8BOG.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/input-CJCQfRcV.js", "/assets/alert-BKRtGY9T.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/schema-C4qaBX0V.js", "/assets/use-auth-C3zh5VIL.js", "/assets/arrow-left-DiY0Ij7t.js", "/assets/circle-check-DquTaWt4.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/utils-Banh-JWj.js", "/assets/label-DaFJ9alP.js", "/assets/index-DG-_N8_5.js", "/assets/index-DPgvUOtM.js", "/assets/useMutation-68EnYOhG.js", "/assets/index-BfaWVdkx.js", "/assets/createLucideIcon-BJPWR32b.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/not-found": { "id": "routes/not-found", "parentId": "root", "path": "*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/not-found-CONYcL5q.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/button-XR5pxM8N.js", "/assets/utils-Banh-JWj.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 } }, "url": "/assets/manifest-1b5d08f6.js", "version": "1b5d08f6", "sri": void 0 };
 const assetsBuildDirectory = "build/client";
 const basename = "/";
 const future = { "unstable_middleware": false, "unstable_optimizeDeps": false, "unstable_splitRouteModules": false, "unstable_subResourceIntegrity": false, "unstable_viteEnvironmentApi": false };
@@ -11915,7 +12094,7 @@ const routes = {
   "routes/dashboard/my-tasks": {
     id: "routes/dashboard/my-tasks",
     parentId: "routes/dashboard/dashboard-layout",
-    path: "my-tasks",
+    path: "dashboard/my-tasks",
     index: void 0,
     caseSensitive: void 0,
     module: route10
@@ -11923,7 +12102,7 @@ const routes = {
   "routes/dashboard/achieved": {
     id: "routes/dashboard/achieved",
     parentId: "routes/dashboard/dashboard-layout",
-    path: "achieved",
+    path: "dashboard/achieved",
     index: void 0,
     caseSensitive: void 0,
     module: route11
@@ -11931,7 +12110,7 @@ const routes = {
   "routes/dashboard/all-tasks": {
     id: "routes/dashboard/all-tasks",
     parentId: "routes/dashboard/dashboard-layout",
-    path: "all-tasks",
+    path: "dashboard/all-tasks",
     index: void 0,
     caseSensitive: void 0,
     module: route12
@@ -11939,7 +12118,7 @@ const routes = {
   "routes/dashboard/manager-tasks": {
     id: "routes/dashboard/manager-tasks",
     parentId: "routes/dashboard/dashboard-layout",
-    path: "manager-tasks",
+    path: "dashboard/manager-tasks",
     index: void 0,
     caseSensitive: void 0,
     module: route13
@@ -11947,7 +12126,7 @@ const routes = {
   "routes/dashboard/important-tasks": {
     id: "routes/dashboard/important-tasks",
     parentId: "routes/dashboard/dashboard-layout",
-    path: "important-tasks",
+    path: "dashboard/important-tasks",
     index: void 0,
     caseSensitive: void 0,
     module: route14
@@ -11955,7 +12134,7 @@ const routes = {
   "routes/dashboard/analytics": {
     id: "routes/dashboard/analytics",
     parentId: "routes/dashboard/dashboard-layout",
-    path: "analytics",
+    path: "dashboard/analytics",
     index: void 0,
     caseSensitive: void 0,
     module: route15
@@ -11963,7 +12142,7 @@ const routes = {
   "routes/dashboard/members": {
     id: "routes/dashboard/members",
     parentId: "routes/dashboard/dashboard-layout",
-    path: "members",
+    path: "dashboard/members",
     index: void 0,
     caseSensitive: void 0,
     module: route16
@@ -11971,7 +12150,7 @@ const routes = {
   "routes/dashboard/workspace-setting": {
     id: "routes/dashboard/workspace-setting",
     parentId: "routes/dashboard/dashboard-layout",
-    path: "settings",
+    path: "dashboard/settings",
     index: void 0,
     caseSensitive: void 0,
     module: route17
@@ -12008,21 +12187,13 @@ const routes = {
     caseSensitive: void 0,
     module: route21
   },
-  "routes/my-tasks": {
-    id: "routes/my-tasks",
-    parentId: "root",
-    path: "my-tasks",
-    index: void 0,
-    caseSensitive: void 0,
-    module: route22
-  },
   "routes/auth/reset-password": {
     id: "routes/auth/reset-password",
     parentId: "root",
     path: "reset-password",
     index: void 0,
     caseSensitive: void 0,
-    module: route23
+    module: route22
   },
   "routes/not-found": {
     id: "routes/not-found",
@@ -12030,7 +12201,7 @@ const routes = {
     path: "*",
     index: void 0,
     caseSensitive: void 0,
-    module: route24
+    module: route23
   }
 };
 export {

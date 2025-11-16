@@ -122,6 +122,19 @@ const translations = {
     'tasks.unwatch': 'Не следить',
     'tasks.important_tasks': 'Важные задачи',
     
+    // Важные задачи страница
+    'important_tasks.title': 'Важные задачи',
+    'important_tasks.description': 'Задачи, отмеченные администраторами как важные',
+    'important_tasks.no_access': 'У вас нет доступа к этой странице. Только супер админы могут просматривать важные задачи.',
+    'important_tasks.no_tasks_title': 'Нет важных задач',
+    'important_tasks.no_tasks_description': 'Пока нет задач, отмеченных как важные',
+    'important_tasks.marked_important': 'Отмечено как важное',
+    'important_tasks.by_admin': 'администратором',
+    'important_tasks.assignees': 'исполнителей',
+    'important_tasks.assignee': 'исполнитель',
+    'important_tasks.manager': 'Менеджер:',
+    'important_tasks.not_specified': 'Не указан',
+    
     // Участники
     'members.remove_member': 'Удалить участника',
     'members.confirm_remove': 'Вы уверены, что хотите удалить этого участника?',
@@ -355,6 +368,19 @@ const translations = {
     'tasks.watch': 'Назорат кардан',
     'tasks.unwatch': 'Назорат накардан',
     'tasks.important_tasks': 'Вазифаҳои муҳим',
+    
+    // Важные задачи страница
+    'important_tasks.title': 'Вазифаҳои муҳим',
+    'important_tasks.description': 'Вазифаҳое, ки маъмурон ҳамчун муҳим қайд кардаанд',
+    'important_tasks.no_access': 'Шумо ба ин саҳифа дастрасӣ надоред. Танҳо супер маъмурон метавонанд вазифаҳои муҳимро бубинанд.',
+    'important_tasks.no_tasks_title': 'Вазифаҳои муҳим нестанд',
+    'important_tasks.no_tasks_description': 'То ҳол вазифаҳое, ки ҳамчун муҳим қайд шуда бошанд, нестанд',
+    'important_tasks.marked_important': 'Ҳамчун муҳим қайд шуда',
+    'important_tasks.by_admin': 'маъмур',
+    'important_tasks.assignees': 'иҷрокунандагон',
+    'important_tasks.assignee': 'иҷрокунанда',
+    'important_tasks.manager': 'Менеҷер:',
+    'important_tasks.not_specified': 'Муайян нашуда',
     
     // Участники
     'members.remove_member': 'Иштирокчиро хориҷ кардан',
