@@ -27,8 +27,8 @@ const testPhoneNumbers = [
   "+992904631818",
 ];
 
-// Primary test number
-const testPhoneNumber = "+992557777509";
+// Primary test number (changed to user's phone)
+const testPhoneNumber = "+992905504866";
 
 // Test messages
 const testMessages = {
