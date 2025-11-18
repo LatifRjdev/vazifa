@@ -6,6 +6,7 @@ import {
   taskAttachments,
   taskWatchers,
   createTask,
+  createMultipleTasks,
   commentOnTask,
   createResponse,
   updateTaskStatus,
@@ -74,6 +75,25 @@ router.post(
     body: taskAttachmentSchema,
   }),
   taskAttachments
+);
+
+router.post(
+  "/create-multiple",
+  authenticateUser,
+  validateRequest({
+    body: z.object({
+      title: z.string().min(1),
+      tasks: z.array(z.object({
+        description: z.string().min(1),
+        dueDate: z.string().optional()
+      })).min(2),
+      status: z.enum(["To Do", "In Progress", "Done"]).optional(),
+      priority: z.enum(["High", "Medium", "Low"]).optional(),
+      assignees: z.array(z.string()).optional(),
+      responsibleManager: z.string().optional()
+    })
+  }),
+  createMultipleTasks
 );
 
 router.post(

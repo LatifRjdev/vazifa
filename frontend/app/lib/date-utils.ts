@@ -111,6 +111,38 @@ export const getRelativeTimeRussian = (date: string | Date): string => {
 };
 
 /**
+ * Get relative time in Tajik (like "2 рӯз пеш")
+ */
+export const getRelativeTimeTajik = (date: string | Date): string => {
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  const now = new Date();
+  const diffInMs = now.getTime() - dateObj.getTime();
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+  const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+
+  if (diffInDays > 0) {
+    if (diffInDays === 1) return "дирӯз";
+    if (diffInDays < 7) return `${diffInDays} рӯз пеш`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} ҳафта пеш`;
+    if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} моҳ пеш`;
+    return `${Math.floor(diffInDays / 365)} сол пеш`;
+  }
+
+  if (diffInHours > 0) {
+    if (diffInHours === 1) return "як соат пеш";
+    return `${diffInHours} соат пеш`;
+  }
+
+  if (diffInMinutes > 0) {
+    if (diffInMinutes === 1) return "як дақиқа пеш";
+    return `${diffInMinutes} дақиқа пеш`;
+  }
+
+  return "ҳозир";
+};
+
+/**
  * Check if date is overdue
  */
 export const isOverdue = (date: string | Date): boolean => {

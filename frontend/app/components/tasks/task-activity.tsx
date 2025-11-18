@@ -1,14 +1,16 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { formatDistanceToNow } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { fetchData } from "@/lib/fetch-utils";
+import { getRelativeTimeRussian, getRelativeTimeTajik } from "@/lib/date-utils";
+import { useLanguage } from "@/providers/language-context";
 import type { ActivityLog } from "@/types";
 import { Button } from "../ui/button";
 import { getActivityIcon } from "./task-icons";
 
 export const TaskActivity = ({ resourceId }: { resourceId: string }) => {
+  const { language } = useLanguage();
   const [page, setPage] = useState(1);
 
   const { data, isPending } = useQuery({
@@ -52,7 +54,9 @@ export const TaskActivity = ({ resourceId }: { resourceId: string }) => {
                 {activity?.details?.description}
               </p>
               <p className="text-xs text-muted-foreground">
-                {formatDistanceToNow(activity.createdAt)}
+                {language === 'tj' 
+                  ? getRelativeTimeTajik(activity.createdAt)
+                  : getRelativeTimeRussian(activity.createdAt)}
               </p>
             </div>
           </div>

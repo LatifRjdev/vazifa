@@ -1,5 +1,6 @@
 import { Types } from "mongoose";
 import { createNotification, recordActivity } from "../libs/index.js";
+import { sendEmail } from "../libs/send-emails.js";
 import ActivityLog from "../models/activity-logs.js";
 import Comment from "../models/comments.js";
 import Response from "../models/responses.js";
@@ -81,7 +82,7 @@ const commentOnTask = async (req, res) => {
       }
     });
 
-    // Create notifications
+    // Create notifications and send emails
     for (const userId of uniqueRecipients) {
       const notificationType = mentions.some(
         (m) => m.user.toString() === userId
@@ -109,6 +110,26 @@ const commentOnTask = async (req, res) => {
           actorId: req.user._id,
         }
       );
+      
+      // Отправить email уведомление
+      const recipient = await User.findById(userId);
+      if (recipient && recipient.email) {
+        const emailTitle = notificationType === "mentioned" 
+          ? "Вас упомянули в комментарии" 
+          : "Новый комментарий в задаче";
+        const emailMessage = notificationType === "mentioned"
+          ? `${req.user.name} упомянул вас в комментарии к задаче "${task.title}": ${commentText.substring(0, 100)}${commentText.length > 100 ? '...' : ''}`
+          : `${req.user.name} добавил комментарий к задаче "${task.title}": ${commentText.substring(0, 100)}${commentText.length > 100 ? '...' : ''}`;
+        
+        await sendEmail(
+          recipient.email,
+          emailTitle,
+          recipient.name,
+          emailMessage,
+          "Открыть задачу",
+          `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/task/${taskId}`
+        );
+      }
     }
 
     // Record activity
@@ -263,6 +284,19 @@ const createTask = async (req, res) => {
               actorId: req.user._id,
             }
           );
+          
+          // Отправить email уведомление
+          const assignee = await User.findById(userId);
+          if (assignee && assignee.email) {
+            await sendEmail(
+              assignee.email,
+              "Вам назначена новая задача",
+              assignee.name,
+              `${req.user.name} назначил вам новую задачу: "${title}". ${description ? 'Описание: ' + description : ''}`,
+              "Открыть задачу",
+              `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/task/${newTask._id}`
+            );
+          }
         }
       }
     }
@@ -279,6 +313,19 @@ const createTask = async (req, res) => {
           actorId: req.user._id,
         }
       );
+      
+      // Отправить email уведомление
+      const manager = await User.findById(responsibleManager);
+      if (manager && manager.email) {
+        await sendEmail(
+          manager.email,
+          "Вы назначены ответственным менеджером",
+          manager.name,
+          `${req.user.name} назначил вас ответственным менеджером задачи: "${title}". ${description ? 'Описание: ' + description : ''}`,
+          "Открыть задачу",
+          `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/task/${newTask._id}`
+        );
+      }
     }
 
     // Записать активность
@@ -918,13 +965,8 @@ const createResponse = async (req, res) => {
     task.responses.push(newResponse._id);
     await task.save();
 
-    // Уведомить создателя задачи и менеджеров
+    // Уведомить только менеджеров (не создателя задачи)
     const uniqueRecipients = new Set();
-
-    // Добавить создателя задачи
-    if (task.createdBy.toString() !== req.user._id.toString()) {
-      uniqueRecipients.add(task.createdBy.toString());
-    }
 
     // Добавить всех админов, супер админов и менеджеров
     const adminsAndManagers = await User.find({ role: { $in: ["admin", "super_admin", "manager"] } });
@@ -934,7 +976,7 @@ const createResponse = async (req, res) => {
       }
     });
 
-    // Создать уведомления
+    // Создать уведомления и отправить email
     for (const userId of uniqueRecipients) {
       await createNotification(
         userId,
@@ -947,6 +989,19 @@ const createResponse = async (req, res) => {
           actorId: req.user._id,
         }
       );
+      
+      // Отправить email уведомление менеджеру
+      const recipient = await User.findById(userId);
+      if (recipient && recipient.email) {
+        await sendEmail(
+          recipient.email,
+          "Новый ответ на задачу",
+          recipient.name,
+          `${req.user.name} ответил на задачу "${task.title}": ${text ? text.substring(0, 100) + (text.length > 100 ? '...' : '') : 'Добавил файлы'}`,
+          "Открыть задачу",
+          `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/task/${taskId}`
+        );
+      }
     }
 
     // Записать активность
@@ -1297,11 +1352,137 @@ const getMyManagerTasks = async (req, res) => {
   }
 };
 
+// Создать несколько задач с одним названием
+const createMultipleTasks = async (req, res) => {
+  try {
+    const { title, tasks, status, priority, assignees, responsibleManager } = req.body;
+
+    console.log('Создание мультизадач - пользователь:', req.user);
+    console.log('Количество задач:', tasks.length);
+
+    // Проверить права доступа
+    if (!["admin", "super_admin", "manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут создавать задачи." });
+    }
+
+    // Проверить что tasks это массив и содержит минимум 2 элемента
+    if (!Array.isArray(tasks) || tasks.length < 2) {
+      return res.status(400).json({ message: "Необходимо минимум 2 задачи для создания мультизадач." });
+    }
+
+    // Если указан ответственный менеджер, проверить что это действительно менеджер
+    if (responsibleManager) {
+      const manager = await User.findById(responsibleManager);
+      if (!manager || !["admin", "super_admin", "manager"].includes(manager.role)) {
+        return res.status(400).json({ message: "Ответственным может быть только менеджер, админ или супер админ." });
+      }
+    }
+
+    const createdTasks = [];
+
+    // Создать каждую задачу
+    for (let i = 0; i < tasks.length; i++) {
+      const taskItem = tasks[i];
+      
+      const newTask = await Task.create({
+        title: title,
+        description: `${i + 1}. ${taskItem.description}`,
+        status: status || "To Do",
+        priority: priority || "Medium",
+        assignees: assignees || [],
+        dueDate: taskItem.dueDate,
+        responsibleManager,
+        createdBy: req.user._id,
+        createdAt: new Date(),
+      });
+
+      await newTask.populate([
+        { path: 'createdBy', select: 'name email' },
+        { path: 'assignees', select: 'name email' },
+        { path: 'responsibleManager', select: 'name email' }
+      ]);
+
+      createdTasks.push(newTask);
+
+      // Записать активность для каждой задачи
+      await recordActivity(req.user._id, "created_task", "Task", newTask._id, {
+        title,
+        description: `создал задачу ${title} (${i + 1} из ${tasks.length})`,
+      });
+    }
+
+    // Уведомить участников (один раз для всех задач)
+    if (assignees && assignees.length > 0) {
+      for (const userId of assignees) {
+        if (userId.toString() !== req.user._id.toString()) {
+          await createNotification(
+            userId,
+            "task_assigned",
+            "Вам назначены новые задачи",
+            `${req.user.name} назначил вам ${tasks.length} задач: ${title}`,
+            {
+              taskId: createdTasks[0]._id,
+              actorId: req.user._id,
+            }
+          );
+          
+          const assignee = await User.findById(userId);
+          if (assignee && assignee.email) {
+            await sendEmail(
+              assignee.email,
+              "Вам назначены новые задачи",
+              assignee.name,
+              `${req.user.name} назначил вам ${tasks.length} задач с названием "${title}". Список задач:\n${tasks.map((t, idx) => `${idx + 1}. ${t.description}`).join('\n')}`,
+              "Открыть задачи",
+              `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/all-tasks`
+            );
+          }
+        }
+      }
+    }
+
+    // Уведомить ответственного менеджера
+    if (responsibleManager && responsibleManager.toString() !== req.user._id.toString()) {
+      await createNotification(
+        responsibleManager,
+        "task_assigned_as_manager",
+        "Вы назначены ответственным менеджером",
+        `${req.user.name} назначил вас ответственным менеджером ${tasks.length} задач: ${title}`,
+        {
+          taskId: createdTasks[0]._id,
+          actorId: req.user._id,
+        }
+      );
+      
+      const manager = await User.findById(responsibleManager);
+      if (manager && manager.email) {
+        await sendEmail(
+          manager.email,
+          "Вы назначены ответственным менеджером",
+          manager.name,
+          `${req.user.name} назначил вас ответственным менеджером ${tasks.length} задач: "${title}". Список задач:\n${tasks.map((t, idx) => `${idx + 1}. ${t.description}`).join('\n')}`,
+          "Открыть задачи",
+          `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/all-tasks`
+        );
+      }
+    }
+
+    res.status(201).json({ 
+      message: `Успешно создано ${createdTasks.length} задач`,
+      tasks: createdTasks 
+    });
+  } catch (error) {
+    console.error("Ошибка создания мультизадач:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+};
+
 export {
   archiveTask,
   commentOnTask,
   createSubTask,
   createTask,
+  createMultipleTasks,
   createResponse,
   getActivitiesByResourceId,
   getCommentsByTaskId,

@@ -1,13 +1,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { RussianCalendar } from "@/components/ui/russian-calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -42,6 +44,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCreateTaskMutation } from "@/hooks/use-task";
 import { fetchData } from "@/lib/fetch-utils";
 import type { User } from "@/types";
+import { useLanguage } from "@/providers/language-context";
 
 // Схема для создания задач без обязательной организации
 const createTaskSchema = z.object({
@@ -67,6 +70,7 @@ export const CreateTaskDialog = ({
   onOpenChange,
   organizations,
 }: CreateTaskDialogProps) => {
+  const { t } = useLanguage();
   const form = useForm<TaskFormData>({
     resolver: zodResolver(createTaskSchema),
     defaultValues: {
@@ -78,6 +82,13 @@ export const CreateTaskDialog = ({
       assignees: [],
     },
   });
+
+  // Состояния для мультизадач
+  const [isMultiTask, setIsMultiTask] = useState(false);
+  const [multipleTasks, setMultipleTasks] = useState<Array<{ description: string; dueDate: string }>>([
+    { description: "", dueDate: "" },
+    { description: "", dueDate: "" }
+  ]);
 
   // Получить всех пользователей системы
   const { data: usersData } = useQuery({
@@ -92,27 +103,78 @@ export const CreateTaskDialog = ({
 
   const allUsers = usersData?.users || [];
 
-  const onSubmit = (data: TaskFormData) => {
-    mutate(
-      { taskData: data },
-      {
-        onSuccess: () => {
-          toast.success("Задача успешно создана");
-          onOpenChange(false);
-          form.reset();
-        },
-        onError: (error) => {
-          toast.error(error.message || "Ошибка создания задачи");
-        },
+  const onSubmit = async (data: TaskFormData) => {
+    if (isMultiTask) {
+      // Валидация для мультизадач
+      if (multipleTasks.length < 2) {
+        toast.error(t('tasks.min_tasks_required'));
+        return;
       }
-    );
+      
+      if (multipleTasks.some(t => !t.description.trim())) {
+        toast.error('Все описания задач обязательны');
+        return;
+      }
+      
+      try {
+        // Отправка запроса на создание мультизадач
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${apiUrl}/api/tasks/create-multiple`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            title: data.title,
+            tasks: multipleTasks,
+            status: data.status,
+            priority: data.priority,
+            assignees: data.assignees,
+            responsibleManager: data.responsibleManager
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Ошибка создания мультизадач');
+        }
+        
+        toast.success(`Успешно создано ${multipleTasks.length} задач`);
+        onOpenChange(false);
+        form.reset();
+        setIsMultiTask(false);
+        setMultipleTasks([
+          { description: '', dueDate: '' },
+          { description: '', dueDate: '' }
+        ]);
+      } catch (error: any) {
+        toast.error(error.message || 'Ошибка создания мультизадач');
+      }
+    } else {
+      // Обычное создание одной задачи
+      mutate(
+        { taskData: data },
+        {
+          onSuccess: () => {
+            toast.success("Задача успешно создана");
+            onOpenChange(false);
+            form.reset();
+          },
+          onError: (error) => {
+            toast.error(error.message || "Ошибка создания задачи");
+          },
+        }
+      );
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[540px]">
+      <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Создать новую задачу</DialogTitle>
+          <DialogTitle>{t('tasks.create_new_task')}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -123,31 +185,182 @@ export const CreateTaskDialog = ({
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Название</FormLabel>
+                    <FormLabel>{t('tasks.task_name')}</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Введите название задачи" />
+                      <Input {...field} placeholder={t('tasks.enter_task_name')} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Описание</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        placeholder="Введите описание задачи"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Чекбокс для мультизадач */}
+              <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg">
+                <Checkbox
+                  id="multi-task"
+                  checked={isMultiTask}
+                  onCheckedChange={(checked) => {
+                    setIsMultiTask(!!checked);
+                    if (checked && multipleTasks.length < 2) {
+                      setMultipleTasks([
+                        { description: "", dueDate: "" },
+                        { description: "", dueDate: "" }
+                      ]);
+                    }
+                  }}
+                />
+                <div className="grid gap-1">
+                  <label
+                    htmlFor="multi-task"
+                    className="text-sm font-medium leading-none cursor-pointer"
+                  >
+                    {t('tasks.multi_task')}
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    {t('tasks.multi_task_desc')}
+                  </p>
+                </div>
+              </div>
+
+              {!isMultiTask ? (
+                // Обычный режим - одна задача
+                <>
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('tasks.task_desc')}</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            placeholder={t('tasks.enter_task_desc')}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="dueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('tasks.due_date')}</FormLabel>
+                        <FormControl>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant={"outline"}
+                                className={
+                                  "w-full justify-start text-left font-normal " +
+                                  (!field.value ? "text-muted-foreground" : "")
+                                }
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {field.value ? (
+                                  format(new Date(field.value), "PPP", { locale: ru })
+                                ) : (
+                                  <span>{t('tasks.select_date')}</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <RussianCalendar
+                                mode="single"
+                                selected={
+                                  field.value ? new Date(field.value) : undefined
+                                }
+                                onSelect={(date: Date | undefined) =>
+                                  field.onChange(
+                                    date ? date.toISOString() : undefined
+                                  )
+                                }
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              ) : (
+                // Режим мультизадач
+                <div className="space-y-4">
+                  {multipleTasks.map((task, index) => (
+                    <Card key={index} className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold">
+                          {t('tasks.task_number').replace('{number}', (index + 1).toString())}
+                        </h4>
+                        {multipleTasks.length > 2 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setMultipleTasks(multipleTasks.filter((_, i) => i !== index));
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-sm font-medium">{t('tasks.task_desc')}</label>
+                          <Textarea
+                            value={task.description}
+                            onChange={(e) => {
+                              const newTasks = [...multipleTasks];
+                              newTasks[index].description = e.target.value;
+                              setMultipleTasks(newTasks);
+                            }}
+                            placeholder={t('tasks.enter_task_desc')}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">{t('tasks.due_date')}</label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="w-full justify-start mt-1">
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {task.dueDate ? format(new Date(task.dueDate), "PPP", { locale: ru }) : t('tasks.select_date')}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <RussianCalendar
+                                mode="single"
+                                selected={task.dueDate ? new Date(task.dueDate) : undefined}
+                                onSelect={(date: Date | undefined) => {
+                                  const newTasks = [...multipleTasks];
+                                  newTasks[index].dueDate = date ? date.toISOString() : '';
+                                  setMultipleTasks(newTasks);
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setMultipleTasks([...multipleTasks, { description: '', dueDate: '' }]);
+                    }}
+                    className="w-full"
+                  >
+                    + {t('tasks.add_task')}
+                  </Button>
+                </div>
+              )}
 
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField
@@ -155,19 +368,19 @@ export const CreateTaskDialog = ({
                   name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Статус</FormLabel>
+                      <FormLabel>{t('tasks.task_status')}</FormLabel>
                       <FormControl>
                         <Select
                           value={field.value}
                           onValueChange={field.onChange}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Выберите статус" />
+                            <SelectValue placeholder={t('tasks.select_status')} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="To Do">К выполнению</SelectItem>
-                            <SelectItem value="In Progress">В процессе</SelectItem>
-                            <SelectItem value="Done">Выполнено</SelectItem>
+                            <SelectItem value="To Do">{t('status.todo')}</SelectItem>
+                            <SelectItem value="In Progress">{t('status.in_progress')}</SelectItem>
+                            <SelectItem value="Done">{t('status.done')}</SelectItem>
                           </SelectContent>
                         </Select>
                       </FormControl>
@@ -181,19 +394,19 @@ export const CreateTaskDialog = ({
                   name="priority"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Приоритет</FormLabel>
+                      <FormLabel>{t('tasks.task_priority')}</FormLabel>
                       <FormControl>
                         <Select
                           value={field.value}
                           onValueChange={field.onChange}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Выберите приоритет" />
+                            <SelectValue placeholder={t('tasks.select_priority')} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Low">Низкий</SelectItem>
-                            <SelectItem value="Medium">Средний</SelectItem>
-                            <SelectItem value="High">Высокий</SelectItem>
+                            <SelectItem value="Low">{t('priority.low')}</SelectItem>
+                            <SelectItem value="Medium">{t('priority.medium')}</SelectItem>
+                            <SelectItem value="High">{t('priority.high')}</SelectItem>
                           </SelectContent>
                         </Select>
                       </FormControl>
@@ -205,72 +418,27 @@ export const CreateTaskDialog = ({
 
               <FormField
                 control={form.control}
-                name="dueDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Срок выполнения</FormLabel>
-                    <FormControl>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className={
-                              "w-full justify-start text-left font-normal " +
-                              (!field.value ? "text-muted-foreground" : "")
-                            }
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? (
-                              format(new Date(field.value), "PPP", { locale: ru })
-                            ) : (
-                              <span>Выберите дату</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <RussianCalendar
-                            mode="single"
-                            selected={
-                              field.value ? new Date(field.value) : undefined
-                            }
-                            onSelect={(date: Date | undefined) =>
-                              field.onChange(
-                                date ? date.toISOString() : undefined
-                              )
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="responsibleManager"
                 render={({ field }) => {
-                  const managers = allUsers.filter(user => user && ["admin", "manager"].includes(user.role));
+                  const managers = allUsers.filter(user => user && ["admin", "manager", "super_admin"].includes(user.role));
                   return (
                     <FormItem>
-                      <FormLabel>Ответственный менеджер</FormLabel>
+                      <FormLabel>{t('tasks.task_manager')}</FormLabel>
                       <FormControl>
                         <Select
-                          value={field.value || undefined}
+                          value={field.value || "none"}
                           onValueChange={(value) => {
                             field.onChange(value === "none" ? undefined : value);
                           }}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Выберите ответственного менеджера" />
+                            <SelectValue placeholder={t('tasks.select_manager')} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Не назначен</SelectItem>
-                            {managers.map((manager) => (
-                              <SelectItem key={manager._id} value={manager._id}>
-                                {manager.name} ({manager.role === "admin" ? "Админ" : "Менеджер"})
+                            <SelectItem value="none">{t('tasks.not_assigned')}</SelectItem>
+                            {managers.filter(m => m._id).map((manager) => (
+                              <SelectItem key={manager._id} value={manager._id ?? ""}>
+                                {manager.name} ({manager.role === "admin" ? t('tasks.admin') : manager.role === "super_admin" ? "Супер админ" : t('tasks.manager')})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -289,7 +457,7 @@ export const CreateTaskDialog = ({
                   const selectedMembers = field.value || [];
                   return (
                     <FormItem>
-                      <FormLabel>Назначить участникам</FormLabel>
+                      <FormLabel>{t('tasks.assign_to')}</FormLabel>
                       <FormControl>
                         <Popover>
                           <PopoverTrigger asChild>
@@ -299,7 +467,7 @@ export const CreateTaskDialog = ({
                             >
                               {selectedMembers.length === 0 ? (
                                 <span className="text-muted-foreground">
-                                  Выберите участников
+                                  {t('tasks.select_members')}
                                 </span>
                               ) : selectedMembers.length <= 2 ? (
                                 selectedMembers
@@ -311,7 +479,7 @@ export const CreateTaskDialog = ({
                                   })
                                   .join(", ")
                               ) : (
-                                `Выбрано участников: ${selectedMembers.length}`
+                                t('tasks.selected_count').replace('{count}', selectedMembers.length.toString())
                               )}
                             </Button>
                           </PopoverTrigger>
@@ -350,8 +518,8 @@ export const CreateTaskDialog = ({
                                       {user.name}
                                     </span>
                                     <span className="text-xs text-muted-foreground">
-                                      {user.role === "admin" ? "Админ" :
-                                       user.role === "manager" ? "Менеджер" : "Участник"}
+                                      {user.role === "admin" ? t('tasks.admin') :
+                                       user.role === "manager" ? t('tasks.manager') : t('tasks.member')}
                                     </span>
                                   </div>
                                 );
@@ -373,10 +541,10 @@ export const CreateTaskDialog = ({
                 variant="outline"
                 onClick={() => onOpenChange(false)}
               >
-                Отмена
+                {t('tasks.cancel')}
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Создание..." : "Создать задачу"}
+                {isPending ? t('tasks.creating') : t('tasks.create')}
               </Button>
             </DialogFooter>
           </form>
