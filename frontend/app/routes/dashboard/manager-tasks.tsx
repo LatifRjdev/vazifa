@@ -102,7 +102,7 @@ export default function ManagerTasksPage() {
                   <div className="space-y-1 flex-1">
                     <CardTitle className="text-lg">
                       <Link
-                        to={`/task/${task._id}`}
+                        to={`/dashboard/task/${task._id}`}
                         className="hover:text-primary transition-colors"
                       >
                         {task.title}
