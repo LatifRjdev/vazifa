@@ -121,7 +121,7 @@ export const CreateTaskDialog = ({
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
         const token = localStorage.getItem('token');
         
-        const response = await fetch(`${apiUrl}/api/tasks/create-multiple`, {
+        const response = await fetch(`${apiUrl}/tasks/create-multiple`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -292,8 +292,8 @@ export const CreateTaskDialog = ({
                 <div className="space-y-4">
                   {multipleTasks.map((task, index) => (
                     <Card key={index} className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-semibold">
+                      <div className="flex items-start justify-between mb-3">
+                        <h4 className="text-sm font-semibold flex-1">
                           {t('tasks.task_number').replace('{number}', (index + 1).toString())}
                         </h4>
                         {multipleTasks.length > 2 && (
@@ -301,6 +301,7 @@ export const CreateTaskDialog = ({
                             type="button"
                             variant="ghost"
                             size="sm"
+                            className="shrink-0 -mt-1"
                             onClick={() => {
                               setMultipleTasks(multipleTasks.filter((_, i) => i !== index));
                             }}
@@ -434,7 +435,7 @@ export const CreateTaskDialog = ({
                           <SelectTrigger>
                             <SelectValue placeholder={t('tasks.select_manager')} />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-60 overflow-y-auto">
                             <SelectItem value="none">{t('tasks.not_assigned')}</SelectItem>
                             {managers.filter(m => m._id).map((manager) => (
                               <SelectItem key={manager._id} value={manager._id ?? ""}>
