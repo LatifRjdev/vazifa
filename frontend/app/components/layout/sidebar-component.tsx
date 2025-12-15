@@ -16,7 +16,7 @@ import {
   User,
 } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,7 @@ export const SidebarComponent = ({
 }) => {
   const { logout, user } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Define different navigation items based on user role
@@ -181,7 +182,10 @@ export const SidebarComponent = ({
           variant="ghost"
           size={isCollapsed ? "icon" : "default"}
           className="justify-start"
-          onClick={logout}
+          onClick={() => {
+            logout();
+            navigate("/sign-in");
+          }}
         >
           <LogOut className={cn("h-4 w-4", isCollapsed ? "" : "mr-2")} />
           <span className="hidden md:block">{!isCollapsed && t('nav.logout')}</span>

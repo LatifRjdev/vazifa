@@ -8,8 +8,9 @@ class SMPPService {
     this.connecting = false;
     this.messageQueue = createSMSQueue();
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 10;
-    this.reconnectDelay = 5000; // 5 seconds
+    this.maxReconnectAttempts = Infinity; // Infinite reconnection attempts
+    this.reconnectDelay = 5000; // 5 seconds base delay
+    this.maxReconnectDelay = 300000; // Max 5 minutes between attempts
 
     // SMPP Configuration from environment
     this.config = {
@@ -19,6 +20,7 @@ class SMPPService {
       password: process.env.SMPP_PASSWORD || "J7PCez",
       system_type: process.env.SMPP_SYSTEM_TYPE || "smpp",
       source_addr: process.env.SMPP_SOURCE_ADDR || "Protocol",
+      bind_mode: process.env.SMPP_BIND_MODE || "transmitter", // transmitter, receiver, or transceiver
     };
 
     // Auto-connect on initialization
@@ -41,24 +43,71 @@ class SMPPService {
     console.log("🔌 SMPP: Connecting to Megafon SMPP server...");
     console.log(`📡 SMPP: Host: ${this.config.host}:${this.config.port}`);
     console.log(`👤 SMPP: System ID: ${this.config.system_id}`);
+    console.log(`🔧 SMPP: Bind Mode: ${this.config.bind_mode}`);
 
     try {
       this.session = smpp.connect(
         {
           url: `smpp://${this.config.host}:${this.config.port}`,
           auto_enquire_link_period: 30000, // 30 seconds keep-alive
+          debug: true, // Enable debug mode for PDU logging
         },
         () => {
-          // Connection established, now bind as transmitter
-          this.session.bind_transmitter(
-            {
-              system_id: this.config.system_id,
-              password: this.config.password,
-              system_type: this.config.system_type,
-            },
+          // Connection established, now bind based on configured mode
+          const bindMethod = `bind_${this.config.bind_mode}`;
+          
+          if (!this.session[bindMethod]) {
+            console.error(`❌ SMPP: Invalid bind mode: ${this.config.bind_mode}`);
+            this.handleDisconnect();
+            return;
+          }
+
+          const bindParams = {
+            system_id: this.config.system_id,
+            password: this.config.password,
+            system_type: this.config.system_type,
+            addr_ton: 5,  // Alphanumeric for sender "Protocol"
+            addr_npi: 0,  // Unknown/Not applicable (working config from 10.12.2025)
+          };
+
+          // Log bind request PDU details
+          console.log("\n" + "=".repeat(80));
+          console.log("📤 SMPP BIND REQUEST PDU");
+          console.log("=".repeat(80));
+          console.log("⏰ Timestamp:", new Date().toISOString());
+          console.log("🔧 Bind Method:", bindMethod);
+          console.log("📋 Parameters:");
+          console.log("   - system_id:", bindParams.system_id);
+          console.log("   - password:", "*".repeat(bindParams.password.length), `(${bindParams.password.length} chars)`);
+          console.log("   - system_type:", bindParams.system_type || "(empty)");
+          console.log("   - addr_ton:", bindParams.addr_ton);
+          console.log("   - addr_npi:", bindParams.addr_npi);
+          console.log("=".repeat(80) + "\n");
+
+          this.session[bindMethod](
+            bindParams,
             (pdu) => {
+              // Log bind response PDU details
+              console.log("\n" + "=".repeat(80));
+              console.log("📥 SMPP BIND RESPONSE PDU");
+              console.log("=".repeat(80));
+              console.log("⏰ Timestamp:", new Date().toISOString());
+              console.log("📋 Response Details:");
+              console.log("   - command:", pdu.command);
+              console.log("   - command_id:", pdu.command_id);
+              console.log("   - command_status:", pdu.command_status);
+              console.log("   - sequence_number:", pdu.sequence_number);
+              console.log("   - system_id:", pdu.system_id || "(none)");
+              
+              if (pdu.command_status !== 0) {
+                console.log("\n❌ BIND FAILED!");
+                console.log("   Status Code:", pdu.command_status);
+                console.log("   Status Meaning:", this.getStatusMessage(pdu.command_status));
+              }
+              console.log("=".repeat(80) + "\n");
+
               if (pdu.command_status === 0) {
-                console.log("✅ SMPP: Successfully connected and bound to Megafon");
+                console.log(`✅ SMPP: Successfully connected and bound as ${this.config.bind_mode}`);
                 this.connected = true;
                 this.connecting = false;
                 this.reconnectAttempts = 0;
@@ -106,18 +155,16 @@ class SMPPService {
   }
 
   /**
-   * Schedule reconnection attempt
+   * Schedule reconnection attempt with exponential backoff (capped)
    */
   scheduleReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error("❌ SMPP: Max reconnection attempts reached. Manual intervention required.");
-      return;
-    }
-
     this.reconnectAttempts++;
-    const delay = this.reconnectDelay * this.reconnectAttempts;
     
-    console.log(`🔄 SMPP: Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay / 1000}s`);
+    // Exponential backoff with cap
+    const exponentialDelay = this.reconnectDelay * Math.min(this.reconnectAttempts, 10);
+    const delay = Math.min(exponentialDelay, this.maxReconnectDelay);
+    
+    console.log(`🔄 SMPP: Scheduling reconnect attempt ${this.reconnectAttempts} (∞) in ${delay / 1000}s`);
     
     setTimeout(() => {
       this.connect();
@@ -187,14 +234,22 @@ class SMPPService {
       // Remove leading + from phone number
       const cleanPhone = phoneNumber.replace(/^\+/, "");
 
-      // Prepare SMS PDU
+      // Prepare SMS PDU with explicit TON/NPI for proper routing
       const pdu = {
         source_addr: this.config.source_addr,
+        source_addr_ton: 5,      // TON=5: Alphanumeric (for sender "Protocol")
+        source_addr_npi: 0,      // NPI=0: Unknown/Not applicable (working config from 10.12.2025)
         destination_addr: cleanPhone,
+        dest_addr_ton: 1,        // TON=1: International number format
+        dest_addr_npi: 1,        // NPI=1: ISDN/E.164 numbering plan
         short_message: message,
-        data_coding: 0x08, // UCS2 encoding for Unicode (Russian/Tajik)
-        registered_delivery: 1, // Request delivery receipt
+        data_coding: 0x08,       // UCS2 encoding for Unicode (Russian/Tajik)
+        registered_delivery: 1,  // Request delivery receipt
       };
+
+      // Convert message to UTF-16BE (Big Endian) for proper SMS encoding
+      // Node.js 'ucs2'/'utf16le' is Little Endian, but SMS requires Big Endian
+      const messageBuffer = Buffer.from(message, 'utf16le').swap16();
 
       // Add UDH for multi-part messages
       if (totalParts > 1) {
@@ -202,11 +257,11 @@ class SMPPService {
         pdu.esm_class = 0x40; // UDH indicator
         pdu.message_payload = Buffer.concat([
           Buffer.from([0x05, 0x00, 0x03, msgRef, totalParts, partNum]),
-          Buffer.from(message, "ucs2"),
+          messageBuffer,
         ]);
         delete pdu.short_message;
       } else {
-        pdu.short_message = Buffer.from(message, "ucs2");
+        pdu.short_message = messageBuffer;
       }
 
       this.session.submit_sm(pdu, (pdu) => {
@@ -370,6 +425,55 @@ class SMPPService {
       low: 3,
     };
     return priorities[priority] || 2;
+  }
+
+  /**
+   * Get human-readable status message for SMPP error codes
+   */
+  getStatusMessage(statusCode) {
+    const statusMessages = {
+      0: "ESME_ROK - No Error",
+      1: "ESME_RINVMSGLEN - Message Length is invalid",
+      2: "ESME_RINVCMDLEN - Command Length is invalid",
+      3: "ESME_RINVCMDID - Invalid Command ID",
+      4: "ESME_RINVBNDSTS - Incorrect BIND Status for given command",
+      5: "ESME_RALYBND - ESME Already in Bound State",
+      6: "ESME_RINVPRTFLG - Invalid Priority Flag",
+      7: "ESME_RINVREGDLVFLG - Invalid Registered Delivery Flag",
+      8: "ESME_RSYSERR - System Error",
+      10: "ESME_RINVSRCADR - Invalid Source Address",
+      11: "ESME_RINVDSTADR - Invalid Dest Addr",
+      12: "ESME_RINVMSGID - Message ID is invalid",
+      13: "ESME_RBINDFAIL - Bind Failed (Invalid System ID or Password)",
+      14: "ESME_RINVPASWD - Invalid Password",
+      15: "ESME_RINVSYSID - Invalid System ID",
+      17: "ESME_RCANCELFAIL - Cancel SM Failed",
+      19: "ESME_RREPLACEFAIL - Replace SM Failed",
+      20: "ESME_RMSGQFUL - Message Queue Full",
+      21: "ESME_RINVSERTYP - Invalid Service Type",
+      51: "ESME_RINVNUMDESTS - Invalid number of destinations",
+      52: "ESME_RINVDLNAME - Invalid Distribution List name",
+      64: "ESME_RINVDESTFLAG - Destination flag is invalid",
+      66: "ESME_RINVSUBREP - Invalid submit with replace request",
+      67: "ESME_RINVESMCLASS - Invalid esm_class field data",
+      68: "ESME_RCNTSUBDL - Cannot Submit to Distribution List",
+      69: "ESME_RSUBMITFAIL - submit_sm or submit_multi failed",
+      72: "ESME_RINVSRCTON - Invalid Source address TON",
+      73: "ESME_RINVSRCNPI - Invalid Source address NPI",
+      80: "ESME_RINVDSTTON - Invalid Destination address TON",
+      81: "ESME_RINVDSTNPI - Invalid Destination address NPI",
+      83: "ESME_RINVSYSTYP - Invalid system_type field",
+      84: "ESME_RINVREPFLAG - Invalid replace_if_present flag",
+      85: "ESME_RINVNUMMSGS - Invalid number of messages",
+      88: "ESME_RTHROTTLED - Throttling error (ESME has exceeded allowed message limits)",
+      97: "ESME_RINVSCHED - Invalid Scheduled Delivery Time",
+      98: "ESME_RINVEXPIRY - Invalid message validity period (Expiry time)",
+      99: "ESME_RINVDFTMSGID - Predefined Message Invalid or Not Found",
+      254: "ESME_RDELIVERYFAILURE - Delivery Failure (used for data_sm_resp)",
+      255: "ESME_RUNKNOWNERR - Unknown Error",
+    };
+
+    return statusMessages[statusCode] || `Unknown Status Code: ${statusCode}`;
   }
 
   /**

@@ -7,9 +7,10 @@ import {
 
 export default [
   layout("routes/auth/auth-layout.tsx", [
-    index("routes/root/welcome.tsx"),
-    route("sign-up", "routes/auth/sign-up.tsx"),
+    index("routes/auth/sign-in.tsx"),
     route("sign-in", "routes/auth/sign-in.tsx"),
+    route("sign-up", "routes/auth/sign-up.tsx"),
+    route("welcome", "routes/root/welcome.tsx"),
     route("forgot-password", "routes/auth/forgot-password.tsx"),
     route("verify-email", "routes/auth/verify-email.tsx"),
     route("auth/callback", "routes/auth/callback.tsx"),

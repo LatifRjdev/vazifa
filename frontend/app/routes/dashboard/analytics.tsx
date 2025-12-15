@@ -11,8 +11,9 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { AlertCircle, TrendingUp, Users, CheckCircle, Clock, Printer, Download } from "lucide-react";
+import { AlertCircle, TrendingUp, Users, CheckCircle, Clock, Printer, Download, ClipboardList } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 
 import { Loader } from "@/components/loader";
 import {
@@ -64,6 +65,7 @@ const PRIORITY_COLORS = {
 const AnalyticsPage = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [timeFilter, setTimeFilter] = useState("7days");
   const [selectedMember, setSelectedMember] = useState("all");
 
@@ -374,8 +376,11 @@ const AnalyticsPage = () => {
       </Card>
 
       {/* Общая статистика */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Card 
+          onClick={() => navigate('/dashboard/all-tasks')}
+          className="cursor-pointer hover:shadow-lg hover:border-primary transition-all"
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('analytics.total_tasks')}</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -388,20 +393,26 @@ const AnalyticsPage = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() => navigate('/dashboard/all-tasks?status=To Do')}
+          className="cursor-pointer hover:shadow-lg hover:border-blue-500 transition-all"
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('analytics.completed')}</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium">К выполнению</CardTitle>
+            <ClipboardList className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{completedTasks}</div>
+            <div className="text-2xl font-bold text-blue-600">{todoTasks}</div>
             <p className="text-xs text-muted-foreground">
-              {t('analytics.completion_rate').replace('{rate}', completionRate.toString())}
+              Ожидают начала
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() => navigate('/dashboard/all-tasks?status=In Progress')}
+          className="cursor-pointer hover:shadow-lg hover:border-yellow-500 transition-all"
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('analytics.in_progress')}</CardTitle>
             <Clock className="h-4 w-4 text-yellow-600" />
@@ -414,7 +425,26 @@ const AnalyticsPage = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() => navigate('/dashboard/all-tasks?status=Done')}
+          className="cursor-pointer hover:shadow-lg hover:border-green-500 transition-all"
+        >
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t('analytics.completed')}</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{completedTasks}</div>
+            <p className="text-xs text-muted-foreground">
+              {t('analytics.completion_rate').replace('{rate}', completionRate.toString())}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card
+          onClick={() => navigate('/dashboard/all-tasks')}
+          className="cursor-pointer hover:shadow-lg hover:border-red-500 transition-all"
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('analytics.overdue')}</CardTitle>
             <AlertCircle className="h-4 w-4 text-red-600" />

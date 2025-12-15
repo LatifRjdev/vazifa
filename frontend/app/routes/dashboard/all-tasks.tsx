@@ -237,7 +237,13 @@ const AllTasksPage = () => {
         )}
         
         <div className="grid gap-4 md:grid-cols-5">
-          <Card>
+          <Card 
+            onClick={() => {
+              setStatusFilter("all");
+              setPriorityFilter("all");
+            }}
+            className="cursor-pointer hover:shadow-lg hover:border-primary transition-all"
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {dateFilter !== "all" ? t('all_tasks.for_period') : t('all_tasks.total_tasks')}
@@ -250,7 +256,13 @@ const AllTasksPage = () => {
               )}
             </CardContent>
           </Card>
-          <Card>
+          <Card
+            onClick={() => {
+              setStatusFilter("To Do");
+              setPriorityFilter("all");
+            }}
+            className="cursor-pointer hover:shadow-lg hover:border-blue-500 transition-all"
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t('status.todo')}</CardTitle>
             </CardHeader>
@@ -258,7 +270,13 @@ const AllTasksPage = () => {
               <div className="text-2xl font-bold text-blue-600">{stats.todo}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card
+            onClick={() => {
+              setStatusFilter("In Progress");
+              setPriorityFilter("all");
+            }}
+            className="cursor-pointer hover:shadow-lg hover:border-yellow-500 transition-all"
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t('status.in_progress')}</CardTitle>
             </CardHeader>
@@ -266,7 +284,13 @@ const AllTasksPage = () => {
               <div className="text-2xl font-bold text-yellow-600">{stats.inProgress}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card
+            onClick={() => {
+              setStatusFilter("Done");
+              setPriorityFilter("all");
+            }}
+            className="cursor-pointer hover:shadow-lg hover:border-green-500 transition-all"
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t('status.done')}</CardTitle>
             </CardHeader>
@@ -274,7 +298,13 @@ const AllTasksPage = () => {
               <div className="text-2xl font-bold text-green-600">{stats.done}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card
+            onClick={() => {
+              setStatusFilter("all");
+              setPriorityFilter("High");
+            }}
+            className="cursor-pointer hover:shadow-lg hover:border-red-500 transition-all"
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t('all_tasks.high_priority')}</CardTitle>
             </CardHeader>
@@ -479,14 +509,14 @@ const AllTasksPage = () => {
                       {index + 1}
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{task.title}</div>
+                      <Link to={`/dashboard/task/${task._id}`} className="block hover:text-primary transition-colors">
+                        <div className="font-medium hover:underline">{task.title}</div>
                         {task.description && (
                           <div className="text-sm text-muted-foreground truncate max-w-xs">
                             {task.description}
                           </div>
                         )}
-                      </div>
+                      </Link>
                     </TableCell>
                     <TableCell>
                       <Badge variant={task.status.toLowerCase() as any}>

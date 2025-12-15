@@ -6,6 +6,7 @@ import { useGetMyTasksQuery } from "@/hooks/use-task";
 import { useQuery } from "@tanstack/react-query";
 import { fetchData } from "@/lib/fetch-utils";
 import { formatDateDetailedRussian } from "@/lib/date-utils";
+import { useNavigate } from "react-router";
 
 import type { Route } from "../../+types/root";
 
@@ -19,6 +20,7 @@ export function meta({}: Route.MetaArgs) {
 const DashboardPage = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const { data: myTasks, isPending: myTasksLoading } = useGetMyTasksQuery();
   
   // Для админов и менеджеров получаем все задачи
@@ -30,6 +32,25 @@ const DashboardPage = () => {
 
   const isAdmin = user?.role && ["admin", "manager"].includes(user.role);
   const tasksLoading = isAdmin ? allTasksLoading : myTasksLoading;
+
+  // Функции для навигации с фильтрами
+  const handleCardClick = (filter: string) => {
+    if (isAdmin) {
+      // Для админов/менеджеров - переход на страницу всех задач с фильтром
+      navigate(`/dashboard/all-tasks?status=${filter}`);
+    } else {
+      // Для обычных участников - переход на мои задачи с фильтром
+      navigate(`/dashboard/my-tasks?filter=${filter}`);
+    }
+  };
+
+  const handleOverdueClick = () => {
+    if (isAdmin) {
+      navigate(`/dashboard/all-tasks`);
+    } else {
+      navigate(`/dashboard/my-tasks?filter=all`);
+    }
+  };
 
   if (tasksLoading) {
     return <Loader message={t('common.loading_data')} />;
@@ -51,14 +72,20 @@ const DashboardPage = () => {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+        <div 
+          onClick={() => handleCardClick('all')}
+          className="rounded-lg border bg-card text-card-foreground shadow-sm p-6 cursor-pointer hover:shadow-lg hover:border-primary transition-all"
+        >
           <div className="flex flex-row items-center justify-between space-y-0 pb-2">
             <h3 className="tracking-tight text-sm font-medium">{t('dashboard.total_tasks')}</h3>
           </div>
           <div className="text-2xl font-bold">{tasks.length}</div>
         </div>
 
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+        <div 
+          onClick={() => handleCardClick('In Progress')}
+          className="rounded-lg border bg-card text-card-foreground shadow-sm p-6 cursor-pointer hover:shadow-lg hover:border-primary transition-all"
+        >
           <div className="flex flex-row items-center justify-between space-y-0 pb-2">
             <h3 className="tracking-tight text-sm font-medium">{t('dashboard.in_progress')}</h3>
           </div>
@@ -67,7 +94,10 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+        <div 
+          onClick={() => handleCardClick('Done')}
+          className="rounded-lg border bg-card text-card-foreground shadow-sm p-6 cursor-pointer hover:shadow-lg hover:border-primary transition-all"
+        >
           <div className="flex flex-row items-center justify-between space-y-0 pb-2">
             <h3 className="tracking-tight text-sm font-medium">{t('dashboard.completed')}</h3>
           </div>
@@ -76,7 +106,10 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+        <div 
+          onClick={handleOverdueClick}
+          className="rounded-lg border bg-card text-card-foreground shadow-sm p-6 cursor-pointer hover:shadow-lg hover:border-red-500 transition-all"
+        >
           <div className="flex flex-row items-center justify-between space-y-0 pb-2">
             <h3 className="tracking-tight text-sm font-medium">{t('dashboard.overdue')}</h3>
           </div>

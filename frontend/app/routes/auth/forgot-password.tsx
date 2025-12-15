@@ -36,7 +36,16 @@ export function meta({}: Route.MetaArgs) {
 }
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email" }),
+  emailOrPhone: z.string().min(1, { message: "Введите email или номер телефона" })
+    .refine((val) => {
+      // Check if it's a valid email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      // Check if it's a valid phone number (+992XXXXXXXXX)
+      const phoneRegex = /^\+992\d{9}$/;
+      return emailRegex.test(val) || phoneRegex.test(val);
+    }, {
+      message: "Введите корректный email или номер телефона (+992XXXXXXXXX)"
+    }),
 });
 
 type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
@@ -44,11 +53,12 @@ type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 export default function ForgotPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [resetMethod, setResetMethod] = useState<'email' | 'phone'>('email');
 
   const form = useForm<ForgotPasswordValues>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
-      email: "",
+      emailOrPhone: "",
     },
   });
 
@@ -57,8 +67,13 @@ export default function ForgotPasswordPage() {
   const onSubmit = async (values: ForgotPasswordValues) => {
     setError(null);
 
+    // Determine if it's email or phone
+    const isPhone = values.emailOrPhone.startsWith('+992');
+    setResetMethod(isPhone ? 'phone' : 'email');
+
     try {
-      mutate(values, {
+      // Send to backend - it should handle both email and phone
+      mutate({ email: values.emailOrPhone }, {
         onSuccess: () => {
           setIsSuccess(true);
           form.reset();
@@ -67,7 +82,7 @@ export default function ForgotPasswordPage() {
           setError(
             error?.response?.data?.message ||
               error.message ||
-              "Failed to send reset password email"
+              "Не удалось отправить ссылку для сброса пароля"
           );
           console.log(error);
         },
@@ -76,7 +91,7 @@ export default function ForgotPasswordPage() {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("An unknown error occurred");
+        setError("Произошла неизвестная ошибка");
       }
     }
   };
@@ -87,7 +102,7 @@ export default function ForgotPasswordPage() {
         <div className="flex flex-col items-center space-y-2 text-center">
           <h1 className="text-3xl font-bold">Забыли Пароль</h1>
           <p className="text-muted-foreground">
-            Введите свой адрес электронной почты, чтобы сбросить пароль
+            Введите свой email или номер телефона для сброса пароля
           </p>
         </div>
 
@@ -107,10 +122,13 @@ export default function ForgotPasswordPage() {
                 <div className="rounded-full bg-primary/10 p-3">
                   <CheckCircle2 className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold">Проверьте почту</h3>
+                <h3 className="text-xl font-semibold">
+                  {resetMethod === 'email' ? 'Проверьте почту' : 'Проверьте SMS'}
+                </h3>
                 <p className="text-center text-muted-foreground">
-                  Мы отправили ссылку для сброса пароля на ваш адрес электронной почты. Пожалуйста, проверьте
-                  ваш почтовый ящик.
+                  {resetMethod === 'email' 
+                    ? 'Мы отправили ссылку для сброса пароля на ваш адрес электронной почты. Пожалуйста, проверьте ваш почтовый ящик.'
+                    : 'Мы отправили ссылку для сброса пароля на ваш номер телефона. Пожалуйста, проверьте SMS сообщения.'}
                 </p>
                 <Button variant="outline" asChild className="mt-4">
                   <Link to="/sign-in">Вернуться к входу</Link>
@@ -131,14 +149,14 @@ export default function ForgotPasswordPage() {
 
                   <FormField
                     control={form.control}
-                    name="email"
+                    name="emailOrPhone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Почта</FormLabel>
+                        <FormLabel>Email или Телефон</FormLabel>
                         <FormControl>
                           <Input
-                            type="email"
-                            placeholder="email@example.com"
+                            type="text"
+                            placeholder="email@example.com или +992XXXXXXXXX"
                             {...field}
                           />
                         </FormControl>
@@ -156,10 +174,10 @@ export default function ForgotPasswordPage() {
                     {isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Отправка ссылки...
+                        Отправка...
                       </>
                     ) : (
-                      "Send Reset Link"
+                      "Отправить ссылку для сброса"
                     )}
                   </Button>
                 </form>

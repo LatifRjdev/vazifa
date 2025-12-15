@@ -136,7 +136,7 @@ Then run:
 cd /var/www/vazifa/frontend
 npm run build
 pm2 restart vazifa-frontend
-```
+```x
 
 ## Verification
 

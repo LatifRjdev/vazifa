@@ -104,7 +104,10 @@ export const Header = ({
                 <Link to="/user/profile">{t('nav.profile')}</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => logout()}>
+              <DropdownMenuItem onClick={() => {
+                logout();
+                navigate("/sign-in");
+              }}>
                 {t('nav.logout')}
               </DropdownMenuItem>
             </DropdownMenuContent>

@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
-import { createNotification, recordActivity } from "../libs/index.js";
-import { sendEmail } from "../libs/send-emails.js";
+import { recordActivity } from "../libs/index.js";
+import { sendNotification } from "../libs/send-notification.js";
 import ActivityLog from "../models/activity-logs.js";
 import Comment from "../models/comments.js";
 import Response from "../models/responses.js";
@@ -82,7 +82,7 @@ const commentOnTask = async (req, res) => {
       }
     });
 
-    // Create notifications and send emails
+    // Create notifications and send emails + SMS
     for (const userId of uniqueRecipients) {
       const notificationType = mentions.some(
         (m) => m.user.toString() === userId
@@ -92,44 +92,26 @@ const commentOnTask = async (req, res) => {
 
       const notificationTitle =
         notificationType === "mentioned"
-          ? "You were mentioned in a task message"
-          : "New message in task";
+          ? "Вас упомянули в комментарии"
+          : "Новый комментарий в задаче";
 
-      await createNotification(
-        userId,
-        notificationType,
-        notificationTitle,
-        `${req.user.name} ${
-          notificationType === "mentioned"
-            ? "mentioned you in a task message"
-            : "added a new message to task"
-        }: ${task.title}`,
-        {
+      const notificationMessage = `${req.user.name} ${
+        notificationType === "mentioned"
+          ? `упомянул вас в комментарии к задаче "${task.title}"`
+          : `добавил комментарий к задаче "${task.title}"`
+      }`;
+
+      await sendNotification({
+        recipientId: userId,
+        type: notificationType,
+        title: notificationTitle,
+        message: notificationMessage,
+        relatedData: {
           taskId,
           commentId: newComment._id,
           actorId: req.user._id,
-        }
-      );
-      
-      // Отправить email уведомление
-      const recipient = await User.findById(userId);
-      if (recipient && recipient.email) {
-        const emailTitle = notificationType === "mentioned" 
-          ? "Вас упомянули в комментарии" 
-          : "Новый комментарий в задаче";
-        const emailMessage = notificationType === "mentioned"
-          ? `${req.user.name} упомянул вас в комментарии к задаче "${task.title}": ${commentText.substring(0, 100)}${commentText.length > 100 ? '...' : ''}`
-          : `${req.user.name} добавил комментарий к задаче "${task.title}": ${commentText.substring(0, 100)}${commentText.length > 100 ? '...' : ''}`;
-        
-        await sendEmail(
-          recipient.email,
-          emailTitle,
-          recipient.name,
-          emailMessage,
-          "Открыть задачу",
-          `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/task/${taskId}`
-        );
-      }
+        },
+      });
     }
 
     // Record activity
@@ -269,63 +251,37 @@ const createTask = async (req, res) => {
       { path: 'responsibleManager', select: 'name email' }
     ]);
 
-    // Уведомить назначенных пользователей
+    // Уведомить назначенных пользователей (Email + SMS)
     if (assignees && assignees.length > 0) {
       for (const userId of assignees) {
         // Не уведомлять создателя, если он назначил себя
         if (userId.toString() !== req.user._id.toString()) {
-          await createNotification(
-            userId,
-            "task_assigned",
-            "Вам назначена новая задача",
-            `${req.user.name} назначил вам задачу: ${title}`,
-            {
+          await sendNotification({
+            recipientId: userId,
+            type: "task_assigned",
+            title: "Вам назначена новая задача",
+            message: `${req.user.name} назначил вам задачу: ${title}`,
+            relatedData: {
               taskId: newTask._id,
               actorId: req.user._id,
-            }
-          );
-          
-          // Отправить email уведомление
-          const assignee = await User.findById(userId);
-          if (assignee && assignee.email) {
-            await sendEmail(
-              assignee.email,
-              "Вам назначена новая задача",
-              assignee.name,
-              `${req.user.name} назначил вам новую задачу: "${title}". ${description ? 'Описание: ' + description : ''}`,
-              "Открыть задачу",
-              `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/task/${newTask._id}`
-            );
-          }
+            },
+          });
         }
       }
     }
 
-    // Уведомить ответственного менеджера
+    // Уведомить ответственного менеджера (Email + SMS)
     if (responsibleManager && responsibleManager.toString() !== req.user._id.toString()) {
-      await createNotification(
-        responsibleManager,
-        "task_assigned_as_manager",
-        "Вы назначены ответственным менеджером",
-        `${req.user.name} назначил вас ответственным менеджером задачи: ${title}`,
-        {
+      await sendNotification({
+        recipientId: responsibleManager,
+        type: "task_assigned_as_manager",
+        title: "Вы назначены ответственным менеджером",
+        message: `${req.user.name} назначил вас ответственным менеджером задачи: ${title}`,
+        relatedData: {
           taskId: newTask._id,
           actorId: req.user._id,
-        }
-      );
-      
-      // Отправить email уведомление
-      const manager = await User.findById(responsibleManager);
-      if (manager && manager.email) {
-        await sendEmail(
-          manager.email,
-          "Вы назначены ответственным менеджером",
-          manager.name,
-          `${req.user.name} назначил вас ответственным менеджером задачи: "${title}". ${description ? 'Описание: ' + description : ''}`,
-          "Открыть задачу",
-          `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/task/${newTask._id}`
-        );
-      }
+        },
+      });
     }
 
     // Записать активность

@@ -16,8 +16,10 @@
   "dependencies": {
     "@arcjet/inspect": "^1.0.0-beta.7",
     "@arcjet/node": "^1.0.0-beta.7",
+    "@bull-board/api": "^5.10.0",
+    "@bull-board/express": "^5.10.0",
     "bcrypt": "^6.0.0",
-    "bull": "^4.16.5",
+    "bullmq": "^5.1.0",
     "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",

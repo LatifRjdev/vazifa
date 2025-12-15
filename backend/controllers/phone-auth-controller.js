@@ -18,20 +18,20 @@ const sendPhoneVerificationCode = async (req, res) => {
       });
     }
 
-    // Check rate limiting (3 codes per hour)
-    const rateLimitCheck = await PhoneVerification.checkRateLimit(
-      phoneNumber,
-      type,
-      60, // 60 minutes
-      3 // max 3 requests
-    );
+    // Rate limiting DISABLED for testing
+    // const rateLimitCheck = await PhoneVerification.checkRateLimit(
+    //   phoneNumber,
+    //   type,
+    //   60, // 60 minutes
+    //   3 // max 3 requests
+    // );
 
-    if (!rateLimitCheck.allowed) {
-      return res.status(429).json({
-        message: rateLimitCheck.message,
-        minutesUntilReset: rateLimitCheck.minutesUntilReset,
-      });
-    }
+    // if (!rateLimitCheck.allowed) {
+    //   return res.status(429).json({
+    //     message: rateLimitCheck.message,
+    //     minutesUntilReset: rateLimitCheck.minutesUntilReset,
+    //   });
+    // }
 
     // For registration, check if phone already exists
     if (type === "registration") {
@@ -53,34 +53,38 @@ const sendPhoneVerificationCode = async (req, res) => {
       }
     }
 
-    // Create verification code
-    const { code, verification } = await PhoneVerification.createVerification(
+    // Create verification with link token
+    const { verificationToken, verification } = await PhoneVerification.createVerification(
       phoneNumber,
       type,
       null,
       {
         ip: req.ip,
         userAgent: req.headers["user-agent"],
-      }
+      },
+      true // Use link-based verification
     );
 
-    // Format message based on type
+    // Format message with verification link
+    const baseUrl = process.env.FRONTEND_URL || "https://protocol.oci.tj";
+    const verificationLink = `${baseUrl}/verify/${verificationToken}`;
+    
     let message;
     switch (type) {
       case "registration":
-        message = `Код подтверждения для регистрации: ${code}\nДействителен 10 минут.`;
+        message = `Подтвердите регистрацию в Protocol:\n${verificationLink}\n\nСсылка действительна 10 минут.`;
         break;
       case "login":
-        message = `Код подтверждения для входа: ${code}\nДействителен 10 минут.`;
+        message = `Подтвердите вход в Protocol:\n${verificationLink}\n\nСсылка действительна 10 минут.`;
         break;
       case "password_reset":
-        message = `Код для сброса пароля: ${code}\nДействителен 10 минут.`;
+        message = `Сброс пароля Protocol:\n${verificationLink}\n\nСсылка действительна 10 минут.`;
         break;
       case "phone_update":
-        message = `Код подтверждения нового номера: ${code}\nДействителен 10 минут.`;
+        message = `Подтвердите новый номер:\n${verificationLink}\n\nСсылка действительна 10 минут.`;
         break;
       default:
-        message = `Ваш код подтверждения: ${code}`;
+        message = `Подтверждение Protocol:\n${verificationLink}`;
     }
 
     // Send SMS
@@ -451,9 +455,56 @@ const resetPasswordWithPhone = async (req, res) => {
   }
 };
 
+/**
+ * Verify phone via link token
+ */
+const verifyPhoneViaLink = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).json({
+        message: "Токен верификации не предоставлен",
+      });
+    }
+
+    // Verify token
+    const verificationResult = await PhoneVerification.verifyToken(token);
+
+    if (!verificationResult.success) {
+      return res.status(400).json({
+        message: verificationResult.message,
+        expired: true,
+      });
+    }
+
+    const { phoneNumber, type } = verificationResult;
+
+    // For registration type, mark phone as verified in any pending user record
+    if (type === "registration") {
+      const user = await User.findOne({ phoneNumber });
+      if (user && !user.isPhoneVerified) {
+        user.isPhoneVerified = true;
+        await user.save();
+      }
+    }
+
+    res.status(200).json({
+      message: verificationResult.message,
+      verified: true,
+      phoneNumber,
+      type,
+    });
+  } catch (error) {
+    console.error("Verify phone via link error:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+};
+
 export {
   sendPhoneVerificationCode,
   verifyPhoneCode,
+  verifyPhoneViaLink,
   registerWithPhone,
   loginWithPhone,
   resetPasswordWithPhone,

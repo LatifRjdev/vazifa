@@ -137,19 +137,24 @@ export const CreateTaskDialog = ({
           })
         });
         
-        if (!response.ok) {
-          throw new Error('Ошибка создания мультизадач');
-        }
+        const result = await response.json();
         
-        toast.success(`Успешно создано ${multipleTasks.length} задач`);
-        onOpenChange(false);
-        form.reset();
-        setIsMultiTask(false);
-        setMultipleTasks([
-          { description: '', dueDate: '' },
-          { description: '', dueDate: '' }
-        ]);
+        // Проверяем если в ответе есть созданные задачи - значит успешно
+        if (result.tasks && Array.isArray(result.tasks) && result.tasks.length > 0) {
+          toast.success(`Успешно создано ${result.tasks.length} задач`);
+          onOpenChange(false);
+          form.reset();
+          setIsMultiTask(false);
+          setMultipleTasks([
+            { description: '', dueDate: '' },
+            { description: '', dueDate: '' }
+          ]);
+        } else if (!response.ok) {
+          throw new Error(result.message || 'Ошибка создания мультизадач');
+        }
       } catch (error: any) {
+        // Показываем ошибку только если действительно не удалось создать
+        console.error('Ошибка создания мультизадач:', error);
         toast.error(error.message || 'Ошибка создания мультизадач');
       }
     } else {
@@ -438,7 +443,7 @@ export const CreateTaskDialog = ({
                           <SelectContent className="max-h-60 overflow-y-auto">
                             <SelectItem value="none">{t('tasks.not_assigned')}</SelectItem>
                             {managers.filter(m => m._id).map((manager) => (
-                              <SelectItem key={manager._id} value={manager._id ?? ""}>
+                              <SelectItem key={manager._id} value={manager._id || ""}>
                                 {manager.name} ({manager.role === "admin" ? t('tasks.admin') : manager.role === "super_admin" ? "Супер админ" : t('tasks.manager')})
                               </SelectItem>
                             ))}

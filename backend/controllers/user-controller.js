@@ -30,22 +30,39 @@ const updateUserProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // If phone number is being updated, check if it already exists
+    if (phoneNumber !== undefined && phoneNumber && phoneNumber.trim() !== "") {
+      const cleanPhone = phoneNumber.replace(/\s+/g, '');
+      
+      // Validate phone number format
+      if (!/^[\+]?[0-9\-\(\)\s]+$/.test(cleanPhone)) {
+        return res.status(400).json({ message: "Неверный формат номера телефона" });
+      }
+      
+      // Check if phone number is already used by another user
+      const existingUser = await User.findOne({ 
+        phoneNumber: cleanPhone,
+        _id: { $ne: user._id } // Exclude current user
+      });
+      
+      if (existingUser) {
+        return res.status(400).json({ 
+          message: "Этот номер телефона уже используется другим пользователем" 
+        });
+      }
+      
+      // Auto-verify phone and enable SMS notifications when phone is added
+      user.phoneNumber = cleanPhone;
+      user.isPhoneVerified = true;
+      user.settings.smsNotifications = true;
+    } else if (phoneNumber !== undefined) {
+      user.phoneNumber = "";
+      user.isPhoneVerified = false;
+    }
+
     user.name = name;
     if (lastName !== undefined) {
       user.lastName = lastName;
-    }
-    if (phoneNumber !== undefined) {
-      // Basic phone number validation (optional)
-      if (phoneNumber && phoneNumber.trim() !== "") {
-        // Remove spaces and validate basic format
-        const cleanPhone = phoneNumber.replace(/\s+/g, '');
-        if (!/^[\+]?[0-9\-\(\)\s]+$/.test(cleanPhone)) {
-          return res.status(400).json({ message: "Invalid phone number format" });
-        }
-        user.phoneNumber = cleanPhone;
-      } else {
-        user.phoneNumber = "";
-      }
     }
     if (profilePicture !== undefined) {
       user.profilePicture = profilePicture;
@@ -57,7 +74,22 @@ const updateUserProfile = async (req, res) => {
   } catch (error) {
     console.error("Error updating user profile:", error);
 
-    res.status(500).json({ message: "Server error" });
+    // Handle MongoDB duplicate key error
+    if (error.code === 11000) {
+      if (error.keyPattern && error.keyPattern.phoneNumber) {
+        return res.status(400).json({ 
+          message: "Этот номер телефона уже используется другим пользователем" 
+        });
+      }
+      if (error.keyPattern && error.keyPattern.email) {
+        return res.status(400).json({ 
+          message: "Этот email уже используется другим пользователем" 
+        });
+      }
+      return res.status(400).json({ message: "Дублирующееся значение" });
+    }
+
+    res.status(500).json({ message: "Ошибка сервера" });
   }
 };
 

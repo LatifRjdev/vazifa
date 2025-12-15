@@ -2,14 +2,14 @@ import { z } from "zod";
 
 const signupSchema = z
   .object({
-    name: z.string().min(2, { message: "Имя должно быть не менее 2 символов." }),
-    email: z.string().email({ message: "Пожалуйста, введите действительный адрес электронной почты" }),
+    name: z.string().min(2, { message: "Имя должно содержать минимум 2 символа" }),
+    email: z.string().email({ message: "Введите корректный адрес электронной почты" }),
     password: z
       .string()
-      .min(6, { message: "Пароль должен быть не менее 6 символов." }),
+      .min(8, { message: "Пароль должен содержать минимум 8 символов" }),
     confirmPassword: z
       .string()
-      .min(6, { message: "Требуется подтверждение пароля" }),
+      .min(8, { message: "Подтвердите пароль (минимум 8 символов)" }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Пароли не совпадают",
@@ -17,10 +17,10 @@ const signupSchema = z
   });
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Пожалуйста, введите действительный адрес электронной почты" }),
+  email: z.string().email({ message: "Введите корректный адрес электронной почты" }),
   password: z
     .string()
-    .min(1, { message: "Пароль должен быть не менее 6 символов." }),
+    .min(1, { message: "Введите пароль" }),
 });
 
 const workspaceSchema = z.object({
@@ -80,6 +80,60 @@ const resetPasswordSchema = z
     path: ["confirmPassword"],
   });
 
+// NEW: Phone authentication schemas
+const phoneSignUpSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, { message: "Имя обязательно" })
+      .refine(
+        (val) => val.trim().split(/\s+/).length >= 2,
+        { message: "Введите Имя и Фамилию через пробел" }
+      ),
+    phoneNumber: z
+      .string()
+      .regex(/^\+992\d{9}$/, { message: "Формат: +992XXXXXXXXX (9 цифр после +992)" }),
+    email: z
+      .string()
+      .min(1, { message: "Email обязателен" })
+      .email({ message: "Неверный формат email" }),
+    password: z
+      .string()
+      .min(8, { message: "Пароль должен содержать минимум 8 символов" }),
+    confirmPassword: z
+      .string()
+      .min(8, { message: "Подтвердите пароль (минимум 8 символов)" }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Пароли не совпадают",
+    path: ["confirmPassword"],
+  });
+
+const universalLoginSchema = z.object({
+  emailOrPhone: z
+    .string()
+    .min(1, { message: "Email или телефон обязателен" }),
+  password: z
+    .string()
+    .min(1, { message: "Введите пароль" }),
+});
+
+const verifyPhoneSchema = z.object({
+  phoneNumber: z
+    .string()
+    .regex(/^\+992\d{9}$/, { message: "Неверный формат телефона" }),
+  code: z
+    .string()
+    .length(6, { message: "Код должен содержать 6 цифр" })
+    .regex(/^\d+$/, { message: "Код должен содержать только цифры" }),
+});
+
+const resendCodeSchema = z.object({
+  phoneNumber: z
+    .string()
+    .regex(/^\+992\d{9}$/, { message: "Неверный формат телефона" }),
+});
+
 export {
   signupSchema,
   loginSchema,
@@ -88,4 +142,9 @@ export {
   inviteMemberSchema,
   createTaskSchema,
   resetPasswordSchema,
+  // NEW: Phone authentication
+  phoneSignUpSchema,
+  universalLoginSchema,
+  verifyPhoneSchema,
+  resendCodeSchema,
 };

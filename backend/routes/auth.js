@@ -13,14 +13,13 @@ import {
   googleCallback,
   appleAuth,
   appleCallback,
-} from "../controllers/auth-controller.js";
-import {
-  sendPhoneVerificationCode,
+  // NEW: Phone authentication
+  registerUserWithPhone,
   verifyPhoneCode,
-  registerWithPhone,
-  loginWithPhone,
-  resetPasswordWithPhone,
-} from "../controllers/phone-auth-controller.js";
+  resendVerificationCode,
+  loginWithEmailOrPhone,
+} from "../controllers/auth-controller.js";
+import { verifyPhoneViaLink } from "../controllers/phone-auth-controller.js";
 import {
   loginSchema,
   registerSchema,
@@ -80,64 +79,55 @@ router.post(
   verify2FALogin
 );
 
-// Phone authentication routes
+// NEW: Phone authentication routes with SMS verification
 router.post(
-  "/phone/send-code",
+  "/register-phone",
   validateRequest({
     body: z.object({
-      phoneNumber: z.string().regex(/^\+992\d{9}$/, "Invalid phone number format"),
-      type: z.enum(["registration", "login", "password_reset", "phone_update"]).optional(),
+      name: z.string().min(1).refine(val => val.trim().split(/\s+/).length >= 2, {
+        message: "Полное имя должно содержать минимум Имя и Фамилию через пробел"
+      }),
+      phoneNumber: z.string().regex(/^\+992\d{9}$/, "Номер телефона должен быть в формате +992XXXXXXXXX"),
+      email: z.string().email("Email должен быть действительным"),
+      password: z.string().min(8, "Пароль должен содержать минимум 8 символов"),
     }),
   }),
-  sendPhoneVerificationCode
+  registerUserWithPhone
 );
 
 router.post(
-  "/phone/verify-code",
+  "/verify-phone",
   validateRequest({
     body: z.object({
       phoneNumber: z.string().regex(/^\+992\d{9}$/, "Invalid phone number format"),
-      code: z.string().length(6),
-      type: z.enum(["registration", "login", "password_reset", "phone_update"]).optional(),
+      code: z.string().length(6, "Код должен содержать 6 цифр"),
     }),
   }),
   verifyPhoneCode
 );
 
 router.post(
-  "/phone/register",
+  "/resend-code",
   validateRequest({
     body: z.object({
       phoneNumber: z.string().regex(/^\+992\d{9}$/, "Invalid phone number format"),
-      password: z.string().min(6),
-      name: z.string().min(1),
-      verificationCode: z.string().length(6),
     }),
   }),
-  registerWithPhone
+  resendVerificationCode
 );
 
-router.post(
-  "/phone/login",
-  validateRequest({
-    body: z.object({
-      phoneNumber: z.string().regex(/^\+992\d{9}$/, "Invalid phone number format"),
-      password: z.string().min(6),
-    }),
-  }),
-  loginWithPhone
-);
+// NEW: Link-based verification endpoint
+router.get("/verify-phone-link/:token", verifyPhoneViaLink);
 
 router.post(
-  "/phone/reset-password",
+  "/login-universal",
   validateRequest({
     body: z.object({
-      phoneNumber: z.string().regex(/^\+992\d{9}$/, "Invalid phone number format"),
-      verificationCode: z.string().length(6),
-      newPassword: z.string().min(6),
+      emailOrPhone: z.string().min(1, "Email или телефон обязателен"),
+      password: z.string().min(1, "Пароль обязателен"),
     }),
   }),
-  resetPasswordWithPhone
+  loginWithEmailOrPhone
 );
 
 // OAuth routes

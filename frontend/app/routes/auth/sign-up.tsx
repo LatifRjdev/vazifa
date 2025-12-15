@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
@@ -25,12 +25,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useSignUpMutation } from "@/hooks/use-auth";
-import { signupSchema } from "@/utils/schema";
+import { phoneSignUpSchema } from "@/utils/schema";
+import { SMSVerification } from "@/components/auth/sms-verification";
 import { toastMessages } from "@/lib/toast-messages";
 import type { Route } from "../../+types/root";
 
-export type SignupValues = z.infer<typeof signupSchema>;
+export type PhoneSignupValues = z.infer<typeof phoneSignUpSchema>;
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -41,68 +41,195 @@ export function meta({}: Route.MetaArgs) {
 
 const SignUp = () => {
   const [error, setError] = useState<string | null>(null);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const { mutate: signUp, isPending } = useSignUpMutation();
+  const [isPending, setIsPending] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
+  const [verificationType, setVerificationType] = useState<"code" | "link">("link");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const navigate = useNavigate();
 
-  const form = useForm<SignupValues>({
-    resolver: zodResolver(signupSchema),
+  const form = useForm<PhoneSignupValues>({
+    resolver: zodResolver(phoneSignUpSchema),
     defaultValues: {
       name: "",
+      phoneNumber: "",
       email: "",
       password: "",
       confirmPassword: "",
     },
   });
 
-  const onSubmit = async (values: SignupValues) => {
+  const onSubmit = async (values: PhoneSignupValues) => {
     setError(null);
+    setIsPending(true);
 
     try {
-      signUp(values, {
-        onSuccess: () => {
-          setIsSuccess(true);
-          toast.success(toastMessages.auth.signUpSuccess, {
-            description: toastMessages.auth.signUpSuccessDescription,
-          });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api-v1/auth/register-phone`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values),
+        }
+      );
 
-          form.reset();
+      const data = await response.json();
+
+      if (response.ok) {
+        // Check if verification is required
+        if (data.requiresVerification) {
+          setPhoneNumber(data.phoneNumber);
+          setVerificationType(data.verificationType || "link");
+          setShowVerification(true);
+          
+          if (data.verificationType === "link") {
+            toast.success("Ссылка отправлена на ваш телефон", {
+              description: `Проверьте SMS на номере ${data.phoneNumber} и нажмите на ссылку`,
+            });
+          } else {
+            toast.success("Код отправлен на ваш телефон", {
+              description: `Проверьте SMS на номере ${data.phoneNumber}`,
+            });
+          }
           setError(null);
+        } else {
+          // No verification required - auto-login
+          if (data.token && data.user) {
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("user", JSON.stringify(data.user));
+            
+            toast.success("Регистрация завершена!", {
+              description: "Добро пожаловать в TaskHub",
+            });
 
-          setTimeout(() => {
-            setIsSuccess(false);
-            navigate("/sign-in");
-          }, 3000);
-        },
-        onError: (error: any) => {
-          setIsSuccess(false);
-          const message = error.response.data.message || error.message;
-          setError(message);
-          toast.error(toastMessages.auth.signUpFailed, {
-            description: message,
-          });
-        },
-      });
-    } catch (err) {
-      setIsSuccess(false);
-      if (err instanceof Error) {
-        setError(err.message);
+            // Navigate to dashboard
+            setTimeout(() => {
+              navigate("/dashboard");
+            }, 500);
+          } else {
+            throw new Error("Токен не получен");
+          }
+        }
       } else {
-        setError(toastMessages.errors.unknownError);
-        toast.error(toastMessages.auth.signUpFailed, {
-          description: toastMessages.errors.unknownError,
-        });
+        throw new Error(data.message || "Ошибка регистрации");
       }
+    } catch (err: any) {
+      const message = err.message || toastMessages.errors.unknownError;
+      setError(message);
+      toast.error("Ошибка регистрации", {
+        description: message,
+      });
+    } finally {
+      setIsPending(false);
     }
   };
 
+  const handleVerificationSuccess = (token: string) => {
+    // Save token
+    localStorage.setItem("token", token);
+    
+    // Show success message
+    toast.success("Регистрация завершена!", {
+      description: "Добро пожаловать в TaskHub",
+    });
+
+    // Navigate to dashboard
+    setTimeout(() => {
+      navigate("/dashboard");
+    }, 500);
+  };
+
+  // If showing verification
+  if (showVerification) {
+    // Link-based verification - show message only
+    if (verificationType === "link") {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-muted p-4">
+          <Card className="border-border/50 w-full max-w-md shadow-xl">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl">Проверьте SMS</CardTitle>
+              <CardDescription>
+                Ссылка для подтверждения отправлена на ваш телефон
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p className="font-medium">Следующие шаги:</p>
+                    <ol className="list-decimal list-inside space-y-1 text-sm">
+                      <li>Откройте SMS на номере {phoneNumber}</li>
+                      <li>Нажмите на ссылку подтверждения</li>
+                      <li>Вы будете автоматически перенаправлены</li>
+                    </ol>
+                    <p className="text-sm text-muted-foreground mt-3">
+                      Ссылка действительна 10 минут
+                    </p>
+                  </div>
+                </AlertDescription>
+              </Alert>
+              
+              <div className="text-center text-sm text-muted-foreground">
+                Не получили SMS?
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowVerification(false);
+                  setPhoneNumber("");
+                }}
+              >
+                Изменить данные регистрации
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      );
+    }
+    
+    // Code-based verification (fallback)
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-muted p-4">
+        <Card className="border-border/50 w-full max-w-md shadow-xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Подтверждение телефона</CardTitle>
+            <CardDescription>
+              Введите код из SMS для завершения регистрации
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SMSVerification
+              phoneNumber={phoneNumber}
+              onSuccess={handleVerificationSuccess}
+            />
+          </CardContent>
+          <CardFooter className="flex justify-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowVerification(false);
+                setPhoneNumber("");
+              }}
+            >
+              Изменить данные регистрации
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-muted">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-muted p-4">
       <Card className="border-border/50 w-full max-w-md shadow-xl">
         <CardHeader className="mb-6 text-center">
           <CardTitle className="text-3xl">Создать аккаунт</CardTitle>
           <CardDescription>
-            Введите ваши данные, чтобы создать учетную запись
+            Введите ваши данные для создания учетной записи
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -114,24 +241,32 @@ const SignUp = () => {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              {isSuccess && (
-                <Alert variant="success">
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Пользователь успешно зарегистрирован. Пожалуйста, проверьте свою 
-                    электронную почту для подтверждения.
-                  </AlertDescription>
-                </Alert>
-              )}
 
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Полное имя</FormLabel>
+                    <FormLabel>Полное имя *</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input placeholder="Имя Фамилия" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Номер телефона *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="+992901234567" 
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -143,7 +278,7 @@ const SignUp = () => {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Электронная почта</FormLabel>
+                    <FormLabel>Email *</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
@@ -161,11 +296,11 @@ const SignUp = () => {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Пароль</FormLabel>
+                    <FormLabel>Пароль *</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder="••••••••"
+                        placeholder="Минимум 8 символов"
                         {...field}
                       />
                     </FormControl>
@@ -179,11 +314,11 @@ const SignUp = () => {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Подтвердите пароль</FormLabel>
+                    <FormLabel>Подтвердите пароль *</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder="••••••••"
+                        placeholder="Повторите пароль"
                         {...field}
                       />
                     </FormControl>
@@ -214,7 +349,7 @@ const SignUp = () => {
           <div className="text-center text-sm w-full">
             У вас уже есть аккаунт?{" "}
             <Link
-              to="/sign-in"
+              to="/"
               className="text-blue-600 font-semibold hover:underline"
             >
               Войти

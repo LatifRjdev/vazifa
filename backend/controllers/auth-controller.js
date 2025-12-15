@@ -4,8 +4,10 @@ import jwt from "jsonwebtoken";
 import aj from "../libs/arcjet.js";
 import User from "../models/users.js";
 import Verification from "../models/verification.js";
+import PhoneVerification from "../models/phone-verification.js";
 import Workspace from "../models/workspace.js";
 import { sendEmail } from "../libs/send-emails.js";
+import { sendSMS } from "../libs/send-sms.js";
 import { verifyJWT } from "../libs/jwt-verify.js";
 
 const registerUser = async (req, res) => {
@@ -647,6 +649,345 @@ const appleCallback = async (req, res) => {
   }
 };
 
+// NEW: Register user with phone (SMS verification)
+const registerUserWithPhone = async (req, res) => {
+  try {
+    const { name, phoneNumber, email, password } = req.body;
+
+    console.log("📱 Phone registration attempt:", { name, phoneNumber, email });
+
+    // Validate name format (Имя Фамилия)
+    const words = name.trim().split(/\s+/);
+    if (words.length < 2) {
+      return res.status(400).json({ 
+        message: "Полное имя должно содержать минимум Имя и Фамилию через пробел" 
+      });
+    }
+
+    // Validate phone format +992XXXXXXXXX
+    if (!phoneNumber || !/^\+992\d{9}$/.test(phoneNumber)) {
+      return res.status(400).json({ 
+        message: "Номер телефона должен быть в формате +992XXXXXXXXX" 
+      });
+    }
+
+    // Check if phone already exists
+    const existingPhone = await User.findOne({ phoneNumber });
+    if (existingPhone) {
+      return res.status(400).json({ message: "Этот номер телефона уже зарегистрирован" });
+    }
+
+    // Check if email already exists (if provided)
+    if (email) {
+      const existingEmail = await User.findOne({ email });
+      if (existingEmail) {
+        return res.status(400).json({ message: "Этот email уже зарегистрирован" });
+      }
+    }
+
+    // Rate limiting DISABLED for testing
+    // const rateLimit = await PhoneVerification.checkExponentialRateLimit(
+    //   phoneNumber,
+    //   'registration'
+    // );
+
+    // if (!rateLimit.allowed) {
+    //   return res.status(429).json({
+    //     message: rateLimit.message,
+    //     waitMinutes: rateLimit.waitMinutes,
+    //     attemptNumber: rateLimit.attemptNumber
+    //   });
+    // }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create user (auto-verified - no SMS required)
+    const newUser = await User.create({
+      name,
+      phoneNumber,
+      email,
+      password: hashedPassword,
+      preferredAuthMethod: 'phone',
+      isPhoneVerified: true, // Auto-verified
+    });
+
+    console.log("✅ User created and auto-verified:", phoneNumber);
+
+    // Add to default workspace
+    try {
+      const defaultWorkspace = await Workspace.findOne({ 
+        name: 'Рабочее пространство' 
+      });
+
+      if (defaultWorkspace) {
+        const isMember = defaultWorkspace.members.some(
+          member => member.user.toString() === newUser._id.toString()
+        );
+
+        if (!isMember) {
+          defaultWorkspace.members.push({
+            user: newUser._id,
+            role: 'member',
+            joinedAt: new Date(),
+          });
+          await defaultWorkspace.save();
+          console.log(`✅ Added ${newUser.name} to default workspace`);
+        }
+      }
+    } catch (error) {
+      console.error('Error adding user to workspace:', error);
+    }
+
+    // Generate JWT token
+    const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    // Return user data
+    const userData = newUser.toObject();
+    delete userData.password;
+
+    res.status(201).json({
+      message: "Регистрация завершена успешно!",
+      user: userData,
+      token,
+      requiresVerification: false, // No verification needed
+    });
+  } catch (error) {
+    console.error("Phone registration error:", error);
+    res.status(500).json({ message: error.message || "Ошибка сервера" });
+  }
+};
+
+// NEW: Verify phone code
+const verifyPhoneCode = async (req, res) => {
+  try {
+    const { phoneNumber, code } = req.body;
+
+    console.log("🔢 Verifying code for:", phoneNumber);
+
+    if (!phoneNumber || !code) {
+      return res.status(400).json({ message: "Телефон и код обязательны" });
+    }
+
+    // Verify the code
+    const result = await PhoneVerification.verifyCode(
+      phoneNumber,
+      code,
+      'registration'
+    );
+
+    if (!result.success) {
+      return res.status(400).json({ message: result.message });
+    }
+
+    // Find user and mark as verified
+    const user = await User.findOne({ phoneNumber });
+    
+    if (!user) {
+      return res.status(404).json({ message: "Пользователь не найден" });
+    }
+
+    user.isPhoneVerified = true;
+    await user.save();
+
+    // Add to default workspace
+    try {
+      const defaultWorkspace = await Workspace.findOne({ 
+        name: 'Рабочее пространство' 
+      });
+
+      if (defaultWorkspace) {
+        const isMember = defaultWorkspace.members.some(
+          member => member.user.toString() === user._id.toString()
+        );
+
+        if (!isMember) {
+          defaultWorkspace.members.push({
+            user: user._id,
+            role: 'member',
+            joinedAt: new Date(),
+          });
+          await defaultWorkspace.save();
+          console.log(`✅ Added ${user.name} to default workspace`);
+        }
+      }
+    } catch (error) {
+      console.error('Error adding user to workspace:', error);
+    }
+
+    // Generate JWT token
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    // Return user data
+    const userData = user.toObject();
+    delete userData.password;
+
+    console.log("✅ Phone verified successfully for:", phoneNumber);
+
+    res.status(200).json({ 
+      message: "Телефон успешно подтвержден",
+      user: userData,
+      token
+    });
+  } catch (error) {
+    console.error("Phone verification error:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+};
+
+// NEW: Resend verification code
+const resendVerificationCode = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+
+    console.log("📱 Resending code to:", phoneNumber);
+
+    if (!phoneNumber) {
+      return res.status(400).json({ message: "Номер телефона обязателен" });
+    }
+
+    // Rate limiting DISABLED for testing
+    // const rateLimit = await PhoneVerification.checkExponentialRateLimit(
+    //   phoneNumber,
+    //   'registration'
+    // );
+
+    // if (!rateLimit.allowed) {
+    //   return res.status(429).json({ 
+    //     message: rateLimit.message,
+    //     waitMinutes: rateLimit.waitMinutes,
+    //     attemptNumber: rateLimit.attemptNumber,
+    //     nextAttemptAt: rateLimit.nextAttemptAt
+    //   });
+    // }
+
+    // Find user
+    const user = await User.findOne({ phoneNumber });
+    if (!user) {
+      return res.status(404).json({ message: "Пользователь не найден" });
+    }
+
+    // Create new verification with link token
+    const { verificationToken, verification } = await PhoneVerification.createVerification(
+      phoneNumber,
+      'registration',
+      user._id,
+      {
+        ip: req.ip,
+        userAgent: req.headers['user-agent']
+      },
+      true // Use link-based verification
+    );
+
+    // Send SMS with verification link
+    const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
+    const verificationLink = `${frontendUrl}/verify/${verificationToken}`;
+    const smsText = `Подтвердите регистрацию в Protocol:\n${verificationLink}\n\nСсылка действительна 10 минут.`;
+    
+    console.log("🔗 New verification link:", verificationLink);
+    
+    try {
+      await sendSMS(phoneNumber, smsText);
+      console.log("✅ SMS resent successfully");
+    } catch (smsError) {
+      console.error("⚠️ SMS resending failed:", smsError.message);
+      return res.status(500).json({ message: "Ошибка отправки SMS" });
+    }
+
+    res.status(200).json({
+      message: "Ссылка отправлена повторно. Проверьте SMS.",
+      verificationType: "link",
+      expiresIn: 600,
+      attemptNumber: rateLimit.attemptNumber
+    });
+  } catch (error) {
+    console.error("Resend code error:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+};
+
+// NEW: Login with email OR phone
+const loginWithEmailOrPhone = async (req, res) => {
+  try {
+    const { emailOrPhone, password } = req.body;
+
+    console.log("🔐 Login attempt:", emailOrPhone);
+
+    if (!emailOrPhone || !password) {
+      return res.status(400).json({ message: "Все поля обязательны" });
+    }
+
+    // Determine if it's email or phone
+    const isPhone = emailOrPhone.startsWith('+992');
+    
+    // Find user by email or phone
+    const user = await User.findOne(
+      isPhone 
+        ? { phoneNumber: emailOrPhone }
+        : { email: emailOrPhone }
+    ).select("+password");
+
+    if (!user) {
+      return res.status(400).json({ message: "Неверные учетные данные" });
+    }
+
+    // Check if user has a password
+    if (!user.password) {
+      return res.status(400).json({ 
+        message: "Этот аккаунт создан через социальную сеть. Используйте Google для входа." 
+      });
+    }
+
+    // Verify password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Неверные учетные данные" });
+    }
+
+    // NO VERIFICATION CHECK - Allow all users to login
+
+    // 2FA check
+    if (user.is2FAEnabled) {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const hashedOtp = await bcrypt.hash(otp, 10);
+      user.twoFAOtp = hashedOtp;
+      user.twoFAOtpExpires = Date.now() + 10 * 60 * 1000;
+      await user.save();
+
+      return res.status(200).json({ 
+        twoFARequired: true, 
+        message: "Требуется 2FA",
+        email: user.email || user.phoneNumber
+      });
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Generate JWT token
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    // Return user data
+    const userData = user.toObject();
+    delete userData.password;
+
+    console.log("✅ Login successful for:", emailOrPhone);
+
+    res.status(200).json({ user: userData, token });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+};
+
 export {
   registerUser,
   loginUser,
@@ -658,4 +999,9 @@ export {
   googleCallback,
   appleAuth,
   appleCallback,
+  // NEW: Phone authentication
+  registerUserWithPhone,
+  verifyPhoneCode,
+  resendVerificationCode,
+  loginWithEmailOrPhone,
 };
