@@ -11,3 +11,7 @@ backend/.env*
 !frontend/.env.example
 !backend/.env.example
 !backend/.env.production.template
+
+# Documentation files - ignore all markdown files
+*.md
+!README.md

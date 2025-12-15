@@ -104,8 +104,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsAuthenticated(true);
     setIsLoading(false);
 
-    // Redirect super admin to important-tasks, others to dashboard
-    if (data?.user?.role === "super_admin") {
+    // Redirect based on role
+    if (data?.user?.role === "tech_admin") {
+      navigate("/dashboard/tech-admin");
+    } else if (data?.user?.role === "super_admin") {
       navigate("/important-tasks");
     } else {
       navigate("/dashboard");
@@ -137,4 +139,25 @@ export const useAuth = () => {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
+};
+
+// Role helper functions
+export const isTechAdmin = (user: User | null): boolean => {
+  return user?.role === "tech_admin";
+};
+
+export const isSuperAdmin = (user: User | null): boolean => {
+  return user?.role === "super_admin";
+};
+
+export const isAdmin = (user: User | null): boolean => {
+  return user?.role === "admin";
+};
+
+export const isAnyAdmin = (user: User | null): boolean => {
+  return ["tech_admin", "super_admin", "admin"].includes(user?.role || "");
+};
+
+export const isManager = (user: User | null): boolean => {
+  return user?.role === "manager";
 };

@@ -12,14 +12,37 @@ const userSchema = new Schema(
       lowercase: true,
     },
     password: { type: String, required: false, select: false }, // Not required for OAuth users
-    name: { type: String, required: true, trim: true },
+    name: { 
+      type: String, 
+      required: true, 
+      trim: true,
+      validate: {
+        validator: function(v) {
+          // Skip validation for existing users (only validate on registration)
+          if (!this.isNew) return true;
+          
+          // Validate "Имя Фамилия" format for new users - at least 2 words separated by space
+          const words = v.trim().split(/\s+/);
+          return words.length >= 2;
+        },
+        message: 'Полное имя должно содержать минимум Имя и Фамилию через пробел'
+      }
+    },
     lastName: { type: String, required: false, trim: true },
     phoneNumber: { 
       type: String, 
-      required: false, // Will validate that either email or phone exists
+      required: false, // Required for new users, but optional for legacy users
       unique: true,
       sparse: true, // Allow null values with unique constraint
-      trim: true 
+      trim: true,
+      validate: {
+        validator: function(v) {
+          // If phone is provided, validate +992 format (Tajikistan)
+          if (!v) return true; // Allow empty for legacy users
+          return /^\+992\d{9}$/.test(v);
+        },
+        message: 'Номер телефона должен быть в формате +992XXXXXXXXX (9 цифр после +992)'
+      }
     },
     profilePicture: { type: String },
     isEmailVerified: { type: Boolean, default: false },
@@ -41,16 +64,23 @@ const userSchema = new Schema(
     // Global role system
     role: {
       type: String,
-      enum: ['super_admin', 'admin', 'manager', 'member'],
+      enum: ['tech_admin', 'super_admin', 'admin', 'manager', 'member'],
       default: 'member'
     },
     notifications: [{ type: Schema.Types.ObjectId, ref: "Notification" }],
     settings: {
       emailNotifications: { type: Boolean, default: true },
-      smsNotifications: { type: Boolean, default: false },
+      smsNotifications: { type: Boolean, default: true }, // Enable SMS by default
       smsNotificationTypes: {
         type: [String],
-        default: ['verification', 'otp', 'password_reset'], // Only critical by default
+        default: [
+          'verification',
+          'otp',
+          'password_reset',
+          'task_notification',
+          'workspace_invite',
+          'general_notification',
+        ], // All notification types enabled by default
         enum: [
           'verification',
           'otp',

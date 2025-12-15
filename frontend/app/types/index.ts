@@ -11,7 +11,7 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   profilePicture?: string;
-  role?: "super_admin" | "admin" | "manager" | "member";
+  role?: "tech_admin" | "super_admin" | "admin" | "manager" | "member";
 }
 
 // Оставляем Workspace для обратной совместимости
