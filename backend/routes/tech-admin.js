@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticate } from "../middleware/auth-middleware.js";
+import { authenticateUser } from "../middleware/auth-middleware.js";
 import { requireTechAdmin } from "../middleware/tech-admin-middleware.js";
 import {
   getDashboardStats,
@@ -23,7 +23,7 @@ import {
 const router = express.Router();
 
 // Apply authentication and tech_admin requirement to all routes
-router.use(authenticate);
+router.use(authenticateUser);
 router.use(requireTechAdmin);
 
 // ===== DASHBOARD OVERVIEW =====
