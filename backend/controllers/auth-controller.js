@@ -7,7 +7,7 @@ import Verification from "../models/verification.js";
 import PhoneVerification from "../models/phone-verification.js";
 import Workspace from "../models/workspace.js";
 import { sendEmail } from "../libs/send-emails.js";
-import { sendSMS } from "../libs/send-sms.js";
+import { sendSMS } from "../libs/send-sms-bullmq.js";
 import { verifyJWT } from "../libs/jwt-verify.js";
 
 const registerUser = async (req, res) => {

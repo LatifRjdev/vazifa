@@ -1,4 +1,4 @@
-import { sendSMS } from "../libs/send-sms.js";
+import { sendSMS } from "../libs/send-sms-bullmq.js";
 import PhoneVerification from "../models/phone-verification.js";
 import User from "../models/users.js";
 import SMSLog from "../models/sms-logs.js";

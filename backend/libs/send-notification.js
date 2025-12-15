@@ -1,7 +1,7 @@
 import User from "../models/users.js";
 import Notification from "../models/notifications.js";
 import { sendEmail } from "./send-emails.js";
-import { sendSMS } from "./send-sms.js";
+import { sendSMS } from "./send-sms-bullmq.js";
 import SMSLog from "../models/sms-logs.js";
 
 /**
