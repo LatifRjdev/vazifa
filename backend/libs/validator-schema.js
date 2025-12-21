@@ -67,10 +67,6 @@ const resetPasswordSchema = z.object({
     .min(8, "Password must be at least 8 characters long"),
 });
 
-const verifyEmailTokenSchema = z.object({
-  token: z.string(),
-});
-
 const changePasswordSchema = z.object({
   oldPassword: z.string().min(8, "Password must be at least 8 characters long"),
   newPassword: z.string().min(8, "Password must be at least 8 characters long"),
@@ -104,7 +100,6 @@ export {
   taskSchema,
   commentSchema,
   resetPasswordSchema,
-  verifyEmailTokenSchema,
   taskAttachmentSchema,
   addProjectMembersSchema,
 };

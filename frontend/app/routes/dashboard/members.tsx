@@ -10,8 +10,10 @@ import {
   MoreHorizontal,
   CheckCircle,
   Clock,
+  Eye,
 } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 import { toast } from "sonner";
 
 import { Loader } from "@/components/loader";
@@ -79,10 +81,10 @@ const MembersPage = () => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
-  const [newRole, setNewRole] = useState<"admin" | "manager" | "member">("member");
+  const [newRole, setNewRole] = useState<"admin" | "chief_manager" | "manager" | "member">("member");
 
   // Проверка прав доступа
-  const canManageMembers = user?.role && ["admin", "super_admin", "manager"].includes(user.role);
+  const canManageMembers = user?.role && ["admin", "super_admin", "chief_manager", "manager"].includes(user.role);
   const canChangeRoles = user?.role === "admin" || user?.role === "super_admin";
 
   // Загрузка всех пользователей
@@ -178,7 +180,10 @@ const MembersPage = () => {
   const getRoleIcon = (role: string) => {
     switch (role) {
       case "admin":
+      case "super_admin":
         return <Crown className="h-4 w-4 text-yellow-600" />;
+      case "chief_manager":
+        return <Shield className="h-4 w-4 text-purple-600" />;
       case "manager":
         return <Shield className="h-4 w-4 text-blue-600" />;
       default:
@@ -188,8 +193,12 @@ const MembersPage = () => {
 
   const getRoleLabel = (role: string) => {
     switch (role) {
+      case "super_admin":
+        return "Супер Админ";
       case "admin":
         return "Администратор";
+      case "chief_manager":
+        return "Главный Менеджер";
       case "manager":
         return "Менеджер";
       default:
@@ -200,7 +209,10 @@ const MembersPage = () => {
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case "admin":
+      case "super_admin":
         return "destructive" as const;
+      case "chief_manager":
+        return "default" as const;
       case "manager":
         return "default" as const;
       default:
@@ -210,7 +222,7 @@ const MembersPage = () => {
 
   const handleChangeRole = (member: UserType) => {
     setSelectedUser(member);
-    setNewRole(member.role as "admin" | "manager" | "member");
+    setNewRole(member.role as "admin" | "chief_manager" | "manager" | "member");
     setIsRoleDialogOpen(true);
   };
 
@@ -308,6 +320,7 @@ const MembersPage = () => {
               <SelectContent>
                 <SelectItem value="all">Все роли</SelectItem>
                 <SelectItem value="admin">Администраторы</SelectItem>
+                <SelectItem value="chief_manager">Главные Менеджеры</SelectItem>
                 <SelectItem value="manager">Менеджеры</SelectItem>
                 <SelectItem value="member">Участники</SelectItem>
               </SelectContent>
@@ -348,14 +361,21 @@ const MembersPage = () => {
                     <TableRow key={member._id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={member.profilePicture} />
-                            <AvatarFallback>
-                              {(member.name || 'U').charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <Link to={`/dashboard/user/${member._id}`}>
+                            <Avatar className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all">
+                              <AvatarImage src={member.profilePicture} />
+                              <AvatarFallback>
+                                {(member.name || 'U').charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                          </Link>
                           <div>
-                            <div className="font-medium">{member.name || 'Без имени'}</div>
+                            <Link
+                              to={`/dashboard/user/${member._id}`}
+                              className="font-medium hover:text-primary hover:underline transition-colors"
+                            >
+                              {member.name || 'Без имени'}
+                            </Link>
                             <div className="text-sm text-muted-foreground">
                               {member.email || 'Без email'}
                             </div>
@@ -457,6 +477,12 @@ const MembersPage = () => {
                     <div className="flex items-center gap-2">
                       <Crown className="h-4 w-4 text-yellow-600" />
                       Администратор
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="chief_manager">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-purple-600" />
+                      Главный Менеджер
                     </div>
                   </SelectItem>
                   <SelectItem value="manager">

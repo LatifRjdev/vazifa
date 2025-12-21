@@ -7,11 +7,17 @@ export interface User {
   lastName?: string;
   phoneNumber?: string;
   email: string;
-  isEmailVerified: boolean;
   createdAt: string;
   updatedAt: string;
   profilePicture?: string;
-  role?: "tech_admin" | "super_admin" | "admin" | "manager" | "member";
+  role?: "tech_admin" | "super_admin" | "admin" | "chief_manager" | "manager" | "member";
+  disabled?: boolean;
+  disabledAt?: string;
+  disabledBy?: { _id: string; name: string; email: string };
+  disabledReason?: string;
+  createdBy?: { _id: string; name: string; email: string };
+  authProvider?: "local" | "google" | "apple";
+  lastLogin?: string;
 }
 
 // Оставляем Workspace для обратной совместимости

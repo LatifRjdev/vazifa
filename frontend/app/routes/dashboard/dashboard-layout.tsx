@@ -52,7 +52,7 @@ const DashboardLayout = () => {
   }, [currentOrganization, organizations]);
 
   if (isLoading) return <Loader message="Loading..." />;
-  if (!isAuthenticated) return <Navigate to="/sign-in" replace />;
+  if (!isAuthenticated) return <Navigate to="/" replace />;
 
   const handleOrganizationSelect = (organization: Workspace | null) => {
     setCurrentOrganization(organization);

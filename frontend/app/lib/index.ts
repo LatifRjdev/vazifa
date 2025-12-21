@@ -54,10 +54,8 @@ export const getProjectDueDateColor = (dueDate: Date) => {
 
 export const publicRoutes = [
   "/",
-  "/sign-in",
   "/sign-up",
   "/forgot-password",
   "/reset-password",
-  "/verify-email",
   "*",
 ];

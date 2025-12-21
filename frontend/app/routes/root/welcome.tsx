@@ -43,7 +43,7 @@ const Welcome = () => {
             </Link>
 
             <nav className="flex items-center gap-2 sm:gap-4">
-              <Link to="/sign-in">
+              <Link to="/">
                 <Button variant="ghost">Войти</Button>
               </Link>
               <Link to="/sign-up">
@@ -538,7 +538,7 @@ const Welcome = () => {
                   Начни бесплатно
                 </Button>
               </Link>
-              <Link to="/sign-in">
+              <Link to="/">
                 <Button
                   variant="outline"
                   className="bg-transparent text-primary-foreground border-primary-foreground hover:bg-primary-foreground hover:text-primary"

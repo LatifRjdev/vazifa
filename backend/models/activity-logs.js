@@ -27,6 +27,13 @@ const activityLogSchema = new Schema(
         "joined_workspace",
         "transferred_workspace_ownership",
         "added_attachment",
+        // New actions for user activity tracking
+        "logged_in",
+        "viewed_task",
+        "added_response",
+        "changed_task_status",
+        "changed_task_deadline",
+        "deleted_task",
       ],
     },
     resourceType: {

@@ -125,7 +125,7 @@ const ProfilePage = () => {
 
         setTimeout(() => {
           logout();
-          navigate("/sign-in");
+          navigate("/");
         }, 3000);
       },
       onError: (error: any) => {

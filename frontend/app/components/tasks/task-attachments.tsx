@@ -52,7 +52,7 @@ export const TaskAttachments = ({
       setUploadProgress(0);
       try {
         // --- Backend upload logic ---
-        const url = `${import.meta.env.VITE_API_URL}/upload`;
+        const url = '/api-v1/upload';
 
         const formData = new FormData();
         formData.append("file", file);

@@ -45,8 +45,6 @@ const userSchema = new Schema(
       }
     },
     profilePicture: { type: String },
-    isEmailVerified: { type: Boolean, default: false },
-    isPhoneVerified: { type: Boolean, default: false },
     preferredAuthMethod: {
       type: String,
       enum: ['email', 'phone'],
@@ -64,7 +62,7 @@ const userSchema = new Schema(
     // Global role system
     role: {
       type: String,
-      enum: ['tech_admin', 'super_admin', 'admin', 'manager', 'member'],
+      enum: ['tech_admin', 'super_admin', 'admin', 'chief_manager', 'manager', 'member'],
       default: 'member'
     },
     notifications: [{ type: Schema.Types.ObjectId, ref: "Notification" }],
@@ -74,16 +72,16 @@ const userSchema = new Schema(
       smsNotificationTypes: {
         type: [String],
         default: [
-          'verification',
           'otp',
+          'verification',
           'password_reset',
           'task_notification',
           'workspace_invite',
           'general_notification',
         ], // All notification types enabled by default
         enum: [
-          'verification',
           'otp',
+          'verification',
           'password_reset',
           'task_notification',
           'workspace_invite',
@@ -94,6 +92,12 @@ const userSchema = new Schema(
     is2FAEnabled: { type: Boolean, default: false },
     twoFAOtp: { type: String, select: false },
     twoFAOtpExpires: { type: Date, select: false },
+    // Admin management fields
+    disabled: { type: Boolean, default: false },
+    disabledAt: { type: Date },
+    disabledBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    disabledReason: { type: String },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User' }, // For admin-created users
   },
   { timestamps: true }
 );
@@ -111,13 +115,17 @@ userSchema.pre('save', function(next) {
 userSchema.methods.canReceiveSMS = function() {
   return (
     this.phoneNumber &&
-    this.isPhoneVerified &&
-    this.settings.smsNotifications
+    this.smsNotifications !== false
   );
 };
 
 // Instance method to check if notification type is enabled for SMS
 userSchema.methods.isSMSNotificationEnabled = function(notificationType) {
+  // If no settings object or smsNotificationTypes array, allow all notifications
+  if (!this.settings || !this.settings.smsNotificationTypes) {
+    return this.canReceiveSMS();
+  }
+  
   return (
     this.canReceiveSMS() &&
     this.settings.smsNotificationTypes.includes(notificationType)

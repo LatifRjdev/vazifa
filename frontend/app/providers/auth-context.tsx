@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(null);
           setIsAuthenticated(false);
           if (!isPublicRoute) {
-            navigate("/sign-in");
+            navigate("/");
           }
         }
       } catch (error) {
@@ -65,18 +65,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (expiry <= 0) {
           logout();
-          navigate("/sign-in");
+          navigate("/");
         } else {
           timeout = setTimeout(() => {
             logout();
-            navigate("/sign-in");
+            navigate("/");
           }, expiry);
         }
       } catch (e) {
         // Invalid token, force logout
         if (isAuthenticated) {
           logout();
-          navigate("/sign-in");
+          navigate("/");
         }
       }
     }
@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const handleForceLogout = () => {
       logout();
-      navigate("/sign-in");
+      navigate("/");
     };
     window.addEventListener("force-logout", handleForceLogout);
     return () => {

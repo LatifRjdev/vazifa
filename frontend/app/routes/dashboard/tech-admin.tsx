@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
-import { Activity, Database, MessageSquare, Server, Users } from "lucide-react";
+import { Activity, Database, ListTodo, Mail, MessageSquare, Server, Settings, Shield, Users } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth, isTechAdmin } from "@/providers/auth-context";
@@ -11,14 +11,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 // API function to fetch dashboard stats
 async function fetchDashboardStats() {
   const token = localStorage.getItem("token");
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/tech-admin/dashboard/stats`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+  const response = await fetch('/api-v1/tech-admin/dashboard/stats', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 
   if (!response.ok) {
     throw new Error("Failed to fetch dashboard stats");
@@ -233,7 +230,7 @@ export default function TechAdminDashboard() {
       </div>
 
       {/* Quick Links */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
         <Card className="cursor-pointer hover:bg-accent transition-colors" onClick={() => navigate('/dashboard/tech-admin/users')}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -251,6 +248,46 @@ export default function TechAdminDashboard() {
               SMS Logs
             </CardTitle>
             <CardDescription>Monitor SMS delivery and analytics</CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card className="cursor-pointer hover:bg-accent transition-colors" onClick={() => navigate('/dashboard/tech-admin/email-logs')}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Email Logs
+            </CardTitle>
+            <CardDescription>Monitor email delivery and analytics</CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card className="cursor-pointer hover:bg-accent transition-colors" onClick={() => navigate('/dashboard/tech-admin/queue')}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ListTodo className="h-5 w-5" />
+              Queue Management
+            </CardTitle>
+            <CardDescription>Manage SMS job queue</CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card className="cursor-pointer hover:bg-accent transition-colors" onClick={() => navigate('/dashboard/tech-admin/audit-logs')}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Audit Logs
+            </CardTitle>
+            <CardDescription>Track all admin actions</CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card className="cursor-pointer hover:bg-accent transition-colors" onClick={() => navigate('/dashboard/tech-admin/settings')}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Settings
+            </CardTitle>
+            <CardDescription>Configure system settings</CardDescription>
           </CardHeader>
         </Card>
 

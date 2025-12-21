@@ -103,7 +103,7 @@ const ResetPasswordPage = () => {
         <Card className="border-border/50 shadow-xl">
           <CardHeader>
             <Link
-              to="/sign-in"
+              to="/"
               className="flex items-center text-sm text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -124,7 +124,7 @@ const ResetPasswordPage = () => {
                   новый пароль.
                 </p>
                 <Button asChild className="mt-4">
-                  <Link to="/sign-in">Перейти к входу</Link>
+                  <Link to="/">Перейти к входу</Link>
                 </Button>
               </div>
             ) : (
@@ -196,7 +196,7 @@ const ResetPasswordPage = () => {
             <div className="text-center text-sm w-full">
               Забыли пароль?{" "}
               <Link
-                to="/sign-in"
+                to="/"
                 className="text-blue-600 font-semibold hover:underline"
               >
                 Войти

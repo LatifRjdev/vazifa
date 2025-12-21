@@ -98,26 +98,16 @@ const WorkspaceSetting = () => {
               <Input value={user?.email || ""} readOnly className="bg-muted" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Роль</Label>
-              <Input 
-                value={
-                  user?.role === "admin" ? "Администратор" :
-                  user?.role === "manager" ? "Менеджер" : "Участник"
-                } 
-                readOnly 
-                className="bg-muted" 
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Статус email</Label>
-              <Input 
-                value={user?.isEmailVerified ? "Подтвержден" : "Не подтвержден"} 
-                readOnly 
-                className="bg-muted" 
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Роль</Label>
+            <Input
+              value={
+                user?.role === "admin" ? "Администратор" :
+                user?.role === "manager" ? "Менеджер" : "Участник"
+              }
+              readOnly
+              className="bg-muted"
+            />
           </div>
         </CardContent>
       </Card>

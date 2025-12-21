@@ -1,6 +1,8 @@
 import bcrypt from "bcrypt";
 
 import User from "../models/users.js";
+import Task from "../models/tasks.js";
+import ActivityLog from "../models/activity-logs.js";
 import { sendEmail } from "../libs/send-emails.js";
 
 const getUserProfile = async (req, res) => {
@@ -51,13 +53,11 @@ const updateUserProfile = async (req, res) => {
         });
       }
       
-      // Auto-verify phone and enable SMS notifications when phone is added
+      // Enable SMS notifications when phone is added
       user.phoneNumber = cleanPhone;
-      user.isPhoneVerified = true;
       user.settings.smsNotifications = true;
     } else if (phoneNumber !== undefined) {
       user.phoneNumber = "";
-      user.isPhoneVerified = false;
     }
 
     user.name = name;
@@ -233,6 +233,198 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// Get user profile by ID (for managers/admins to view member details)
+const getUserProfileById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Check permissions - only managers and admins can view other users
+    if (!["admin", "super_admin", "chief_manager", "manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен" });
+    }
+
+    const user = await User.findById(userId).select("-password -twoFAOtp -twoFAOtpExpires");
+    if (!user) {
+      return res.status(404).json({ message: "Пользователь не найден" });
+    }
+
+    // Get task statistics for this user
+    const assignedTasks = await Task.find({ assignees: userId });
+    const createdTasks = await Task.find({ createdBy: userId });
+
+    const taskStats = {
+      assigned: {
+        total: assignedTasks.length,
+        completed: assignedTasks.filter(t => t.status === "Done").length,
+        inProgress: assignedTasks.filter(t => t.status === "In Progress").length,
+        todo: assignedTasks.filter(t => t.status === "To Do").length,
+      },
+      created: createdTasks.length,
+    };
+
+    // Get viewed tasks for this user
+    const viewedTaskIds = await ActivityLog.distinct("resourceId", {
+      user: userId,
+      action: "viewed_task",
+      resourceType: "Task"
+    });
+
+    // Calculate unviewed assigned tasks
+    const unviewedTasks = assignedTasks.filter(
+      task => !viewedTaskIds.some(id => id.toString() === task._id.toString())
+    );
+
+    res.status(200).json({
+      user,
+      taskStats,
+      viewedTasksCount: viewedTaskIds.length,
+      unviewedTasksCount: unviewedTasks.length,
+    });
+  } catch (error) {
+    console.error("Error fetching user profile by ID:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+};
+
+// Get user activity history
+const getUserActivity = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { page = 1, limit = 20, action } = req.query;
+
+    // Check permissions
+    if (!["admin", "super_admin", "chief_manager", "manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен" });
+    }
+
+    const query = { user: userId };
+    if (action) {
+      query.action = action;
+    }
+
+    const activities = await ActivityLog.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .populate("resourceId", "title name");
+
+    const total = await ActivityLog.countDocuments(query);
+
+    res.status(200).json({
+      activities,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching user activity:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+};
+
+// Get user login history
+const getUserLoginHistory = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    // Check permissions
+    if (!["admin", "super_admin", "chief_manager", "manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен" });
+    }
+
+    const loginHistory = await ActivityLog.find({
+      user: userId,
+      action: "logged_in",
+    })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await ActivityLog.countDocuments({
+      user: userId,
+      action: "logged_in",
+    });
+
+    res.status(200).json({
+      logins: loginHistory,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching login history:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+};
+
+// Get tasks that user viewed or not viewed
+const getUserTaskViews = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { filter = "all" } = req.query; // all, viewed, unviewed
+
+    // Check permissions
+    if (!["admin", "super_admin", "chief_manager", "manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен" });
+    }
+
+    // Get all tasks assigned to user
+    const assignedTasks = await Task.find({ assignees: userId })
+      .populate("createdBy", "name email")
+      .populate("responsibleManager", "name email")
+      .sort({ createdAt: -1 });
+
+    // Get viewed task IDs
+    const viewedTaskLogs = await ActivityLog.find({
+      user: userId,
+      action: "viewed_task",
+      resourceType: "Task"
+    }).sort({ createdAt: -1 });
+
+    const viewedTaskIds = new Set(viewedTaskLogs.map(log => log.resourceId.toString()));
+    const viewedTaskTimestamps = {};
+    viewedTaskLogs.forEach(log => {
+      const taskId = log.resourceId.toString();
+      if (!viewedTaskTimestamps[taskId]) {
+        viewedTaskTimestamps[taskId] = log.createdAt;
+      }
+    });
+
+    // Categorize tasks
+    const tasksWithViewStatus = assignedTasks.map(task => ({
+      ...task.toObject(),
+      viewed: viewedTaskIds.has(task._id.toString()),
+      lastViewedAt: viewedTaskTimestamps[task._id.toString()] || null,
+    }));
+
+    let filteredTasks = tasksWithViewStatus;
+    if (filter === "viewed") {
+      filteredTasks = tasksWithViewStatus.filter(t => t.viewed);
+    } else if (filter === "unviewed") {
+      filteredTasks = tasksWithViewStatus.filter(t => !t.viewed);
+    }
+
+    res.status(200).json({
+      tasks: filteredTasks,
+      summary: {
+        total: assignedTasks.length,
+        viewed: tasksWithViewStatus.filter(t => t.viewed).length,
+        unviewed: tasksWithViewStatus.filter(t => !t.viewed).length,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching user task views:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+};
+
 // Delete user (admin only)
 const deleteUser = async (req, res) => {
   try {
@@ -277,4 +469,8 @@ export {
   disable2FA,
   getAllUsers,
   deleteUser,
+  getUserProfileById,
+  getUserActivity,
+  getUserLoginHistory,
+  getUserTaskViews,
 };

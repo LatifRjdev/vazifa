@@ -3,12 +3,29 @@ import jwt from "jsonwebtoken";
 
 import aj from "../libs/arcjet.js";
 import User from "../models/users.js";
-import Verification from "../models/verification.js";
-import PhoneVerification from "../models/phone-verification.js";
 import Workspace from "../models/workspace.js";
+import ActivityLog from "../models/activity-logs.js";
 import { sendEmail } from "../libs/send-emails.js";
 import { sendSMS } from "../libs/send-sms-bullmq.js";
 import { verifyJWT } from "../libs/jwt-verify.js";
+
+// Helper function to record login activity
+const recordLoginActivity = async (userId, details = {}) => {
+  try {
+    await ActivityLog.create({
+      user: userId,
+      action: "logged_in",
+      resourceType: "User",
+      resourceId: userId,
+      details: {
+        ...details,
+        timestamp: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("Error recording login activity:", error);
+  }
+};
 
 const registerUser = async (req, res) => {
   try {
@@ -38,65 +55,53 @@ const registerUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create new user
+    // Create new user (no verification needed)
     const newUser = await User.create({
       email,
       password: hashedPassword,
       name,
     });
 
-    // Generate email verification token
-    const verificationToken = jwt.sign(
-      { userId: newUser._id, purpose: "verify-email" },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-
-    // save verification token to verification
-    await Verification.create({
-      userId: newUser._id,
-      token: verificationToken,
-      expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000),
-    });
-
-    // send verification token to user email - use production URL in production environment
-    const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
-    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
-    
-    // Debug logging for URL generation
-    console.log("=".repeat(80));
-    console.log("📧 EMAIL VERIFICATION LINK FOR:", email);
-    console.log("🌍 NODE_ENV:", process.env.NODE_ENV);
-    console.log("🔗 FRONTEND_URL:", process.env.FRONTEND_URL);
-    console.log("🔗 PRODUCTION_FRONTEND_URL:", process.env.PRODUCTION_FRONTEND_URL);
-    console.log("✅ FINAL FRONTEND URL:", frontendUrl);
-    console.log("🔗 VERIFICATION URL:", verificationUrl);
-    console.log("=".repeat(80));
-
-    // Try to send email, but don't fail if it doesn't work
+    // Add user to default workspace
     try {
-      const isEmailSent = await sendEmail(
-        email,
-        "Подтверждение электронной почты",
-        name,
-        "Пожалуйста, подтвердите свою электронную почту, чтобы продолжить.",
-        "Подтвердить Email",
-        verificationUrl
-      );
-      
-      if (isEmailSent) {
-        console.log("✅ Email sent successfully to:", email);
-      } else {
-        console.log("⚠️ Email sending failed, but verification link is available above");
+      const defaultWorkspace = await Workspace.findOne({
+        name: 'Рабочее пространство'
+      });
+
+      if (defaultWorkspace) {
+        const isMember = defaultWorkspace.members.some(
+          member => member.user.toString() === newUser._id.toString()
+        );
+
+        if (!isMember) {
+          defaultWorkspace.members.push({
+            user: newUser._id,
+            role: 'member',
+            joinedAt: new Date(),
+          });
+          await defaultWorkspace.save();
+          console.log(`✅ Added ${newUser.name} to default workspace`);
+        }
       }
     } catch (error) {
-      console.log("⚠️ Email service error:", error.message);
-      console.log("📝 Use the verification link above to verify your email");
+      console.error('Error adding user to default workspace:', error);
     }
 
+    // Generate JWT token for immediate login
+    const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    // Return user data
+    const userData = newUser.toObject();
+    delete userData.password;
+
+    console.log("✅ User registered successfully:", email);
+
     res.status(201).json({
-      message: "Account created successfully! Please check the server console for your email verification link.",
-      verificationUrl: process.env.NODE_ENV === 'development' ? verificationUrl : undefined
+      message: "Регистрация успешна!",
+      user: userData,
+      token,
     });
   } catch (error) {
     console.error("Registration error:", error);
@@ -110,14 +115,6 @@ const loginUser = async (req, res) => {
 
     console.log("Login attempt for:", email);
 
-    // Temporarily disable Arcjet for testing
-    // const decision = await aj.protect(req, { email });
-    // console.log("ARCJET DECISION===>", decision.isDenied());
-    // if (decision.isDenied()) {
-    //   console.log("Arcjet decision false");
-    //   return res.status(400).json({ message: "Invalid request" });
-    // }
-
     // Find user
     const user = await User.findOne({ email }).select("+password");
 
@@ -126,17 +123,17 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    console.log("User found:", user.email, "isEmailVerified:", user.isEmailVerified);
+    console.log("User found:", user.email);
 
     // Check if user has a password (OAuth users might not have one)
     if (!user.password) {
       console.log("OAuth user trying to login with password:", email);
-      return res.status(400).json({ 
-        message: "This account was created with social login. Please use Google or Apple to sign in." 
+      return res.status(400).json({
+        message: "This account was created with social login. Please use Google or Apple to sign in."
       });
     }
 
-    // Verify password first
+    // Verify password
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -145,46 +142,6 @@ const loginUser = async (req, res) => {
     }
 
     console.log("Password verified for:", email);
-
-    // check if user is verified
-    if (!user.isEmailVerified) {
-      console.log("User email not verified:", email);
-      // check if verification token exist in verification
-      const existingVerification = await Verification.findOne({
-        userId: user._id,
-      });
-
-      if (existingVerification && existingVerification.expiresAt > new Date()) {
-        return res
-          .status(400)
-          .json({ message: "Please verify your email first" });
-      } else {
-        // delete existing verification if it exists
-        if (existingVerification) {
-          await Verification.findByIdAndDelete(existingVerification._id);
-        }
-        
-        // generate verification token
-        const verificationToken = jwt.sign(
-          { userId: user._id, purpose: "verify-email" },
-          process.env.JWT_SECRET,
-          { expiresIn: "15m" }
-        );
-        
-        // save verification token to verification
-        await Verification.create({
-          userId: user._id,
-          token: verificationToken,
-          expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-        });
-
-        // For now, just return a message asking to verify email
-        // Skip email sending to avoid SendGrid errors
-        return res
-          .status(400)
-          .json({ message: "Please verify your email first. Check your email for verification link." });
-      }
-    }
 
     // 2FA check
     if (user.is2FAEnabled) {
@@ -195,7 +152,6 @@ const loginUser = async (req, res) => {
       user.twoFAOtpExpires = Date.now() + 10 * 60 * 1000; // 10 min
       await user.save();
 
-      // Skip email sending for now
       return res
         .status(200)
         .json({ twoFARequired: true, message: "2FA required", email });
@@ -204,6 +160,13 @@ const loginUser = async (req, res) => {
     // Update last login
     user.lastLogin = new Date();
     await user.save();
+
+    // Record login activity
+    await recordLoginActivity(user._id, {
+      ip: req.ip || req.headers['x-forwarded-for'],
+      userAgent: req.headers['user-agent'],
+      method: 'email',
+    });
 
     // Generate JWT token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
@@ -249,6 +212,14 @@ const verify2FALogin = async (req, res) => {
     user.twoFAOtpExpires = undefined;
     user.lastLogin = new Date();
     await user.save();
+
+    // Record login activity
+    await recordLoginActivity(user._id, {
+      ip: req.ip || req.headers['x-forwarded-for'],
+      userAgent: req.headers['user-agent'],
+      method: '2fa',
+    });
+
     // Generate JWT token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
@@ -264,99 +235,95 @@ const verify2FALogin = async (req, res) => {
 
 const resetPasswordRequest = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { emailOrPhone } = req.body;
 
-    // Check if user exists
-    const user = await User.findOne({ email });
+    // Determine if it's email or phone
+    const isPhone = emailOrPhone.startsWith('+992');
+
+    // Check if user exists (by email or phone)
+    let user;
+    if (isPhone) {
+      user = await User.findOne({ phoneNumber: emailOrPhone });
+    } else {
+      user = await User.findOne({ email: emailOrPhone });
+    }
 
     if (!user) {
-      return res.status(400).json({ message: "User not found" });
+      return res.status(400).json({ message: "Пользователь не найден" });
     }
 
-    // check if user is verified
-    if (!user.isEmailVerified) {
-      return res
-        .status(400)
-        .json({ message: "Please verify your email first" });
-    }
-
-    // check if token already exist in verification
-    const existingVerification = await Verification.findOne({
-      userId: user._id,
-    });
-
-    if (existingVerification && existingVerification.expiresAt > new Date()) {
-      return res.status(400).json({
-        message:
-          "Reset password request already sent to your email. Please check your email for the reset link.",
-      });
-    }
-
-    // delete existing verification
-    if (existingVerification && existingVerification.expiresAt < new Date()) {
-      await Verification.findByIdAndDelete(existingVerification._id);
-    }
-
-    // generate reset token
+    // Generate reset token (stateless JWT with 15 min expiry)
     const resetToken = jwt.sign(
       { userId: user._id, purpose: "reset-password" },
       process.env.JWT_SECRET,
       { expiresIn: "15m" }
     );
 
-    // save reset token to verification
-    await Verification.create({
-      userId: user._id,
-      token: resetToken,
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-    });
-
-    // send reset token to user email - use production URL in production environment
+    // Send reset token to user email or phone
     const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
     const resetUrl = `${frontendUrl}/reset-password?tk=${resetToken}`;
-    
-    // Debug logging for URL generation
+
     console.log("=".repeat(80));
-    console.log("🔐 PASSWORD RESET LINK FOR:", email);
-    console.log("🌍 NODE_ENV:", process.env.NODE_ENV);
-    console.log("🔗 FRONTEND_URL:", process.env.FRONTEND_URL);
-    console.log("🔗 PRODUCTION_FRONTEND_URL:", process.env.PRODUCTION_FRONTEND_URL);
-    console.log("✅ FINAL FRONTEND URL:", frontendUrl);
+    console.log("🔐 PASSWORD RESET LINK FOR:", emailOrPhone);
     console.log("🔗 RESET URL:", resetUrl);
     console.log("=".repeat(80));
 
-    // Try to send email, but don't fail if it doesn't work
-    try {
-      const isEmailSent = await sendEmail(
-        email,
-        "Сброс пароля",
-        user.name,
-        "Нажмите на ссылку ниже, чтобы сбросить пароль. Пожалуйста, сбросьте пароль, чтобы продолжить.",
-        "Сбросить пароль",
-        resetUrl
-      );
-      
-      if (isEmailSent) {
-        console.log("✅ Reset email sent successfully to:", email);
-        res.status(200).json({ message: "Reset password email sent" });
-      } else {
-        console.log("⚠️ Reset email sending failed, but reset link is available above");
-        res.status(200).json({ 
-          message: "Reset password request processed. Please check the server console for your reset link.",
-          resetUrl: process.env.NODE_ENV === 'development' ? resetUrl : undefined
+    if (isPhone) {
+      // Send SMS with reset link
+      try {
+        const smsMessage = `Сброс пароля Vazifa: ${resetUrl}`;
+        await sendSMS(emailOrPhone, smsMessage);
+        console.log("✅ Reset SMS sent successfully to:", emailOrPhone);
+        res.status(200).json({
+          message: "Ссылка для сброса пароля отправлена на ваш номер телефона",
+          method: "phone"
+        });
+      } catch (error) {
+        console.log("⚠️ SMS service error:", error.message);
+        res.status(200).json({
+          message: "Запрос обработан. Проверьте консоль сервера для получения ссылки.",
+          resetUrl: process.env.NODE_ENV === 'development' ? resetUrl : undefined,
+          method: "phone"
         });
       }
-    } catch (error) {
-      console.log("⚠️ Email service error:", error.message);
-      console.log("📝 Use the reset link above to reset your password");
-      res.status(200).json({ 
-        message: "Reset password request processed. Please check the server console for your reset link.",
-        resetUrl: process.env.NODE_ENV === 'development' ? resetUrl : undefined
-      });
+    } else {
+      // Send email with reset link
+      try {
+        const isEmailSent = await sendEmail(
+          emailOrPhone,
+          "Сброс пароля",
+          user.name,
+          "Нажмите на ссылку ниже, чтобы сбросить пароль.",
+          "Сбросить пароль",
+          resetUrl
+        );
+
+        if (isEmailSent) {
+          console.log("✅ Reset email sent successfully to:", emailOrPhone);
+          res.status(200).json({
+            message: "Ссылка для сброса пароля отправлена на вашу почту",
+            method: "email"
+          });
+        } else {
+          console.log("⚠️ Reset email sending failed, but reset link is available above");
+          res.status(200).json({
+            message: "Запрос обработан. Проверьте консоль сервера для получения ссылки.",
+            resetUrl: process.env.NODE_ENV === 'development' ? resetUrl : undefined,
+            method: "email"
+          });
+        }
+      } catch (error) {
+        console.log("⚠️ Email service error:", error.message);
+        res.status(200).json({
+          message: "Запрос обработан. Проверьте консоль сервера для получения ссылки.",
+          resetUrl: process.env.NODE_ENV === 'development' ? resetUrl : undefined,
+          method: "email"
+        });
+      }
     }
   } catch (error) {
     console.error("Reset password error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Ошибка сервера" });
   }
 };
 
@@ -364,138 +331,39 @@ const verifyResetTokenAndResetPassword = async (req, res) => {
   try {
     const { token, newPassword, confirmPassword } = req.body;
 
+    // Verify JWT token (stateless)
     const payload = verifyJWT(token);
 
-    if (payload.isValid && !payload?.isValid) {
-      // await Verification.findOneAndDelete({ token });
-      return res.status(400).json({ message: payload.message });
+    if (!payload.isValid) {
+      return res.status(400).json({ message: payload.message || "Invalid token" });
     }
 
     if (payload.purpose !== "reset-password") {
       return res.status(400).json({ message: "Invalid token" });
     }
 
-    // check if token is valid
-    const verification = await Verification.findOne({ token });
-    if (!verification) {
-      return res.status(400).json({ message: "Invalid token" });
-    }
-
-    // check if token is expired
-    if (verification.expiresAt < new Date()) {
-      return res.status(400).json({ message: "Token expired" });
-    }
-
-    // check if user exists
-    const user = await User.findById(verification.userId);
-
-    // check if user exists
+    // Check if user exists
+    const user = await User.findById(payload.userId);
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
 
-    // check if new password and confirm password are the same
+    // Check if new password and confirm password are the same
     if (newPassword !== confirmPassword) {
       return res.status(400).json({ message: "Passwords do not match" });
     }
 
-    // hash new password
+    // Hash new password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    // update user password
+    // Update user password
     user.password = hashedPassword;
     await user.save();
-
-    // delete verification
-    await Verification.findByIdAndDelete(verification._id);
 
     res.status(200).json({ message: "Password reset successful" });
   } catch (error) {
     console.error("Verify reset token error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-const verifyEmail = async (req, res) => {
-  try {
-    const { token } = req.body;
-
-    const payload = verifyJWT(token);
-
-    if (payload.isValid && !payload?.isValid) {
-      await Verification.findOneAndDelete({ token });
-
-      return res.status(400).json({ message: payload.message });
-    }
-
-    if (payload.purpose !== "verify-email") {
-      return res.status(400).json({ message: "Invalid token" });
-    }
-
-    // check if token is valid
-    const verification = await Verification.findOne({ token });
-    if (!verification) {
-      return res.status(400).json({ message: "Invalid token" });
-    }
-
-    // check if token is expired
-    if (verification.expiresAt < new Date()) {
-      return res.status(400).json({ message: "Token expired" });
-    }
-
-    // check if user exists
-    const user = await User.findById(verification.userId);
-    if (!user) {
-      return res.status(400).json({ message: "User not found" });
-    }
-
-    // check if user is already verified
-    if (user.isVerified) {
-      // delete verification
-      await Verification.findByIdAndDelete(verification._id);
-      return res.status(400).json({ message: "User already verified" });
-    }
-
-    // verify user
-    user.isEmailVerified = true;
-    await user.save();
-
-    // Add user to default workspace
-    try {
-      const defaultWorkspace = await Workspace.findOne({ 
-        name: 'Рабочее пространство' 
-      });
-
-      if (defaultWorkspace) {
-        // Check if user is already a member
-        const isMember = defaultWorkspace.members.some(
-          member => member.user.toString() === user._id.toString()
-        );
-
-        if (!isMember) {
-          defaultWorkspace.members.push({
-            user: user._id,
-            role: 'member',
-            joinedAt: new Date(),
-          });
-          await defaultWorkspace.save();
-          console.log(`✅ Added ${user.name} to default workspace`);
-        }
-      } else {
-        console.log('⚠️ Default workspace not found');
-      }
-    } catch (error) {
-      console.error('Error adding user to default workspace:', error);
-      // Don't fail the email verification if workspace addition fails
-    }
-
-    // delete verification
-    await Verification.findByIdAndDelete(verification._id);
-
-    res.status(200).json({ message: "Email verified successfully" });
-  } catch (error) {
-    console.error("Verify email error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -572,7 +440,6 @@ const googleCallback = async (req, res) => {
         email: googleUser.email,
         name: googleUser.name || googleUser.email.split('@')[0],
         profilePicture: googleUser.picture,
-        isEmailVerified: true, // Google emails are pre-verified
         authProvider: 'google',
         googleId: googleUser.id,
       });
@@ -609,6 +476,13 @@ const googleCallback = async (req, res) => {
     // Update last login
     user.lastLogin = new Date();
     await user.save();
+
+    // Record login activity
+    await recordLoginActivity(user._id, {
+      ip: req.ip || req.headers['x-forwarded-for'],
+      userAgent: req.headers['user-agent'],
+      method: 'google',
+    });
 
     // Generate JWT token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
@@ -685,32 +559,17 @@ const registerUserWithPhone = async (req, res) => {
       }
     }
 
-    // Rate limiting DISABLED for testing
-    // const rateLimit = await PhoneVerification.checkExponentialRateLimit(
-    //   phoneNumber,
-    //   'registration'
-    // );
-
-    // if (!rateLimit.allowed) {
-    //   return res.status(429).json({
-    //     message: rateLimit.message,
-    //     waitMinutes: rateLimit.waitMinutes,
-    //     attemptNumber: rateLimit.attemptNumber
-    //   });
-    // }
-
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user (auto-verified - no SMS required)
+    // Create user (no verification required)
     const newUser = await User.create({
       name,
       phoneNumber,
       email,
       password: hashedPassword,
       preferredAuthMethod: 'phone',
-      isPhoneVerified: true, // Auto-verified
     });
 
     console.log("✅ User created and auto-verified:", phoneNumber);
@@ -761,157 +620,7 @@ const registerUserWithPhone = async (req, res) => {
   }
 };
 
-// NEW: Verify phone code
-const verifyPhoneCode = async (req, res) => {
-  try {
-    const { phoneNumber, code } = req.body;
-
-    console.log("🔢 Verifying code for:", phoneNumber);
-
-    if (!phoneNumber || !code) {
-      return res.status(400).json({ message: "Телефон и код обязательны" });
-    }
-
-    // Verify the code
-    const result = await PhoneVerification.verifyCode(
-      phoneNumber,
-      code,
-      'registration'
-    );
-
-    if (!result.success) {
-      return res.status(400).json({ message: result.message });
-    }
-
-    // Find user and mark as verified
-    const user = await User.findOne({ phoneNumber });
-    
-    if (!user) {
-      return res.status(404).json({ message: "Пользователь не найден" });
-    }
-
-    user.isPhoneVerified = true;
-    await user.save();
-
-    // Add to default workspace
-    try {
-      const defaultWorkspace = await Workspace.findOne({ 
-        name: 'Рабочее пространство' 
-      });
-
-      if (defaultWorkspace) {
-        const isMember = defaultWorkspace.members.some(
-          member => member.user.toString() === user._id.toString()
-        );
-
-        if (!isMember) {
-          defaultWorkspace.members.push({
-            user: user._id,
-            role: 'member',
-            joinedAt: new Date(),
-          });
-          await defaultWorkspace.save();
-          console.log(`✅ Added ${user.name} to default workspace`);
-        }
-      }
-    } catch (error) {
-      console.error('Error adding user to workspace:', error);
-    }
-
-    // Generate JWT token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-
-    // Return user data
-    const userData = user.toObject();
-    delete userData.password;
-
-    console.log("✅ Phone verified successfully for:", phoneNumber);
-
-    res.status(200).json({ 
-      message: "Телефон успешно подтвержден",
-      user: userData,
-      token
-    });
-  } catch (error) {
-    console.error("Phone verification error:", error);
-    res.status(500).json({ message: "Ошибка сервера" });
-  }
-};
-
-// NEW: Resend verification code
-const resendVerificationCode = async (req, res) => {
-  try {
-    const { phoneNumber } = req.body;
-
-    console.log("📱 Resending code to:", phoneNumber);
-
-    if (!phoneNumber) {
-      return res.status(400).json({ message: "Номер телефона обязателен" });
-    }
-
-    // Rate limiting DISABLED for testing
-    // const rateLimit = await PhoneVerification.checkExponentialRateLimit(
-    //   phoneNumber,
-    //   'registration'
-    // );
-
-    // if (!rateLimit.allowed) {
-    //   return res.status(429).json({ 
-    //     message: rateLimit.message,
-    //     waitMinutes: rateLimit.waitMinutes,
-    //     attemptNumber: rateLimit.attemptNumber,
-    //     nextAttemptAt: rateLimit.nextAttemptAt
-    //   });
-    // }
-
-    // Find user
-    const user = await User.findOne({ phoneNumber });
-    if (!user) {
-      return res.status(404).json({ message: "Пользователь не найден" });
-    }
-
-    // Create new verification with link token
-    const { verificationToken, verification } = await PhoneVerification.createVerification(
-      phoneNumber,
-      'registration',
-      user._id,
-      {
-        ip: req.ip,
-        userAgent: req.headers['user-agent']
-      },
-      true // Use link-based verification
-    );
-
-    // Send SMS with verification link
-    const frontendUrl = process.env.PRODUCTION_FRONTEND_URL || process.env.FRONTEND_URL || 'https://protocol.oci.tj';
-    const verificationLink = `${frontendUrl}/verify/${verificationToken}`;
-    const smsText = `Подтвердите регистрацию в Protocol:\n${verificationLink}\n\nСсылка действительна 10 минут.`;
-    
-    console.log("🔗 New verification link:", verificationLink);
-    
-    try {
-      await sendSMS(phoneNumber, smsText);
-      console.log("✅ SMS resent successfully");
-    } catch (smsError) {
-      console.error("⚠️ SMS resending failed:", smsError.message);
-      return res.status(500).json({ message: "Ошибка отправки SMS" });
-    }
-
-    res.status(200).json({
-      message: "Ссылка отправлена повторно. Проверьте SMS.",
-      verificationType: "link",
-      expiresIn: 600,
-      attemptNumber: rateLimit.attemptNumber
-    });
-  } catch (error) {
-    console.error("Resend code error:", error);
-    res.status(500).json({ message: "Ошибка сервера" });
-  }
-};
-
-// NEW: Login with email OR phone
+// Login with email OR phone
 const loginWithEmailOrPhone = async (req, res) => {
   try {
     const { emailOrPhone, password } = req.body;
@@ -970,6 +679,13 @@ const loginWithEmailOrPhone = async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
+    // Record login activity
+    await recordLoginActivity(user._id, {
+      ip: req.ip || req.headers['x-forwarded-for'],
+      userAgent: req.headers['user-agent'],
+      method: emailOrPhone.includes('@') ? 'email' : 'phone',
+    });
+
     // Generate JWT token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
@@ -992,16 +708,12 @@ export {
   registerUser,
   loginUser,
   resetPasswordRequest,
-  verifyEmail,
   verifyResetTokenAndResetPassword,
   verify2FALogin,
   googleAuth,
   googleCallback,
   appleAuth,
   appleCallback,
-  // NEW: Phone authentication
   registerUserWithPhone,
-  verifyPhoneCode,
-  resendVerificationCode,
   loginWithEmailOrPhone,
 };

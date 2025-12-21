@@ -1,7 +1,6 @@
 import type { SignupValues } from "@/routes/auth/sign-up";
 import { useMutation } from "@tanstack/react-query";
 import { postData } from "../lib/fetch-utils";
-import { toast } from "sonner";
 import type { LoginValues } from "@/routes/auth/sign-in";
 import type { ResetPasswordValues } from "@/routes/auth/reset-password";
 
@@ -17,19 +16,6 @@ export const useLoginMutation = () => {
   });
 };
 
-export const useVerifyEmailMutation = () => {
-  return useMutation({
-    mutationFn: (data: { token: string }) =>
-      postData("/auth/verify-email", data),
-    onSuccess: () => {
-      toast.success("Email verified successfully");
-    },
-    onError: () => {
-      toast.error("Failed to verify email");
-    },
-  });
-};
-
 export const useResetPasswordMutation = () => {
   return useMutation({
     mutationFn: (data: {
@@ -42,7 +28,7 @@ export const useResetPasswordMutation = () => {
 
 export const useRequestResetPasswordMutation = () => {
   return useMutation({
-    mutationFn: (data: { email: string }) =>
+    mutationFn: (data: { emailOrPhone: string }) =>
       postData("/auth/request-reset-password", data),
   });
 };

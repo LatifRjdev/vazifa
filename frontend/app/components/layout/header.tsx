@@ -106,7 +106,7 @@ export const Header = ({
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => {
                 logout();
-                navigate("/sign-in");
+                navigate("/");
               }}>
                 {t('nav.logout')}
               </DropdownMenuItem>

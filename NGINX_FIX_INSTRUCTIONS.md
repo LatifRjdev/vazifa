@@ -1,161 +1,74 @@
-# Инструкция: Исправление NGINX для protocol.oci.tj
+# 🔧 Инструкции по исправлению nginx для create-multiple
 
-## Проблема
-Сайт не загружается из-за отсутствия NGINX конфигурации для домена protocol.oci.tj
+## ❌ Найденная проблема:
 
-## Решение
+**Фронтенд отправляет запрос:** `https://ptapi.oci.tj/tasks/create-multiple`
 
-Выполните эти команды на сервере:
+**Nginx проксирует только:** `/api-v1/` на backend
 
-### Шаг 1: Подключитесь к серверу
+**Результат:** Запрос `/tasks/` попадает в `location /` (frontend) → **404 Not Found**
 
+## ✅ Решение:
+
+Добавить в nginx маршруты для `/tasks/`, `/auth/`, `/users/` и т.д.
+
+## 📝 Ручные инструкции (выполните на сервере):
+
+### 1. Подключитесь к серверу:
 ```bash
 ssh -p 3022 ubuntu@193.111.11.98
 ```
 
-### Шаг 2: Скопируйте конфигурацию
-
-Сначала скачайте файл конфигурации с локальной машины:
-
-**На локальной машине выполните:**
+### 2. Примените новую конфигурацию:
 ```bash
-scp -P 3022 nginx-protocol-config ubuntu@193.111.11.98:/tmp/
-```
+# Переместите файл
+sudo mv /tmp/nginx-vazifa-fixed /etc/nginx/sites-enabled/vazifa
 
-### Шаг 3: Примените конфигурацию на сервере
-
-**На сервере выполните:**
-
-```bash
-# Переместите конфигурацию
-sudo mv /tmp/nginx-protocol-config /etc/nginx/sites-available/vazifa
-
-# Установите правильные права
-sudo chown root:root /etc/nginx/sites-available/vazifa
-sudo chmod 644 /etc/nginx/sites-available/vazifa
-
-# Проверьте конфигурацию
+# Проверьте синтаксис
 sudo nginx -t
 
-# Если проверка прошла успешно, перезагрузите NGINX
+# Если синтаксис правильный, перезагрузите nginx
 sudo systemctl reload nginx
-
-# Проверьте статус
-sudo systemctl status nginx
 ```
 
-### Шаг 4: Проверьте сайт
+### 3. Проверьте результат:
+- Откройте фронтенд
+- Попробуйте создать несколько задач
+- Должно работать! ✅
 
-Откройте в браузере:
-- https://protocol.oci.tj
+## 📄 Что изменилось в nginx конфигурации:
 
-Сайт должен загрузиться без ошибок MIME type.
-
----
-
-## Альтернативный метод (если нет SSL сертификата)
-
-Если у вас нет SSL сертификата для protocol.oci.tj, используйте эту упрощенную конфигурацию:
-
-```bash
-# На сервере создайте файл
-sudo nano /etc/nginx/sites-available/vazifa
-```
-
-Вставьте этот контент:
-
+### ✅ Добавлено (ПЕРЕД `location /`):
 ```nginx
-# HTTP server for protocol.oci.tj (без SSL)
-server {
-    listen 80;
-    server_name protocol.oci.tj;
-
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header X-Content-Type-Options "nosniff" always;
-
-    # Increase client body size
-    client_max_body_size 100M;
-
-    # Frontend
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    # Backend API
-    location /api-v1/ {
-        proxy_pass http://localhost:5001;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Uploads
-    location /uploads/ {
-        proxy_pass http://localhost:5001;
-    }
-}
-
-# IP access
-server {
-    listen 80 default_server;
-    server_name 193.111.11.98 _;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    location /api-v1/ {
-        proxy_pass http://localhost:5001;
-    }
-
-    location /uploads/ {
-        proxy_pass http://localhost:5001;
-    }
+# API routes без префикса (tasks, auth, users, etc.)
+location ~ ^/(tasks|auth|users|admin|tech-admin|comments|upload|admin-chat|admin-messages) {
+    proxy_pass http://localhost:5001;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
 }
 ```
 
-Затем:
+## 🎯 Важно:
 
+Этот блок **ДОЛЖЕН** быть выше `location /`, иначе frontend перехватит все запросы!
+
+## 🧪 После применения:
+
+1. Очистите кэш браузера (Ctrl+Shift+R)
+2. Попробуйте создать несколько задач
+3. Если все еще не работает - проверьте логи:
+   ```bash
+   sudo tail -f /var/log/nginx/error.log
+   ```
+
+## 📊 Полная конфигурация nginx:
+
+Файл уже находится на сервере в `/tmp/nginx-vazifa-fixed`
+
+Можете посмотреть содержимое:
 ```bash
-# Проверьте и перезагрузите
-sudo nginx -t
-sudo systemctl reload nginx
+cat /tmp/nginx-vazifa-fixed
 ```
-
----
-
-## Проверка
-
-После применения конфигурации:
-
-1. Откройте https://protocol.oci.tj (или http:// если без SSL)
-2. Страница должна загрузиться без ошибок
-3. Проверьте консоль браузера - не должно быть ошибок MIME type
-4. Попробуйте войти с учетными данными admin
-
----
-
-## Текущее состояние
-
-✅ Frontend server (PM2): РАБОТАЕТ на порту 3000  
-✅ Backend server (PM2): РАБОТАЕТ на порту 5001  
-❌ NGINX: Нужна конфигурация для protocol.oci.tj  
-
-После применения конфигурации все должно заработать!

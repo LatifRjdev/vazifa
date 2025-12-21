@@ -21,14 +21,14 @@ export const createSMSQueue = () => {
   console.log("📬 Queue: Creating SMS queue with BullMQ + Redis...");
   
   try {
-    // Create queue with rate limiting and better options
+    // Create queue with rate limiting and 30-second fixed retry
     smsQueue = new Queue("sms-queue", {
       connection: redisConfig,
       defaultJobOptions: {
-        attempts: 5,
+        attempts: 3, // 3 attempts total
         backoff: {
-          type: "exponential",
-          delay: 2000, // Start with 2 seconds
+          type: "fixed",
+          delay: 30000, // 30 seconds between retries
         },
         removeOnComplete: {
           count: 100, // Keep last 100 completed jobs
@@ -39,7 +39,7 @@ export const createSMSQueue = () => {
           age: 7 * 24 * 3600, // Keep for 7 days
         },
       },
-      // Rate limiter: максимум 10 сообщений в секунду
+      // Rate limiter: max 10 messages per second
       limiter: {
         max: 10,
         duration: 1000,
@@ -73,7 +73,7 @@ export const createSMSQueue = () => {
 
     console.log("✅ Queue: SMS queue created successfully with BullMQ");
     console.log("   Rate limit: 10 SMS per second");
-    console.log("   Retry attempts: 5 with exponential backoff");
+    console.log("   Retry attempts: 3 with 30-second fixed delay");
     
     return smsQueue;
   } catch (error) {

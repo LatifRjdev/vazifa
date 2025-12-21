@@ -63,7 +63,7 @@ const SignIn = () => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api-v1/auth/login-universal`,
+        `/api-v1/auth/login-universal`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -21,12 +21,17 @@ class SMPPService {
     this.reconnectDelay = 5000;
     this.maxReconnectDelay = 300000;
 
-    // SMPP Configuration
+    // SMPP Configuration - Validate required credentials
+    if (!process.env.SMPP_PASSWORD) {
+      console.error("❌ CRITICAL: SMPP_PASSWORD environment variable is not set!");
+      console.error("   SMS functionality will be disabled until configured.");
+    }
+
     this.config = {
       host: process.env.SMPP_HOST || "10.241.60.10",
       port: parseInt(process.env.SMPP_PORT) || 2775,
       system_id: process.env.SMPP_SYSTEM_ID || "Rushdie_Roh",
-      password: process.env.SMPP_PASSWORD || "J7PCez",
+      password: process.env.SMPP_PASSWORD, // SECURITY: No fallback - must be set in .env
       system_type: process.env.SMPP_SYSTEM_TYPE || "smpp",
       source_addr: process.env.SMPP_SOURCE_ADDR || "Protocol",
       bind_mode: process.env.SMPP_BIND_MODE || "transmitter",
@@ -168,15 +173,44 @@ class SMPPService {
    * Send SMS message
    */
   async sendSMS(phoneNumber, message, priority = "normal") {
+    console.log("\n" + "=".repeat(80));
+    console.log("📤 SMS ОТПРАВКА - НАЧАЛО");
+    console.log("=".repeat(80));
+    console.log("⏰ Время:", new Date().toISOString());
+    console.log("📱 Номер:", phoneNumber);
+    console.log("💬 Сообщение:", message.substring(0, 100) + (message.length > 100 ? "..." : ""));
+    console.log("🔧 Приоритет:", priority);
+    console.log("🔌 Статус соединения:", this.connected ? "✅ Подключено" : "❌ Отключено");
+    
+    // Wait for SMPP connection if currently connecting (up to 10 seconds)
+    if (!this.connected && this.connecting) {
+      console.log("⏳ SMPP: Ожидание подключения...");
+      let waitTime = 0;
+      while (!this.connected && waitTime < 10000) {
+        await new Promise(r => setTimeout(r, 500));
+        waitTime += 500;
+      }
+      if (this.connected) {
+        console.log(`✅ SMPP: Подключено после ожидания (${waitTime}ms)`);
+      } else {
+        console.log("⏰ SMPP: Таймаут ожидания подключения");
+      }
+    }
+    
     const validatedPhone = this.validatePhoneNumber(phoneNumber);
     if (!validatedPhone) {
+      console.log("❌ Неверный формат номера телефона");
+      console.log("=".repeat(80) + "\n");
       throw new Error("Invalid phone number format");
     }
+    console.log("✅ Номер валидирован:", validatedPhone);
 
     const messages = this.splitMessage(message, 70);
+    console.log(`📊 Сообщение разделено на ${messages.length} часть(ей)`);
     
     if (!this.connected) {
-      console.log("⏸️ SMPP: Not connected, queuing message...");
+      console.log("⏸️ SMPP: Соединение не активно, добавляем в очередь...");
+      console.log("=".repeat(80) + "\n");
       return this.queueMessage(validatedPhone, message, priority);
     }
 
@@ -185,11 +219,14 @@ class SMPPService {
       
       for (let i = 0; i < messages.length; i++) {
         const part = messages[i];
+        console.log(`📤 Отправка части ${i + 1}/${messages.length}...`);
         const result = await this.sendSingleSMS(validatedPhone, part, i + 1, messages.length);
         results.push(result);
+        console.log(`✅ Часть ${i + 1} отправлена, Message ID: ${result.messageId}`);
       }
 
-      console.log(`✅ SMPP: Successfully sent ${messages.length} SMS part(s) to ${validatedPhone}`);
+      console.log(`✅ SMPP: Успешно отправлено ${messages.length} SMS часть(ей) на ${validatedPhone}`);
+      console.log("=".repeat(80) + "\n");
       
       return {
         success: true,
@@ -198,7 +235,9 @@ class SMPPService {
         results,
       };
     } catch (error) {
-      console.error("❌ SMPP: Failed to send SMS:", error.message);
+      console.error("❌ SMPP: Ошибка отправки SMS:", error.message);
+      console.log("📬 Добавляем в очередь как fallback...");
+      console.log("=".repeat(80) + "\n");
       await this.queueMessage(validatedPhone, message, priority);
       throw error;
     }
@@ -270,10 +309,10 @@ class SMPPService {
       },
       {
         priority: this.getPriorityValue(priority),
-        attempts: 5,
+        attempts: 3,
         backoff: {
-          type: "exponential",
-          delay: 2000,
+          type: "fixed",
+          delay: 30000, // 30 seconds between retries
         },
       }
     );
@@ -491,6 +530,11 @@ export const sendSMS = async (phoneNumber, message, priority = "normal") => {
 export const sendBulkSMS = async (phoneNumbers, message, priority = "normal") => {
   const service = getSMPPService();
   return await service.sendBulkSMS(phoneNumbers, message, priority);
+};
+
+export const smsQueue = () => {
+  const service = getSMPPService();
+  return service.messageQueue;
 };
 
 export default getSMPPService;

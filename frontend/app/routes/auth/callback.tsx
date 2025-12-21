@@ -23,7 +23,7 @@ const AuthCallback = () => {
 
     if (error) {
       toast.error(toastMessages.auth.oauthError);
-      navigate('/sign-in');
+      navigate('/');
       return;
     }
 
@@ -33,7 +33,7 @@ const AuthCallback = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         
         // Fetch user data using the token
-        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api-v1'}/users/me`, {
+        fetch('/api-v1/users/me', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -51,16 +51,16 @@ const AuthCallback = () => {
         .catch(error => {
           console.error('OAuth callback error:', error);
           toast.error(toastMessages.errors.serverError);
-          navigate('/sign-in');
+          navigate('/');
         });
       } catch (error) {
         console.error('Token parsing error:', error);
         toast.error(toastMessages.auth.invalidToken);
-        navigate('/sign-in');
+        navigate('/');
       }
     } else {
       toast.error(toastMessages.auth.tokenNotFound);
-      navigate('/sign-in');
+      navigate('/');
     }
   }, [searchParams, navigate, login]);
 

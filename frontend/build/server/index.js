@@ -11,16 +11,15 @@ import axios from "axios";
 import { toast, Toaster } from "sonner";
 import { differenceInDays, format, endOfDay, startOfDay, subDays, endOfYear, startOfYear, subMonths, endOfMonth, startOfMonth, endOfWeek, startOfWeek, formatDistanceToNow } from "date-fns";
 import { useMutation, QueryClient, QueryClientProvider, useQueryClient, useQuery, keepPreviousData } from "@tanstack/react-query";
-import { Slot } from "@radix-ui/react-slot";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertCircle, Loader2, ArrowLeft, CheckCircle2, XCircle, CheckCircle, CheckIcon, XIcon, ChevronDownIcon, ChevronUpIcon, CalendarIcon, X, Languages, Check, Plus, Bell, Wrench, ChevronsRight, ChevronsLeft, User, LogOut, Star, ClipboardList, BarChart3, Users, LayoutDashboard, ListCheck, UserCheck, Settings, MessageCircle, Send, SortAsc, SortDesc, Filter, Clock, ArrowUpRight, LayoutGrid, CirclePlus, Search, Calendar as Calendar$1, CalendarDays, Eye, AlertTriangle, TrendingUp, Printer, Crown, Shield, MoreHorizontal, Database, Palette, Edit, Paperclip, UploadCloud, Link2, Download, Smile, Mic, Upload, LogIn, UserMinus, UserPlus, MessageSquare, Building2, FolderEdit, FolderPlus, FileEdit, CheckSquare, EyeOff, Flag, Archive } from "lucide-react";
+import { FormProvider, Controller, useFormContext, useFormState, useForm } from "react-hook-form";
+import z, { z as z$1 } from "zod";
 import { cva } from "class-variance-authority";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { motion } from "framer-motion";
-import { CircleCheckBig, Users, CalendarCheck, Smartphone, Download, AlertCircle, CheckCircle, Loader2, ArrowLeft, CheckCircle2, XCircle, CheckIcon, XIcon, ChevronDownIcon, ChevronUpIcon, CalendarIcon, Languages, Check, Plus, Bell, Wrench, ChevronsRight, ChevronsLeft, User, LogOut, Star, ClipboardList, BarChart3, LayoutDashboard, ListCheck, UserCheck, Settings, MessageCircle, X, Send, SortAsc, SortDesc, Filter, Clock, ArrowUpRight, LayoutGrid, CirclePlus, Search, Calendar as Calendar$1, CalendarDays, Eye, AlertTriangle, TrendingUp, Printer, Crown, Shield, MoreHorizontal, Database, Palette, Edit, Paperclip, UploadCloud, Link2, Smile, Mic, Upload, LogIn, UserMinus, UserPlus, MessageSquare, Building2, FolderEdit, FolderPlus, FileEdit, CheckSquare, EyeOff, Flag, Archive } from "lucide-react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { FormProvider, Controller, useFormContext, useFormState, useForm } from "react-hook-form";
+import { Slot } from "@radix-ui/react-slot";
 import * as LabelPrimitive from "@radix-ui/react-label";
-import z$1, { z } from "zod";
 import * as AvatarPrimitive from "@radix-ui/react-avatar";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { ru } from "date-fns/locale";
@@ -137,16 +136,6 @@ const fetchData = async (url) => {
   const response = await api.get(url);
   return response.data;
 };
-const useSignUpMutation = () => {
-  return useMutation({
-    mutationFn: (data) => postData("/auth/register", data)
-  });
-};
-const useLoginMutation = () => {
-  return useMutation({
-    mutationFn: (data) => postData("/auth/login", data)
-  });
-};
 const useVerifyEmailMutation = () => {
   return useMutation({
     mutationFn: (data) => postData("/auth/verify-email", data),
@@ -191,7 +180,6 @@ const getProjectDueDateColor = (dueDate) => {
 };
 const publicRoutes = [
   "/",
-  "/sign-in",
   "/sign-up",
   "/forgot-password",
   "/reset-password",
@@ -240,7 +228,7 @@ const AuthProvider = ({ children }) => {
           setUser(null);
           setIsAuthenticated(false);
           if (!isPublicRoute) {
-            navigate("/sign-in");
+            navigate("/");
           }
         }
       } catch (error) {
@@ -260,17 +248,17 @@ const AuthProvider = ({ children }) => {
         const expiry = exp * 1e3 - Date.now();
         if (expiry <= 0) {
           logout();
-          navigate("/sign-in");
+          navigate("/");
         } else {
           timeout = setTimeout(() => {
             logout();
-            navigate("/sign-in");
+            navigate("/");
           }, expiry);
         }
       } catch (e) {
         if (isAuthenticated) {
           logout();
-          navigate("/sign-in");
+          navigate("/");
         }
       }
     }
@@ -281,7 +269,7 @@ const AuthProvider = ({ children }) => {
   useEffect(() => {
     const handleForceLogout = () => {
       logout();
-      navigate("/sign-in");
+      navigate("/");
     };
     window.addEventListener("force-logout", handleForceLogout);
     return () => {
@@ -289,13 +277,15 @@ const AuthProvider = ({ children }) => {
     };
   }, []);
   const login = async (data) => {
-    var _a;
+    var _a, _b;
     localStorage.setItem("user", JSON.stringify(data == null ? void 0 : data.user));
     localStorage.setItem("token", data == null ? void 0 : data.token);
     setUser((data == null ? void 0 : data.user) || null);
     setIsAuthenticated(true);
     setIsLoading(false);
-    if (((_a = data == null ? void 0 : data.user) == null ? void 0 : _a.role) === "super_admin") {
+    if (((_a = data == null ? void 0 : data.user) == null ? void 0 : _a.role) === "tech_admin") {
+      navigate("/dashboard/tech-admin");
+    } else if (((_b = data == null ? void 0 : data.user) == null ? void 0 : _b.role) === "super_admin") {
       navigate("/important-tasks");
     } else {
       navigate("/dashboard");
@@ -368,6 +358,31 @@ const translations = {
     "tasks.task_created": "Задача создана",
     "tasks.task_updated": "Задача обновлена",
     "tasks.task_deleted": "Задача удалена",
+    "tasks.create_new_task": "Создать новую задачу",
+    "tasks.task_name": "Название",
+    "tasks.task_desc": "Описание",
+    "tasks.enter_task_name": "Введите название задачи",
+    "tasks.enter_task_desc": "Введите описание задачи",
+    "tasks.select_status": "Выберите статус",
+    "tasks.select_priority": "Выберите приоритет",
+    "tasks.select_date": "Выберите дату",
+    "tasks.select_manager": "Выберите ответственного менеджера",
+    "tasks.not_assigned": "Не назначен",
+    "tasks.assign_to": "Назначить участникам",
+    "tasks.select_members": "Выберите участников",
+    "tasks.selected_count": "Выбрано участников: {count}",
+    "tasks.creating": "Создание...",
+    "tasks.create": "Создать задачу",
+    "tasks.cancel": "Отмена",
+    "tasks.admin": "Админ",
+    "tasks.manager": "Менеджер",
+    "tasks.member": "Участник",
+    "tasks.multi_task": "Создать несколько задач",
+    "tasks.multi_task_desc": "Создайте несколько задач с одним названием",
+    "tasks.task_number": "Задача #{number}",
+    "tasks.add_task": "Добавить еще задачу",
+    "tasks.remove_task": "Удалить",
+    "tasks.min_tasks_required": "Необходимо минимум 2 задачи",
     // Статусы
     "status.todo": "К выполнению",
     "status.in_progress": "В процессе",
@@ -422,6 +437,18 @@ const translations = {
     "tasks.watch": "Следить",
     "tasks.unwatch": "Не следить",
     "tasks.important_tasks": "Важные задачи",
+    // Важные задачи страница
+    "important_tasks.title": "Важные задачи",
+    "important_tasks.description": "Задачи, отмеченные администраторами как важные",
+    "important_tasks.no_access": "У вас нет доступа к этой странице. Только супер админы могут просматривать важные задачи.",
+    "important_tasks.no_tasks_title": "Нет важных задач",
+    "important_tasks.no_tasks_description": "Пока нет задач, отмеченных как важные",
+    "important_tasks.marked_important": "Отмечено как важное",
+    "important_tasks.by_admin": "администратором",
+    "important_tasks.assignees": "исполнителей",
+    "important_tasks.assignee": "исполнитель",
+    "important_tasks.manager": "Менеджер:",
+    "important_tasks.not_specified": "Не указан",
     // Участники
     "members.remove_member": "Удалить участника",
     "members.confirm_remove": "Вы уверены, что хотите удалить этого участника?",
@@ -584,6 +611,31 @@ const translations = {
     "tasks.task_created": "Вазифа эҷод шуд",
     "tasks.task_updated": "Вазифа навсозӣ шуд",
     "tasks.task_deleted": "Вазифа нест шуд",
+    "tasks.create_new_task": "Вазифаи нав эҷод кардан",
+    "tasks.task_name": "Ном",
+    "tasks.task_desc": "Тавсиф",
+    "tasks.enter_task_name": "Номи вазифаро ворид кунед",
+    "tasks.enter_task_desc": "Тавсифи вазифаро ворид кунед",
+    "tasks.select_status": "Ҳолатро интихоб кунед",
+    "tasks.select_priority": "Аввалиятро интихоб кунед",
+    "tasks.select_date": "Санаро интихоб кунед",
+    "tasks.select_manager": "Менеҷери масъулро интихоб кунед",
+    "tasks.not_assigned": "Таъин нашуда",
+    "tasks.assign_to": "Ба иштирокчиён таъин кардан",
+    "tasks.select_members": "Иштирокчиёнро интихоб кунед",
+    "tasks.selected_count": "Интихобшуда: {count}",
+    "tasks.creating": "Эҷод шуда истодааст...",
+    "tasks.create": "Вазифа эҷод кардан",
+    "tasks.cancel": "Бекор кардан",
+    "tasks.admin": "Админ",
+    "tasks.manager": "Менеҷер",
+    "tasks.member": "Иштирокчӣ",
+    "tasks.multi_task": "Як қатор вазифаҳо эҷод кардан",
+    "tasks.multi_task_desc": "Бо як номи умумӣ як қатор вазифаҳо эҷод кунед",
+    "tasks.task_number": "Вазифа №{number}",
+    "tasks.add_task": "Вазифаи навро илова кунед",
+    "tasks.remove_task": "Нест кардан",
+    "tasks.min_tasks_required": "Ҳадди ақал 2 вазифа зарур аст",
     // Статусы
     "status.todo": "Барои иҷро",
     "status.in_progress": "Дар ҷараён",
@@ -638,6 +690,18 @@ const translations = {
     "tasks.watch": "Назорат кардан",
     "tasks.unwatch": "Назорат накардан",
     "tasks.important_tasks": "Вазифаҳои муҳим",
+    // Важные задачи страница
+    "important_tasks.title": "Вазифаҳои муҳим",
+    "important_tasks.description": "Вазифаҳое, ки маъмурон ҳамчун муҳим қайд кардаанд",
+    "important_tasks.no_access": "Шумо ба ин саҳифа дастрасӣ надоред. Танҳо супер маъмурон метавонанд вазифаҳои муҳимро бубинанд.",
+    "important_tasks.no_tasks_title": "Вазифаҳои муҳим нестанд",
+    "important_tasks.no_tasks_description": "То ҳол вазифаҳое, ки ҳамчун муҳим қайд шуда бошанд, нестанд",
+    "important_tasks.marked_important": "Ҳамчун муҳим қайд шуда",
+    "important_tasks.by_admin": "маъмур",
+    "important_tasks.assignees": "иҷрокунандагон",
+    "important_tasks.assignee": "иҷрокунанда",
+    "important_tasks.manager": "Менеҷер:",
+    "important_tasks.not_specified": "Муайян нашуда",
     // Участники
     "members.remove_member": "Иштирокчиро хориҷ кардан",
     "members.confirm_remove": "Шумо мутмаин ҳастед, ки мехоҳед ин иштирокчиро хориҷ кунед?",
@@ -886,1042 +950,6 @@ const route1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer",
-  {
-    variants: {
-      variant: {
-        default: "bg-blue-600 text-primary-foreground shadow-xs hover:bg-primary/90",
-        destructive: "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        outline: "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
-        secondary: "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline"
-      },
-      size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9"
-      }
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default"
-    }
-  }
-);
-function Button({
-  className,
-  variant,
-  size,
-  asChild = false,
-  ...props
-}) {
-  const Comp = asChild ? Slot : "button";
-  return /* @__PURE__ */ jsx(
-    Comp,
-    {
-      "data-slot": "button",
-      className: cn(buttonVariants({ variant, size, className })),
-      ...props
-    }
-  );
-}
-function meta$h() {
-  return [{
-    title: "Vazifa: Cloud-based task management platform"
-  }, {
-    name: "description",
-    content: "Welcome to Vazifa!"
-  }];
-}
-const Welcome = () => {
-  return /* @__PURE__ */ jsxs("div", {
-    className: "flex flex-col  min-h-screen",
-    children: [/* @__PURE__ */ jsxs("div", {
-      className: "max-w-screen-2xl mx-auto",
-      children: [/* @__PURE__ */ jsx("header", {
-        className: "header",
-        children: /* @__PURE__ */ jsxs("div", {
-          className: "container flex h-14 max-w-screen-2xl items-center justify-between",
-          children: [/* @__PURE__ */ jsxs(Link, {
-            to: "/",
-            className: "flex items-center gap-2",
-            children: [/* @__PURE__ */ jsx("div", {
-              className: "bg-blue-600 rounded-md p-1",
-              children: /* @__PURE__ */ jsxs("svg", {
-                xmlns: "http://www.w3.org/2000/svg",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: "2",
-                strokeLinecap: "round",
-                strokeLinejoin: "round",
-                className: "h-5 w-5 text-primary-foreground",
-                children: [/* @__PURE__ */ jsx("path", {
-                  d: "m3 17 2 2 4-4"
-                }), /* @__PURE__ */ jsx("path", {
-                  d: "m3 7 2 2 4-4"
-                }), /* @__PURE__ */ jsx("path", {
-                  d: "M13 6h8"
-                }), /* @__PURE__ */ jsx("path", {
-                  d: "M13 12h8"
-                }), /* @__PURE__ */ jsx("path", {
-                  d: "M13 18h8"
-                })]
-              })
-            }), /* @__PURE__ */ jsx("span", {
-              className: "font-bold text-xl hidden sm:inline-block",
-              children: "Vazifa"
-            })]
-          }), /* @__PURE__ */ jsxs("nav", {
-            className: "flex items-center gap-2 sm:gap-4",
-            children: [/* @__PURE__ */ jsx(Link, {
-              to: "/sign-in",
-              children: /* @__PURE__ */ jsx(Button, {
-                variant: "ghost",
-                children: "Войти"
-              })
-            }), /* @__PURE__ */ jsx(Link, {
-              to: "/sign-up",
-              children: /* @__PURE__ */ jsx(Button, {
-                children: "Начать"
-              })
-            })]
-          })]
-        })
-      }), /* @__PURE__ */ jsx("section", {
-        className: "w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-muted/30",
-        children: /* @__PURE__ */ jsx("div", {
-          className: "container px-4 md:px-6",
-          children: /* @__PURE__ */ jsxs("div", {
-            className: "grid gap-6 lg:grid-cols-[1fr_500px] lg:gap-12 xl:grid-cols-[1fr_550px]",
-            children: [/* @__PURE__ */ jsxs("div", {
-              className: "flex flex-col justify-center space-y-8",
-              children: [/* @__PURE__ */ jsxs(motion.div, {
-                className: "space-y-2",
-                initial: {
-                  opacity: 0,
-                  y: 20
-                },
-                animate: {
-                  opacity: 1,
-                  y: 0
-                },
-                transition: {
-                  duration: 0.5
-                },
-                children: [/* @__PURE__ */ jsxs("h1", {
-                  className: "text-3xl font-bold text-pretty tracking-tighter sm:text-5xl xl:text-6xl/none",
-                  children: ["Делайте больше с", " ", /* @__PURE__ */ jsx("span", {
-                    className: "text-blue-600",
-                    children: "Vazifa"
-                  })]
-                }), /* @__PURE__ */ jsx("p", {
-                  className: "max-w-[600px] text-muted-foreground md:text-xl text-pretty",
-                  children: "Современная платформа управления задачами, которая помогает командам эффективно организовывать, отслеживать и выполнять работу."
-                })]
-              }), /* @__PURE__ */ jsxs(motion.div, {
-                className: "flex gap-2",
-                initial: {
-                  opacity: 0,
-                  y: 20
-                },
-                animate: {
-                  opacity: 1,
-                  y: 0
-                },
-                transition: {
-                  duration: 0.5,
-                  delay: 0.2
-                },
-                children: [/* @__PURE__ */ jsx(Link, {
-                  to: "/sign-up",
-                  children: /* @__PURE__ */ jsx(Button, {
-                    size: "lg",
-                    className: "px-8",
-                    children: "Попробуйте бесплатно"
-                  })
-                }), /* @__PURE__ */ jsx(Link, {
-                  to: "#features",
-                  children: /* @__PURE__ */ jsx(Button, {
-                    size: "lg",
-                    variant: "outline",
-                    children: "Посмотреть особенности"
-                  })
-                })]
-              }), /* @__PURE__ */ jsxs(motion.div, {
-                className: "flex flex-col sm:flex-row md:items-center gap-4 text-sm text-muted-foreground",
-                initial: {
-                  opacity: 0
-                },
-                animate: {
-                  opacity: 1
-                },
-                transition: {
-                  duration: 0.5,
-                  delay: 0.4
-                },
-                children: [/* @__PURE__ */ jsxs("div", {
-                  className: "flex items-center gap-1",
-                  children: [/* @__PURE__ */ jsx(CircleCheckBig, {
-                    className: "size-4 text-primary"
-                  }), /* @__PURE__ */ jsx("span", {
-                    children: "Кредитная карта не требуется"
-                  })]
-                }), /* @__PURE__ */ jsxs("div", {
-                  className: "flex items-center gap-1",
-                  children: [/* @__PURE__ */ jsx(CircleCheckBig, {
-                    className: "size-4 text-primary"
-                  }), /* @__PURE__ */ jsx("span", {
-                    children: "Доступен бесплатный план"
-                  })]
-                }), /* @__PURE__ */ jsxs("div", {
-                  className: "flex items-center gap-1",
-                  children: [/* @__PURE__ */ jsx(CircleCheckBig, {
-                    className: "size-4 text-primary"
-                  }), /* @__PURE__ */ jsx("span", {
-                    children: "Отменить в любое время"
-                  })]
-                })]
-              })]
-            }), /* @__PURE__ */ jsx(motion.div, {
-              className: "mx-auto flex items-center justify-center lg:justify-end max-w-full overflow-hidden",
-              initial: {
-                opacity: 0,
-                scale: 0.9
-              },
-              animate: {
-                opacity: 1,
-                scale: 1
-              },
-              transition: {
-                duration: 0.5,
-                delay: 0.3
-              },
-              children: /* @__PURE__ */ jsx("div", {
-                className: "relative w-full max-w-xs sm:max-w-md md:max-w-lg",
-                children: /* @__PURE__ */ jsx("img", {
-                  alt: "Vazifa Dashboard",
-                  className: "relative dark:hidden rounded-xl shadow-xl border object-cover w-full max-w-full",
-                  src: "/task-hub-dark.png"
-                })
-              })
-            })]
-          })
-        })
-      }), /* @__PURE__ */ jsx("section", {
-        id: "features",
-        className: "w-full py-12 md:py-24 lg:py-32",
-        children: /* @__PURE__ */ jsxs(motion.div, {
-          className: "container px-4 md:px-6",
-          initial: {
-            opacity: 0,
-            y: 20
-          },
-          whileInView: {
-            opacity: 1,
-            y: 0
-          },
-          transition: {
-            duration: 0.5
-          },
-          viewport: {
-            once: true
-          },
-          children: [/* @__PURE__ */ jsx("div", {
-            className: "flex flex-col items-center justify-center space-y-4 text-center",
-            children: /* @__PURE__ */ jsxs("div", {
-              className: "space-y-2",
-              children: [/* @__PURE__ */ jsx("div", {
-                className: "inline-block rounded-lg bg-muted px-3 py-1 text-sm",
-                children: "Наши возможности"
-              }), /* @__PURE__ */ jsx("h2", {
-                className: "text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-pretty",
-                children: "Все необходимое для эффективного управления задачами"
-              }), /* @__PURE__ */ jsx("p", {
-                className: "max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed",
-                children: "Наши мощные функции помогают командам оставаться организованными и выполнять проекты вовремя."
-              })]
-            })
-          }), /* @__PURE__ */ jsxs("div", {
-            className: "mx-auto grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-3 md:gap-12 lg:gap-16 mt-16",
-            children: [/* @__PURE__ */ jsxs(motion.div, {
-              className: "flex flex-col items-center space-y-4 text-center",
-              initial: {
-                opacity: 0,
-                y: 20
-              },
-              whileInView: {
-                opacity: 1,
-                y: 0
-              },
-              transition: {
-                duration: 0.5,
-                delay: 0.1
-              },
-              viewport: {
-                once: true
-              },
-              children: [/* @__PURE__ */ jsx("div", {
-                className: "bg-blue-600/10 p-3 rounded-full",
-                children: /* @__PURE__ */ jsx(Users, {
-                  className: "size-8 text-blue-600"
-                })
-              }), /* @__PURE__ */ jsx("h3", {
-                className: "text-xl font-bold",
-                children: "Командное сотрудничество"
-              }), /* @__PURE__ */ jsx("p", {
-                className: "text-muted-foreground",
-                children: "Эффективно работайте вместе со своей командой в общих рабочих пространствах с обновлениями в режиме реального времени."
-              })]
-            }), /* @__PURE__ */ jsxs(motion.div, {
-              className: "flex flex-col items-center space-y-4 text-center",
-              initial: {
-                opacity: 0,
-                y: 20
-              },
-              whileInView: {
-                opacity: 1,
-                y: 0
-              },
-              transition: {
-                duration: 0.5,
-                delay: 0.2
-              },
-              viewport: {
-                once: true
-              },
-              children: [/* @__PURE__ */ jsx("div", {
-                className: "bg-blue-600/10 p-3 rounded-full",
-                children: /* @__PURE__ */ jsx(CalendarCheck, {
-                  className: "size-8 text-blue-600"
-                })
-              }), /* @__PURE__ */ jsx("h3", {
-                className: "text-xl font-bold",
-                children: "Управление задачами"
-              }), /* @__PURE__ */ jsx("p", {
-                className: "text-muted-foreground",
-                children: "Организуйте задачи с указанием приоритетов, сроков выполнения, комментариев и визуально отслеживайте ход выполнения."
-              })]
-            }), /* @__PURE__ */ jsxs(motion.div, {
-              className: "flex flex-col items-center space-y-4 text-center",
-              initial: {
-                opacity: 0,
-                y: 20
-              },
-              whileInView: {
-                opacity: 1,
-                y: 0
-              },
-              transition: {
-                duration: 0.5,
-                delay: 0.3
-              },
-              viewport: {
-                once: true
-              },
-              children: [/* @__PURE__ */ jsx("div", {
-                className: "bg-blue-600/10 p-3 rounded-full",
-                children: /* @__PURE__ */ jsxs("svg", {
-                  xmlns: "http://www.w3.org/2000/svg",
-                  width: "24",
-                  height: "24",
-                  viewBox: "0 0 24 24",
-                  fill: "none",
-                  stroke: "currentColor",
-                  strokeWidth: "2",
-                  strokeLinecap: "round",
-                  strokeLinejoin: "round",
-                  className: "h-8 w-8 text-blue-600",
-                  children: [/* @__PURE__ */ jsx("path", {
-                    d: "M2 20h.01"
-                  }), /* @__PURE__ */ jsx("path", {
-                    d: "M7 20v-4"
-                  }), /* @__PURE__ */ jsx("path", {
-                    d: "M12 20v-8"
-                  }), /* @__PURE__ */ jsx("path", {
-                    d: "M17 20V8"
-                  }), /* @__PURE__ */ jsx("path", {
-                    d: "M22 4v16"
-                  })]
-                })
-              }), /* @__PURE__ */ jsx("h3", {
-                className: "text-xl font-bold",
-                children: "Отслеживание прогресса"
-              }), /* @__PURE__ */ jsx("p", {
-                className: "text-muted-foreground",
-                children: "Визуализируйте ход выполнения проекта с помощью наглядных диаграмм и получайте представление о производительности команды."
-              })]
-            })]
-          })]
-        })
-      }), /* @__PURE__ */ jsx("section", {
-        className: "w-full py-12 md:py-24 lg:py-32 bg-muted/30",
-        children: /* @__PURE__ */ jsxs(motion.div, {
-          className: "container px-4 md:px-6",
-          initial: {
-            opacity: 0
-          },
-          whileInView: {
-            opacity: 1
-          },
-          transition: {
-            duration: 0.5
-          },
-          viewport: {
-            once: true
-          },
-          children: [/* @__PURE__ */ jsx("div", {
-            className: "flex flex-col items-center justify-center space-y-4 text-center",
-            children: /* @__PURE__ */ jsxs("div", {
-              className: "space-y-2",
-              children: [/* @__PURE__ */ jsx("div", {
-                className: "inline-block rounded-lg bg-muted px-3 py-1 text-sm",
-                children: "Как это работает"
-              }), /* @__PURE__ */ jsx("h2", {
-                className: "text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl",
-                children: "Простой процесс, впечатляющие результаты"
-              }), /* @__PURE__ */ jsx("p", {
-                className: "max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed",
-                children: "Начните работу за считанные минуты и увидите повышение производительности команды"
-              })]
-            })
-          }), /* @__PURE__ */ jsxs("div", {
-            className: "mx-auto grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-3 mt-16",
-            children: [/* @__PURE__ */ jsxs(motion.div, {
-              className: "relative flex flex-col items-center space-y-4 text-center",
-              initial: {
-                opacity: 0,
-                y: 20
-              },
-              whileInView: {
-                opacity: 1,
-                y: 0
-              },
-              transition: {
-                duration: 0.5,
-                delay: 0.1
-              },
-              viewport: {
-                once: true
-              },
-              children: [/* @__PURE__ */ jsx("div", {
-                className: "absolute -top-10 text-6xl font-bold text-muted/20",
-                children: "1"
-              }), /* @__PURE__ */ jsx("div", {
-                className: "bg-blue-600/10 p-3 rounded-full",
-                children: /* @__PURE__ */ jsxs("svg", {
-                  xmlns: "http://www.w3.org/2000/svg",
-                  width: "24",
-                  height: "24",
-                  viewBox: "0 0 24 24",
-                  fill: "none",
-                  stroke: "currentColor",
-                  strokeWidth: "2",
-                  strokeLinecap: "round",
-                  strokeLinejoin: "round",
-                  className: "h-8 w-8 text-blue-600",
-                  children: [/* @__PURE__ */ jsx("rect", {
-                    width: "18",
-                    height: "11",
-                    x: "3",
-                    y: "11",
-                    rx: "2",
-                    ry: "2"
-                  }), /* @__PURE__ */ jsx("path", {
-                    d: "M7 11V7a5 5 0 0 1 10 0v4"
-                  })]
-                })
-              }), /* @__PURE__ */ jsx("h3", {
-                className: "text-xl font-bold",
-                children: "Завести аккаунт"
-              }), /* @__PURE__ */ jsx("p", {
-                className: "text-muted-foreground",
-                children: "Зарегистрируйтесь бесплатно и создайте свое первое рабочее пространство за считанные секунды."
-              })]
-            }), /* @__PURE__ */ jsxs(motion.div, {
-              className: "relative flex flex-col items-center space-y-4 text-center",
-              initial: {
-                opacity: 0,
-                y: 20
-              },
-              whileInView: {
-                opacity: 1,
-                y: 0
-              },
-              transition: {
-                duration: 0.5,
-                delay: 0.2
-              },
-              viewport: {
-                once: true
-              },
-              children: [/* @__PURE__ */ jsx("div", {
-                className: "absolute -top-10 text-6xl font-bold text-muted/20",
-                children: "2"
-              }), /* @__PURE__ */ jsx("div", {
-                className: "bg-blue-600/10 p-3 rounded-full",
-                children: /* @__PURE__ */ jsxs("svg", {
-                  xmlns: "http://www.w3.org/2000/svg",
-                  width: "24",
-                  height: "24",
-                  viewBox: "0 0 24 24",
-                  fill: "none",
-                  stroke: "currentColor",
-                  strokeWidth: "2",
-                  strokeLinecap: "round",
-                  strokeLinejoin: "round",
-                  className: "h-8 w-8 text-blue-600",
-                  children: [/* @__PURE__ */ jsx("path", {
-                    d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
-                  }), /* @__PURE__ */ jsx("circle", {
-                    cx: "9",
-                    cy: "7",
-                    r: "4"
-                  }), /* @__PURE__ */ jsx("path", {
-                    d: "M22 21v-2a4 4 0 0 0-3-3.87"
-                  }), /* @__PURE__ */ jsx("path", {
-                    d: "M16 3.13a4 4 0 0 1 0 7.75"
-                  })]
-                })
-              }), /* @__PURE__ */ jsx("h3", {
-                className: "text-xl font-bold",
-                children: "Пригласите свою команду"
-              }), /* @__PURE__ */ jsx("p", {
-                className: "text-muted-foreground",
-                children: "Добавьте членов своей команды и начните сотрудничать прямо сейчас."
-              })]
-            }), /* @__PURE__ */ jsxs(motion.div, {
-              className: "relative flex flex-col items-center space-y-4 text-center",
-              initial: {
-                opacity: 0,
-                y: 20
-              },
-              whileInView: {
-                opacity: 1,
-                y: 0
-              },
-              transition: {
-                duration: 0.5,
-                delay: 0.3
-              },
-              viewport: {
-                once: true
-              },
-              children: [/* @__PURE__ */ jsx("div", {
-                className: "absolute -top-10 text-6xl font-bold text-muted/20",
-                children: "3"
-              }), /* @__PURE__ */ jsx("div", {
-                className: "bg-blue-600/10 p-3 rounded-full",
-                children: /* @__PURE__ */ jsxs("svg", {
-                  xmlns: "http://www.w3.org/2000/svg",
-                  width: "24",
-                  height: "24",
-                  viewBox: "0 0 24 24",
-                  fill: "none",
-                  stroke: "currentColor",
-                  strokeWidth: "2",
-                  strokeLinecap: "round",
-                  strokeLinejoin: "round",
-                  className: "h-8 w-8 text-blue-600",
-                  children: [/* @__PURE__ */ jsx("path", {
-                    d: "m22 2-7 20-4-9-9-4Z"
-                  }), /* @__PURE__ */ jsx("path", {
-                    d: "M22 2 11 13"
-                  })]
-                })
-              }), /* @__PURE__ */ jsx("h3", {
-                className: "text-xl font-bold",
-                children: "Делайте дела"
-              }), /* @__PURE__ */ jsx("p", {
-                className: "text-muted-foreground",
-                children: "Создавайте проекты, назначайте задачи и отслеживайте прогресс в режиме реального времени."
-              })]
-            })]
-          })]
-        })
-      }), /* @__PURE__ */ jsx("section", {
-        id: "mobile-app",
-        className: "w-full py-12 md:py-24 lg:py-32",
-        children: /* @__PURE__ */ jsxs(motion.div, {
-          className: "container px-4 md:px-6",
-          initial: {
-            opacity: 0,
-            y: 20
-          },
-          whileInView: {
-            opacity: 1,
-            y: 0
-          },
-          transition: {
-            duration: 0.5
-          },
-          viewport: {
-            once: true
-          },
-          children: [/* @__PURE__ */ jsx("div", {
-            className: "flex flex-col items-center justify-center space-y-4 text-center",
-            children: /* @__PURE__ */ jsxs("div", {
-              className: "space-y-2",
-              children: [/* @__PURE__ */ jsx("div", {
-                className: "inline-block rounded-lg bg-muted px-3 py-1 text-sm",
-                children: "Мобильное приложение"
-              }), /* @__PURE__ */ jsx("h2", {
-                className: "text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-pretty",
-                children: "Vazifa теперь в вашем кармане"
-              }), /* @__PURE__ */ jsx("p", {
-                className: "max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed",
-                children: "Управляйте задачами и проектами где угодно с нашим мобильным приложением. Полная синхронизация с веб-версией в режиме реального времени."
-              })]
-            })
-          }), /* @__PURE__ */ jsxs("div", {
-            className: "mx-auto grid max-w-5xl grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12 mt-16 items-center",
-            children: [/* @__PURE__ */ jsxs(motion.div, {
-              className: "flex flex-col space-y-6",
-              initial: {
-                opacity: 0,
-                x: -20
-              },
-              whileInView: {
-                opacity: 1,
-                x: 0
-              },
-              transition: {
-                duration: 0.5,
-                delay: 0.1
-              },
-              viewport: {
-                once: true
-              },
-              children: [/* @__PURE__ */ jsxs("div", {
-                className: "space-y-4",
-                children: [/* @__PURE__ */ jsxs("div", {
-                  className: "flex items-center space-x-3",
-                  children: [/* @__PURE__ */ jsx("div", {
-                    className: "bg-blue-600/10 p-2 rounded-full",
-                    children: /* @__PURE__ */ jsx(Smartphone, {
-                      className: "size-6 text-blue-600"
-                    })
-                  }), /* @__PURE__ */ jsx("h3", {
-                    className: "text-xl font-bold",
-                    children: "Доступно на всех устройствах"
-                  })]
-                }), /* @__PURE__ */ jsx("p", {
-                  className: "text-muted-foreground",
-                  children: "Нативные приложения для iOS и Android с полным функционалом веб-версии. Работайте офлайн и синхронизируйтесь при подключении к интернету."
-                })]
-              }), /* @__PURE__ */ jsxs("div", {
-                className: "space-y-4",
-                children: [/* @__PURE__ */ jsxs("div", {
-                  className: "flex items-center space-x-3",
-                  children: [/* @__PURE__ */ jsx("div", {
-                    className: "bg-blue-600/10 p-2 rounded-full",
-                    children: /* @__PURE__ */ jsxs("svg", {
-                      xmlns: "http://www.w3.org/2000/svg",
-                      width: "24",
-                      height: "24",
-                      viewBox: "0 0 24 24",
-                      fill: "none",
-                      stroke: "currentColor",
-                      strokeWidth: "2",
-                      strokeLinecap: "round",
-                      strokeLinejoin: "round",
-                      className: "size-6 text-blue-600",
-                      children: [/* @__PURE__ */ jsx("path", {
-                        d: "M12 2L2 7l10 5 10-5-10-5z"
-                      }), /* @__PURE__ */ jsx("path", {
-                        d: "M2 17l10 5 10-5"
-                      }), /* @__PURE__ */ jsx("path", {
-                        d: "M2 12l10 5 10-5"
-                      })]
-                    })
-                  }), /* @__PURE__ */ jsx("h3", {
-                    className: "text-xl font-bold",
-                    children: "Синхронизация в реальном времени"
-                  })]
-                }), /* @__PURE__ */ jsx("p", {
-                  className: "text-muted-foreground",
-                  children: "Все изменения мгновенно синхронизируются между мобильным приложением и веб-версией. Начните работу на телефоне, продолжите на компьютере."
-                })]
-              }), /* @__PURE__ */ jsxs("div", {
-                className: "space-y-4",
-                children: [/* @__PURE__ */ jsxs("div", {
-                  className: "flex items-center space-x-3",
-                  children: [/* @__PURE__ */ jsx("div", {
-                    className: "bg-blue-600/10 p-2 rounded-full",
-                    children: /* @__PURE__ */ jsxs("svg", {
-                      xmlns: "http://www.w3.org/2000/svg",
-                      width: "24",
-                      height: "24",
-                      viewBox: "0 0 24 24",
-                      fill: "none",
-                      stroke: "currentColor",
-                      strokeWidth: "2",
-                      strokeLinecap: "round",
-                      strokeLinejoin: "round",
-                      className: "size-6 text-blue-600",
-                      children: [/* @__PURE__ */ jsx("path", {
-                        d: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"
-                      }), /* @__PURE__ */ jsx("path", {
-                        d: "M13.73 21a2 2 0 0 1-3.46 0"
-                      })]
-                    })
-                  }), /* @__PURE__ */ jsx("h3", {
-                    className: "text-xl font-bold",
-                    children: "Push-уведомления"
-                  })]
-                }), /* @__PURE__ */ jsx("p", {
-                  className: "text-muted-foreground",
-                  children: "Получайте мгновенные уведомления о новых задачах, комментариях и изменениях в проектах. Никогда не пропустите важные обновления."
-                })]
-              }), /* @__PURE__ */ jsxs("div", {
-                className: "flex flex-col sm:flex-row gap-4 pt-4",
-                children: [/* @__PURE__ */ jsxs(Button, {
-                  size: "lg",
-                  className: "flex items-center gap-2",
-                  children: [/* @__PURE__ */ jsx(Download, {
-                    className: "size-5"
-                  }), "Скачать для iOS"]
-                }), /* @__PURE__ */ jsxs(Button, {
-                  size: "lg",
-                  variant: "outline",
-                  className: "flex items-center gap-2",
-                  children: [/* @__PURE__ */ jsx(Download, {
-                    className: "size-5"
-                  }), "Скачать для Android"]
-                })]
-              })]
-            }), /* @__PURE__ */ jsx(motion.div, {
-              className: "flex justify-center lg:justify-end",
-              initial: {
-                opacity: 0,
-                x: 20
-              },
-              whileInView: {
-                opacity: 1,
-                x: 0
-              },
-              transition: {
-                duration: 0.5,
-                delay: 0.2
-              },
-              viewport: {
-                once: true
-              },
-              children: /* @__PURE__ */ jsx("div", {
-                className: "relative",
-                children: /* @__PURE__ */ jsx("div", {
-                  className: "bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl p-8 shadow-2xl",
-                  children: /* @__PURE__ */ jsx("div", {
-                    className: "bg-white rounded-2xl p-6 shadow-lg max-w-xs",
-                    children: /* @__PURE__ */ jsxs("div", {
-                      className: "space-y-4",
-                      children: [/* @__PURE__ */ jsxs("div", {
-                        className: "flex items-center justify-between",
-                        children: [/* @__PURE__ */ jsx("h4", {
-                          className: "font-bold text-gray-900",
-                          children: "Мои задачи"
-                        }), /* @__PURE__ */ jsx("div", {
-                          className: "w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center",
-                          children: /* @__PURE__ */ jsx("span", {
-                            className: "text-white text-xs font-bold",
-                            children: "3"
-                          })
-                        })]
-                      }), /* @__PURE__ */ jsxs("div", {
-                        className: "space-y-3",
-                        children: [/* @__PURE__ */ jsxs("div", {
-                          className: "flex items-center space-x-3",
-                          children: [/* @__PURE__ */ jsx("div", {
-                            className: "w-4 h-4 border-2 border-blue-600 rounded"
-                          }), /* @__PURE__ */ jsx("span", {
-                            className: "text-sm text-gray-700",
-                            children: "Обновить дизайн"
-                          })]
-                        }), /* @__PURE__ */ jsxs("div", {
-                          className: "flex items-center space-x-3",
-                          children: [/* @__PURE__ */ jsx("div", {
-                            className: "w-4 h-4 bg-blue-600 rounded flex items-center justify-center",
-                            children: /* @__PURE__ */ jsx("svg", {
-                              className: "w-2 h-2 text-white",
-                              fill: "currentColor",
-                              viewBox: "0 0 20 20",
-                              children: /* @__PURE__ */ jsx("path", {
-                                fillRule: "evenodd",
-                                d: "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z",
-                                clipRule: "evenodd"
-                              })
-                            })
-                          }), /* @__PURE__ */ jsx("span", {
-                            className: "text-sm text-gray-500 line-through",
-                            children: "Написать отчет"
-                          })]
-                        }), /* @__PURE__ */ jsxs("div", {
-                          className: "flex items-center space-x-3",
-                          children: [/* @__PURE__ */ jsx("div", {
-                            className: "w-4 h-4 border-2 border-orange-500 rounded"
-                          }), /* @__PURE__ */ jsx("span", {
-                            className: "text-sm text-gray-700",
-                            children: "Встреча с командой"
-                          })]
-                        })]
-                      })]
-                    })
-                  })
-                })
-              })
-            })]
-          })]
-        })
-      })]
-    }), /* @__PURE__ */ jsx("section", {
-      className: "w-full py-12 mb-20 md:py-24 lg:py-32 bg-blue-600",
-      children: /* @__PURE__ */ jsx(motion.div, {
-        className: "container px-4 md:px-6 text-center max-w-screen-2xl mx-auto",
-        initial: {
-          opacity: 0
-        },
-        whileInView: {
-          opacity: 1
-        },
-        transition: {
-          duration: 0.5
-        },
-        viewport: {
-          once: true
-        },
-        children: /* @__PURE__ */ jsxs("div", {
-          className: "mx-auto flex max-w-3xl flex-col items-center justify-center space-y-4",
-          children: [/* @__PURE__ */ jsxs("div", {
-            className: "space-y-2",
-            children: [/* @__PURE__ */ jsx("h2", {
-              className: "text-3xl font-bold tracking-tighter text-primary-foreground sm:text-4xl md:text-5xl",
-              children: "Готовы повысить производительность своей команды?"
-            }), /* @__PURE__ */ jsx("p", {
-              className: "mx-auto max-w-[700px] text-primary-foreground/80 text-sm md:text-xl text-pretty",
-              children: "Присоединяйтесь к тысячам команд, которые используют Vazifa чтобы вместе добиться большего."
-            })]
-          }), /* @__PURE__ */ jsxs("div", {
-            className: "flex gap-4",
-            children: [/* @__PURE__ */ jsx(Link, {
-              to: "/sign-up",
-              children: /* @__PURE__ */ jsx(Button, {
-                variant: "secondary",
-                size: "lg",
-                children: "Начни бесплатно"
-              })
-            }), /* @__PURE__ */ jsx(Link, {
-              to: "/sign-in",
-              children: /* @__PURE__ */ jsx(Button, {
-                variant: "outline",
-                className: "bg-transparent text-primary-foreground border-primary-foreground hover:bg-primary-foreground hover:text-primary",
-                size: "lg",
-                children: "Войти"
-              })
-            })]
-          })]
-        })
-      })
-    }), /* @__PURE__ */ jsxs("footer", {
-      className: "container mx-auto  py-6 md:py-10 border-t",
-      children: [/* @__PURE__ */ jsxs("div", {
-        className: "container px-4 flex flex-col md:flex-row justify-between gap-6",
-        children: [/* @__PURE__ */ jsxs("div", {
-          className: "flex flex-col gap-2",
-          children: [/* @__PURE__ */ jsxs(Link, {
-            to: "/",
-            className: "flex items-center gap-2",
-            children: [/* @__PURE__ */ jsx("div", {
-              className: "bg-blue-600 rounded-md p-1",
-              children: /* @__PURE__ */ jsxs("svg", {
-                xmlns: "http://www.w3.org/2000/svg",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: "2",
-                strokeLinecap: "round",
-                strokeLinejoin: "round",
-                className: "h-4 w-4 text-primary-foreground",
-                children: [/* @__PURE__ */ jsx("path", {
-                  d: "m3 17 2 2 4-4"
-                }), /* @__PURE__ */ jsx("path", {
-                  d: "m3 7 2 2 4-4"
-                }), /* @__PURE__ */ jsx("path", {
-                  d: "M13 6h8"
-                }), /* @__PURE__ */ jsx("path", {
-                  d: "M13 12h8"
-                }), /* @__PURE__ */ jsx("path", {
-                  d: "M13 18h8"
-                })]
-              })
-            }), /* @__PURE__ */ jsx("span", {
-              className: "font-bold text-lg",
-              children: "Vazifa"
-            })]
-          }), /* @__PURE__ */ jsx("p", {
-            className: "text-sm text-muted-foreground",
-            children: "Упростите управление задачами и совместную работу в команде."
-          })]
-        }), /* @__PURE__ */ jsxs("div", {
-          className: "grid grid-cols-2 md:grid-cols-3 gap-8",
-          children: [/* @__PURE__ */ jsxs("div", {
-            className: "flex flex-col gap-2",
-            children: [/* @__PURE__ */ jsx("h3", {
-              className: "text-sm font-medium",
-              children: "Продукт"
-            }), /* @__PURE__ */ jsxs("ul", {
-              className: "flex flex-col gap-2 text-sm text-muted-foreground",
-              children: [/* @__PURE__ */ jsx("li", {
-                children: /* @__PURE__ */ jsx(Link, {
-                  to: "/#features",
-                  className: "hover:text-foreground",
-                  children: "Функции"
-                })
-              }), /* @__PURE__ */ jsx("li", {
-                children: /* @__PURE__ */ jsx(Link, {
-                  to: "#",
-                  className: "hover:text-foreground",
-                  children: "Цены"
-                })
-              }), /* @__PURE__ */ jsx("li", {
-                children: /* @__PURE__ */ jsx(Link, {
-                  to: "#",
-                  className: "hover:text-foreground",
-                  children: "Варианты использования"
-                })
-              }), /* @__PURE__ */ jsx("li", {
-                children: /* @__PURE__ */ jsx(Link, {
-                  to: "#",
-                  className: "hover:text-foreground",
-                  children: "Дорожная карта"
-                })
-              })]
-            })]
-          }), /* @__PURE__ */ jsxs("div", {
-            className: "flex flex-col gap-2",
-            children: [/* @__PURE__ */ jsx("h3", {
-              className: "text-sm font-medium",
-              children: "Компания"
-            }), /* @__PURE__ */ jsxs("ul", {
-              className: "flex flex-col gap-2 text-sm text-muted-foreground",
-              children: [/* @__PURE__ */ jsx("li", {
-                children: /* @__PURE__ */ jsx(Link, {
-                  to: "#",
-                  className: "hover:text-foreground",
-                  children: "О"
-                })
-              }), /* @__PURE__ */ jsx("li", {
-                children: /* @__PURE__ */ jsx(Link, {
-                  to: "#",
-                  className: "hover:text-foreground",
-                  children: "Карьера"
-                })
-              }), /* @__PURE__ */ jsx("li", {
-                children: /* @__PURE__ */ jsx(Link, {
-                  to: "#",
-                  className: "hover:text-foreground",
-                  children: "Блог"
-                })
-              }), /* @__PURE__ */ jsx("li", {
-                children: /* @__PURE__ */ jsx(Link, {
-                  to: "#",
-                  className: "hover:text-foreground",
-                  children: "Контакт"
-                })
-              })]
-            })]
-          }), /* @__PURE__ */ jsxs("div", {
-            className: "flex flex-col gap-2",
-            children: [/* @__PURE__ */ jsx("h3", {
-              className: "text-sm font-medium",
-              children: "Юридический"
-            }), /* @__PURE__ */ jsxs("ul", {
-              className: "flex flex-col gap-2 text-sm text-muted-foreground",
-              children: [/* @__PURE__ */ jsx("li", {
-                children: /* @__PURE__ */ jsx(Link, {
-                  to: "#",
-                  className: "hover:text-foreground",
-                  children: "политика конфиденциальности"
-                })
-              }), /* @__PURE__ */ jsx("li", {
-                children: /* @__PURE__ */ jsx(Link, {
-                  to: "#",
-                  className: "hover:text-foreground",
-                  children: "Условия использования"
-                })
-              }), /* @__PURE__ */ jsx("li", {
-                children: /* @__PURE__ */ jsx(Link, {
-                  to: "#",
-                  className: "hover:text-foreground",
-                  children: "Политика использования файлов cookie"
-                })
-              })]
-            })]
-          })]
-        })]
-      }), /* @__PURE__ */ jsxs("div", {
-        className: "container px-4 mt-8 flex flex-col sm:flex-row justify-between items-center text-sm text-muted-foreground",
-        children: [/* @__PURE__ */ jsx("p", {
-          children: "© 2025 Vazifa. Все права защищены."
-        }), /* @__PURE__ */ jsxs("div", {
-          className: "flex items-center gap-4 mt-4 sm:mt-0",
-          children: [/* @__PURE__ */ jsx(Link, {
-            to: "#",
-            className: "hover:text-foreground",
-            children: /* @__PURE__ */ jsx("svg", {
-              width: "20",
-              height: "20",
-              fill: "currentColor",
-              viewBox: "0 0 24 24",
-              "aria-hidden": "true",
-              children: /* @__PURE__ */ jsx("path", {
-                fillRule: "evenodd",
-                d: "M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z",
-                clipRule: "evenodd"
-              })
-            })
-          }), /* @__PURE__ */ jsx(Link, {
-            to: "#",
-            className: "hover:text-foreground",
-            children: /* @__PURE__ */ jsx("svg", {
-              width: "20",
-              height: "20",
-              fill: "currentColor",
-              viewBox: "0 0 24 24",
-              "aria-hidden": "true",
-              children: /* @__PURE__ */ jsx("path", {
-                d: "M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84"
-              })
-            })
-          }), /* @__PURE__ */ jsx(Link, {
-            to: "#",
-            className: "hover:text-foreground",
-            children: /* @__PURE__ */ jsx("svg", {
-              width: "20",
-              height: "20",
-              fill: "currentColor",
-              viewBox: "0 0 24 24",
-              "aria-hidden": "true",
-              children: /* @__PURE__ */ jsx("path", {
-                fillRule: "evenodd",
-                d: "M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z",
-                clipRule: "evenodd"
-              })
-            })
-          })]
-        })]
-      })]
-    })]
-  });
-};
-const welcome = withComponentProps(Welcome);
-const route2 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  default: welcome,
-  meta: meta$h
-}, Symbol.toStringTag, { value: "Module" }));
 const alertVariants = cva(
   "relative w-full rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
   {
@@ -1968,68 +996,44 @@ function AlertDescription({
     }
   );
 }
-function Card({ className, ...props }) {
-  return /* @__PURE__ */ jsx(
-    "div",
-    {
-      "data-slot": "card",
-      className: cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
-        className
-      ),
-      ...props
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer",
+  {
+    variants: {
+      variant: {
+        default: "bg-blue-600 text-primary-foreground shadow-xs hover:bg-primary/90",
+        destructive: "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+        outline: "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+        secondary: "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+        link: "text-primary underline-offset-4 hover:underline"
+      },
+      size: {
+        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        icon: "size-9"
+      }
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default"
     }
-  );
-}
-function CardHeader({ className, ...props }) {
+  }
+);
+function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  ...props
+}) {
+  const Comp = asChild ? Slot : "button";
   return /* @__PURE__ */ jsx(
-    "div",
+    Comp,
     {
-      "data-slot": "card-header",
-      className: cn(
-        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
-        className
-      ),
-      ...props
-    }
-  );
-}
-function CardTitle({ className, ...props }) {
-  return /* @__PURE__ */ jsx(
-    "div",
-    {
-      "data-slot": "card-title",
-      className: cn("leading-none font-semibold", className),
-      ...props
-    }
-  );
-}
-function CardDescription({ className, ...props }) {
-  return /* @__PURE__ */ jsx(
-    "div",
-    {
-      "data-slot": "card-description",
-      className: cn("text-muted-foreground text-sm", className),
-      ...props
-    }
-  );
-}
-function CardContent({ className, ...props }) {
-  return /* @__PURE__ */ jsx(
-    "div",
-    {
-      "data-slot": "card-content",
-      className: cn("px-6", className),
-      ...props
-    }
-  );
-}
-function CardFooter({ className, ...props }) {
-  return /* @__PURE__ */ jsx(
-    "div",
-    {
-      "data-slot": "card-footer",
-      className: cn("flex items-center px-6 [.border-t]:pt-6", className),
+      "data-slot": "button",
+      className: cn(buttonVariants({ variant, size, className })),
       ...props
     }
   );
@@ -2154,62 +1158,233 @@ function Input({ className, type, ...props }) {
     }
   );
 }
-const signupSchema = z.object({
-  name: z.string().min(2, { message: "Имя должно быть не менее 2 символов." }),
-  email: z.string().email({ message: "Пожалуйста, введите действительный адрес электронной почты" }),
-  password: z.string().min(6, { message: "Пароль должен быть не менее 6 символов." }),
-  confirmPassword: z.string().min(6, { message: "Требуется подтверждение пароля" })
+const verify2FASchema = z.object({
+  code: z.string().min(6).max(6)
+});
+const VerifyLogin2FAForm = ({
+  emailFor2FA,
+  setTwoFARequired,
+  setEmailFor2FA
+}) => {
+  const [error, setError] = useState(null);
+  const { login } = useAuth();
+  const form = useForm({
+    resolver: zodResolver(verify2FASchema),
+    defaultValues: {
+      code: ""
+    }
+  });
+  const { mutate: verify2FALogin, isPending: isVerifying2FA } = useVerify2FALoginMutation();
+  const handleVerify2FA = async (values) => {
+    setError(null);
+    verify2FALogin(
+      { email: emailFor2FA, code: values.code },
+      {
+        onSuccess: (data) => {
+          login(data);
+          toast.success("Login successful");
+        },
+        onError: (error2) => {
+          var _a, _b;
+          setError(((_b = (_a = error2.response) == null ? void 0 : _a.data) == null ? void 0 : _b.message) || "Invalid code");
+          toast.error("Login failed");
+          console.log(error2);
+        }
+      }
+    );
+  };
+  return /* @__PURE__ */ jsx(Form, { ...form, children: /* @__PURE__ */ jsxs("form", { onSubmit: form.handleSubmit(handleVerify2FA), className: "space-y-4", children: [
+    error && /* @__PURE__ */ jsxs(Alert, { variant: "destructive", children: [
+      /* @__PURE__ */ jsx(AlertCircle, { className: "h-4 w-4" }),
+      /* @__PURE__ */ jsx(AlertDescription, { children: error })
+    ] }),
+    /* @__PURE__ */ jsx(
+      FormField,
+      {
+        control: form.control,
+        name: "code",
+        render: ({ field }) => /* @__PURE__ */ jsxs(FormItem, { children: [
+          /* @__PURE__ */ jsx(FormLabel, { children: "Введите код отправленный на почту" }),
+          /* @__PURE__ */ jsx(FormControl, { children: /* @__PURE__ */ jsx(Input, { type: "number", placeholder: "6-digit code", ...field }) }),
+          /* @__PURE__ */ jsx(FormMessage, {})
+        ] })
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      Button,
+      {
+        type: "submit",
+        size: "lg",
+        className: "w-full",
+        disabled: isVerifying2FA,
+        children: isVerifying2FA ? /* @__PURE__ */ jsxs(Fragment, { children: [
+          /* @__PURE__ */ jsx(Loader2, { className: "mr-2 h-4 w-4 animate-spin" }),
+          "Verifying..."
+        ] }) : "Verify & Sign In"
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      Button,
+      {
+        type: "button",
+        variant: "ghost",
+        className: "w-full",
+        onClick: () => {
+          setTwoFARequired(false);
+          setEmailFor2FA("");
+        },
+        disabled: isVerifying2FA,
+        children: "Отмена"
+      }
+    )
+  ] }) });
+};
+function Card({ className, ...props }) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      "data-slot": "card",
+      className: cn(
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+        className
+      ),
+      ...props
+    }
+  );
+}
+function CardHeader({ className, ...props }) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      "data-slot": "card-header",
+      className: cn(
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        className
+      ),
+      ...props
+    }
+  );
+}
+function CardTitle({ className, ...props }) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      "data-slot": "card-title",
+      className: cn("leading-none font-semibold", className),
+      ...props
+    }
+  );
+}
+function CardDescription({ className, ...props }) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      "data-slot": "card-description",
+      className: cn("text-muted-foreground text-sm", className),
+      ...props
+    }
+  );
+}
+function CardContent({ className, ...props }) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      "data-slot": "card-content",
+      className: cn("px-6", className),
+      ...props
+    }
+  );
+}
+function CardFooter({ className, ...props }) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      "data-slot": "card-footer",
+      className: cn("flex items-center px-6 [.border-t]:pt-6", className),
+      ...props
+    }
+  );
+}
+z$1.object({
+  name: z$1.string().min(2, { message: "Имя должно содержать минимум 2 символа" }),
+  email: z$1.string().email({ message: "Введите корректный адрес электронной почты" }),
+  password: z$1.string().min(8, { message: "Пароль должен содержать минимум 8 символов" }),
+  confirmPassword: z$1.string().min(8, { message: "Подтвердите пароль (минимум 8 символов)" })
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Пароли не совпадают",
   path: ["confirmPassword"]
 });
-const loginSchema = z.object({
-  email: z.string().email({ message: "Пожалуйста, введите действительный адрес электронной почты" }),
-  password: z.string().min(1, { message: "Пароль должен быть не менее 6 символов." })
+z$1.object({
+  email: z$1.string().email({ message: "Введите корректный адрес электронной почты" }),
+  password: z$1.string().min(1, { message: "Введите пароль" })
 });
-const workspaceSchema = z.object({
-  name: z.string().min(1, "Требуется имя рабочего пространства"),
-  color: z.string().min(1, "Требуется цвет рабочего пространства"),
-  description: z.string().optional()
+const workspaceSchema = z$1.object({
+  name: z$1.string().min(1, "Требуется имя рабочего пространства"),
+  color: z$1.string().min(1, "Требуется цвет рабочего пространства"),
+  description: z$1.string().optional()
 });
-z.object({
-  title: z.string().min(2, "Название проекта должно содержать не менее 2 символов."),
-  description: z.string().optional(),
-  status: z.enum([
+z$1.object({
+  title: z$1.string().min(2, "Название проекта должно содержать не менее 2 символов."),
+  description: z$1.string().optional(),
+  status: z$1.enum([
     "Planning",
     "In Progress",
     "On Hold",
     "Completed",
     "Cancelled"
   ]),
-  startDate: z.string().min(1, "Укажите дату начала."),
-  dueDate: z.string().min(1, "Укажите дату сдачи."),
-  tags: z.string().trim().optional(),
-  members: z.array(
-    z.object({
-      user: z.string(),
-      role: z.enum(["manager", "contributor", "viewer"])
+  startDate: z$1.string().min(1, "Укажите дату начала."),
+  dueDate: z$1.string().min(1, "Укажите дату сдачи."),
+  tags: z$1.string().trim().optional(),
+  members: z$1.array(
+    z$1.object({
+      user: z$1.string(),
+      role: z$1.enum(["manager", "contributor", "viewer"])
     })
   ).optional()
 });
-z.object({
-  email: z.string().email(),
-  role: z.enum(["admin", "member", "viewer"])
+z$1.object({
+  email: z$1.string().email(),
+  role: z$1.enum(["admin", "member", "viewer"])
 });
-z.object({
-  title: z.string().min(1, "Укажите название задачи."),
-  description: z.string().optional(),
-  status: z.enum(["To Do", "In Progress", "Done"]),
-  priority: z.enum(["Low", "Medium", "High"]),
-  dueDate: z.string().min(1, "Укажите дату сдачи."),
-  assignees: z.array(z.string()).min(1, "Требуется по крайней мере один уполномоченный")
+z$1.object({
+  title: z$1.string().min(1, "Укажите название задачи."),
+  description: z$1.string().optional(),
+  status: z$1.enum(["To Do", "In Progress", "Done"]),
+  priority: z$1.enum(["Low", "Medium", "High"]),
+  dueDate: z$1.string().min(1, "Укажите дату сдачи."),
+  assignees: z$1.array(z$1.string()).min(1, "Требуется по крайней мере один уполномоченный")
 });
-const resetPasswordSchema = z.object({
-  password: z.string().min(6, { message: "Пароль должен быть не менее 6 символов." }),
-  confirmPassword: z.string().min(6, { message: "Требуется подтверждение пароля" })
+const resetPasswordSchema = z$1.object({
+  password: z$1.string().min(6, { message: "Пароль должен быть не менее 6 символов." }),
+  confirmPassword: z$1.string().min(6, { message: "Требуется подтверждение пароля" })
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Пароли не совпадают",
   path: ["confirmPassword"]
+});
+const phoneSignUpSchema = z$1.object({
+  name: z$1.string().min(1, { message: "Имя обязательно" }).refine(
+    (val) => val.trim().split(/\s+/).length >= 2,
+    { message: "Введите Имя и Фамилию через пробел" }
+  ),
+  phoneNumber: z$1.string().regex(/^\+992\d{9}$/, { message: "Формат: +992XXXXXXXXX (9 цифр после +992)" }),
+  email: z$1.string().min(1, { message: "Email обязателен" }).email({ message: "Неверный формат email" }),
+  password: z$1.string().min(8, { message: "Пароль должен содержать минимум 8 символов" }),
+  confirmPassword: z$1.string().min(8, { message: "Подтвердите пароль (минимум 8 символов)" })
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Пароли не совпадают",
+  path: ["confirmPassword"]
+});
+const universalLoginSchema = z$1.object({
+  emailOrPhone: z$1.string().min(1, { message: "Email или телефон обязателен" }),
+  password: z$1.string().min(1, { message: "Введите пароль" })
+});
+z$1.object({
+  phoneNumber: z$1.string().regex(/^\+992\d{9}$/, { message: "Неверный формат телефона" }),
+  code: z$1.string().length(6, { message: "Код должен содержать 6 цифр" }).regex(/^\d+$/, { message: "Код должен содержать только цифры" })
+});
+z$1.object({
+  phoneNumber: z$1.string().regex(/^\+992\d{9}$/, { message: "Неверный формат телефона" })
 });
 const toastMessages = {
   // Authentication messages
@@ -2382,276 +1557,6 @@ const toastMessages = {
 };
 function meta$g({}) {
   return [{
-    title: "TaskHub | Sign Up"
-  }, {
-    name: "description",
-    content: "Sign Up to TaskHub!"
-  }];
-}
-const SignUp = () => {
-  const [error, setError] = useState(null);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const {
-    mutate: signUp2,
-    isPending
-  } = useSignUpMutation();
-  const navigate = useNavigate();
-  const form = useForm({
-    resolver: zodResolver(signupSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-      confirmPassword: ""
-    }
-  });
-  const onSubmit = async (values) => {
-    setError(null);
-    try {
-      signUp2(values, {
-        onSuccess: () => {
-          setIsSuccess(true);
-          toast.success(toastMessages.auth.signUpSuccess, {
-            description: toastMessages.auth.signUpSuccessDescription
-          });
-          form.reset();
-          setError(null);
-          setTimeout(() => {
-            setIsSuccess(false);
-            navigate("/sign-in");
-          }, 3e3);
-        },
-        onError: (error2) => {
-          setIsSuccess(false);
-          const message = error2.response.data.message || error2.message;
-          setError(message);
-          toast.error(toastMessages.auth.signUpFailed, {
-            description: message
-          });
-        }
-      });
-    } catch (err) {
-      setIsSuccess(false);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError(toastMessages.errors.unknownError);
-        toast.error(toastMessages.auth.signUpFailed, {
-          description: toastMessages.errors.unknownError
-        });
-      }
-    }
-  };
-  return /* @__PURE__ */ jsx("div", {
-    className: "min-h-screen flex flex-col items-center justify-center bg-muted",
-    children: /* @__PURE__ */ jsxs(Card, {
-      className: "border-border/50 w-full max-w-md shadow-xl",
-      children: [/* @__PURE__ */ jsxs(CardHeader, {
-        className: "mb-6 text-center",
-        children: [/* @__PURE__ */ jsx(CardTitle, {
-          className: "text-3xl",
-          children: "Создать аккаунт"
-        }), /* @__PURE__ */ jsx(CardDescription, {
-          children: "Введите ваши данные, чтобы создать учетную запись"
-        })]
-      }), /* @__PURE__ */ jsx(CardContent, {
-        children: /* @__PURE__ */ jsx(Form, {
-          ...form,
-          children: /* @__PURE__ */ jsxs("form", {
-            onSubmit: form.handleSubmit(onSubmit),
-            className: "space-y-4",
-            children: [error && /* @__PURE__ */ jsxs(Alert, {
-              variant: "destructive",
-              children: [/* @__PURE__ */ jsx(AlertCircle, {
-                className: "h-4 w-4"
-              }), /* @__PURE__ */ jsx(AlertDescription, {
-                children: error
-              })]
-            }), isSuccess && /* @__PURE__ */ jsxs(Alert, {
-              variant: "success",
-              children: [/* @__PURE__ */ jsx(CheckCircle, {
-                className: "h-4 w-4"
-              }), /* @__PURE__ */ jsx(AlertDescription, {
-                children: "Пользователь успешно зарегистрирован. Пожалуйста, проверьте свою электронную почту для подтверждения."
-              })]
-            }), /* @__PURE__ */ jsx(FormField, {
-              control: form.control,
-              name: "name",
-              render: ({
-                field
-              }) => /* @__PURE__ */ jsxs(FormItem, {
-                children: [/* @__PURE__ */ jsx(FormLabel, {
-                  children: "Полное имя"
-                }), /* @__PURE__ */ jsx(FormControl, {
-                  children: /* @__PURE__ */ jsx(Input, {
-                    placeholder: "John Doe",
-                    ...field
-                  })
-                }), /* @__PURE__ */ jsx(FormMessage, {})]
-              })
-            }), /* @__PURE__ */ jsx(FormField, {
-              control: form.control,
-              name: "email",
-              render: ({
-                field
-              }) => /* @__PURE__ */ jsxs(FormItem, {
-                children: [/* @__PURE__ */ jsx(FormLabel, {
-                  children: "Электронная почта"
-                }), /* @__PURE__ */ jsx(FormControl, {
-                  children: /* @__PURE__ */ jsx(Input, {
-                    type: "email",
-                    placeholder: "email@example.com",
-                    ...field
-                  })
-                }), /* @__PURE__ */ jsx(FormMessage, {})]
-              })
-            }), /* @__PURE__ */ jsx(FormField, {
-              control: form.control,
-              name: "password",
-              render: ({
-                field
-              }) => /* @__PURE__ */ jsxs(FormItem, {
-                children: [/* @__PURE__ */ jsx(FormLabel, {
-                  children: "Пароль"
-                }), /* @__PURE__ */ jsx(FormControl, {
-                  children: /* @__PURE__ */ jsx(Input, {
-                    type: "password",
-                    placeholder: "••••••••",
-                    ...field
-                  })
-                }), /* @__PURE__ */ jsx(FormMessage, {})]
-              })
-            }), /* @__PURE__ */ jsx(FormField, {
-              control: form.control,
-              name: "confirmPassword",
-              render: ({
-                field
-              }) => /* @__PURE__ */ jsxs(FormItem, {
-                children: [/* @__PURE__ */ jsx(FormLabel, {
-                  children: "Подтвердите пароль"
-                }), /* @__PURE__ */ jsx(FormControl, {
-                  children: /* @__PURE__ */ jsx(Input, {
-                    type: "password",
-                    placeholder: "••••••••",
-                    ...field
-                  })
-                }), /* @__PURE__ */ jsx(FormMessage, {})]
-              })
-            }), /* @__PURE__ */ jsx(Button, {
-              type: "submit",
-              size: "lg",
-              className: "w-full",
-              disabled: isPending,
-              children: isPending ? /* @__PURE__ */ jsxs(Fragment, {
-                children: [/* @__PURE__ */ jsx(Loader2, {
-                  className: "mr-2 h-4 w-4 animate-spin"
-                }), "Создание учетной записи..."]
-              }) : "Создать аккаунт"
-            })]
-          })
-        })
-      }), /* @__PURE__ */ jsx(CardFooter, {
-        children: /* @__PURE__ */ jsxs("div", {
-          className: "text-center text-sm w-full",
-          children: ["У вас уже есть аккаунт?", " ", /* @__PURE__ */ jsx(Link, {
-            to: "/sign-in",
-            className: "text-blue-600 font-semibold hover:underline",
-            children: "Войти"
-          })]
-        })
-      })]
-    })
-  });
-};
-const signUp = withComponentProps(SignUp);
-const route3 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
-  __proto__: null,
-  default: signUp,
-  meta: meta$g
-}, Symbol.toStringTag, { value: "Module" }));
-const verify2FASchema = z$1.object({
-  code: z$1.string().min(6).max(6)
-});
-const VerifyLogin2FAForm = ({
-  emailFor2FA,
-  setTwoFARequired,
-  setEmailFor2FA
-}) => {
-  const [error, setError] = useState(null);
-  const { login } = useAuth();
-  const form = useForm({
-    resolver: zodResolver(verify2FASchema),
-    defaultValues: {
-      code: ""
-    }
-  });
-  const { mutate: verify2FALogin, isPending: isVerifying2FA } = useVerify2FALoginMutation();
-  const handleVerify2FA = async (values) => {
-    setError(null);
-    verify2FALogin(
-      { email: emailFor2FA, code: values.code },
-      {
-        onSuccess: (data) => {
-          login(data);
-          toast.success("Login successful");
-        },
-        onError: (error2) => {
-          var _a, _b;
-          setError(((_b = (_a = error2.response) == null ? void 0 : _a.data) == null ? void 0 : _b.message) || "Invalid code");
-          toast.error("Login failed");
-          console.log(error2);
-        }
-      }
-    );
-  };
-  return /* @__PURE__ */ jsx(Form, { ...form, children: /* @__PURE__ */ jsxs("form", { onSubmit: form.handleSubmit(handleVerify2FA), className: "space-y-4", children: [
-    error && /* @__PURE__ */ jsxs(Alert, { variant: "destructive", children: [
-      /* @__PURE__ */ jsx(AlertCircle, { className: "h-4 w-4" }),
-      /* @__PURE__ */ jsx(AlertDescription, { children: error })
-    ] }),
-    /* @__PURE__ */ jsx(
-      FormField,
-      {
-        control: form.control,
-        name: "code",
-        render: ({ field }) => /* @__PURE__ */ jsxs(FormItem, { children: [
-          /* @__PURE__ */ jsx(FormLabel, { children: "Введите код отправленный на почту" }),
-          /* @__PURE__ */ jsx(FormControl, { children: /* @__PURE__ */ jsx(Input, { type: "number", placeholder: "6-digit code", ...field }) }),
-          /* @__PURE__ */ jsx(FormMessage, {})
-        ] })
-      }
-    ),
-    /* @__PURE__ */ jsx(
-      Button,
-      {
-        type: "submit",
-        size: "lg",
-        className: "w-full",
-        disabled: isVerifying2FA,
-        children: isVerifying2FA ? /* @__PURE__ */ jsxs(Fragment, { children: [
-          /* @__PURE__ */ jsx(Loader2, { className: "mr-2 h-4 w-4 animate-spin" }),
-          "Verifying..."
-        ] }) : "Verify & Sign In"
-      }
-    ),
-    /* @__PURE__ */ jsx(
-      Button,
-      {
-        type: "button",
-        variant: "ghost",
-        className: "w-full",
-        onClick: () => {
-          setTwoFARequired(false);
-          setEmailFor2FA("");
-        },
-        disabled: isVerifying2FA,
-        children: "Отмена"
-      }
-    )
-  ] }) });
-};
-function meta$f({}) {
-  return [{
     title: "TaskHub | Sign In"
   }, {
     name: "description",
@@ -2660,45 +1565,55 @@ function meta$f({}) {
 }
 const SignIn = () => {
   const [error, setError] = useState(null);
+  const [isPending, setIsPending] = useState(false);
   const {
     login
   } = useAuth();
-  const {
-    mutate: loginUser,
-    isPending: isLoginPending
-  } = useLoginMutation();
   const [twoFARequired, setTwoFARequired] = useState(false);
   const [emailFor2FA, setEmailFor2FA] = useState("");
   const form = useForm({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(universalLoginSchema),
     defaultValues: {
-      email: "",
+      emailOrPhone: "",
       password: ""
     }
   });
   const onSubmit = async (values) => {
     setError(null);
-    loginUser(values, {
-      onSuccess: (data) => {
+    setIsPending(true);
+    try {
+      const response = await fetch(`/api-v1/auth/login-universal`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(values)
+      });
+      const data = await response.json();
+      if (response.ok) {
         if (data.twoFARequired) {
           setTwoFARequired(true);
-          setEmailFor2FA(values.email);
-          toast.info(toastMessages.auth.emailVerificationSent);
+          setEmailFor2FA(values.emailOrPhone);
+          toast.info("Требуется двухфакторная аутентификация");
         } else {
           login(data);
+          toast.success("Вход выполнен успешно!");
         }
-      },
-      onError: (error2) => {
-        var _a, _b;
-        toast.error(((_b = (_a = error2.response) == null ? void 0 : _a.data) == null ? void 0 : _b.message) || toastMessages.auth.loginFailed);
+      } else {
+        throw new Error(data.message || "Ошибка входа");
       }
-    });
+    } catch (err) {
+      const message = err.message || toastMessages.auth.loginFailed;
+      setError(message);
+      toast.error("Ошибка входа", {
+        description: message
+      });
+    } finally {
+      setIsPending(false);
+    }
   };
   const handleGoogleLogin = () => {
-    window.location.href = `${"https://ptapi.oci.tj/api-v1"}/auth/google`;
-  };
-  const handleAppleLogin = () => {
-    toast.info(toastMessages.auth.appleComingSoon);
+    window.location.href = `${"https://ptapi.oci.tj"}/api-v1/auth/google`;
   };
   return /* @__PURE__ */ jsx("div", {
     className: "min-h-screen flex flex-col items-center justify-center bg-muted/40 p-4",
@@ -2710,7 +1625,7 @@ const SignIn = () => {
           className: "text-3xl",
           children: "Добро пожаловать"
         }), /* @__PURE__ */ jsx(CardDescription, {
-          children: "Введите свои учетные данные для входа в свою учетную запись."
+          children: "Войдите используя email или номер телефона"
         })]
       }), /* @__PURE__ */ jsx(CardContent, {
         children: twoFARequired ? /* @__PURE__ */ jsx(VerifyLogin2FAForm, {
@@ -2731,16 +1646,15 @@ const SignIn = () => {
               })]
             }), /* @__PURE__ */ jsx(FormField, {
               control: form.control,
-              name: "email",
+              name: "emailOrPhone",
               render: ({
                 field
               }) => /* @__PURE__ */ jsxs(FormItem, {
                 children: [/* @__PURE__ */ jsx(FormLabel, {
-                  children: "Адрес электронной почты"
+                  children: "Email или телефон"
                 }), /* @__PURE__ */ jsx(FormControl, {
                   children: /* @__PURE__ */ jsx(Input, {
-                    type: "email",
-                    placeholder: "email@example.com",
+                    placeholder: "email@example.com или +992901234567",
                     ...field
                   })
                 }), /* @__PURE__ */ jsx(FormMessage, {})]
@@ -2772,8 +1686,8 @@ const SignIn = () => {
               type: "submit",
               size: "lg",
               className: "w-full",
-              disabled: isLoginPending,
-              children: isLoginPending ? /* @__PURE__ */ jsxs(Fragment, {
+              disabled: isPending,
+              children: isPending ? /* @__PURE__ */ jsxs(Fragment, {
                 children: [/* @__PURE__ */ jsx(Loader2, {
                   className: "mr-2 h-4 w-4 animate-spin"
                 }), "Вход в систему..."]
@@ -2792,44 +1706,29 @@ const SignIn = () => {
                   children: "Или продолжить с"
                 })
               })]
-            }), /* @__PURE__ */ jsxs("div", {
-              className: "grid grid-cols-2 gap-4",
-              children: [/* @__PURE__ */ jsxs(Button, {
-                variant: "outline",
-                type: "button",
-                disabled: isLoginPending,
-                onClick: handleGoogleLogin,
-                children: [/* @__PURE__ */ jsxs("svg", {
-                  className: "mr-2 h-4 w-4",
-                  viewBox: "0 0 24 24",
-                  children: [/* @__PURE__ */ jsx("path", {
-                    d: "M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z",
-                    fill: "#4285F4"
-                  }), /* @__PURE__ */ jsx("path", {
-                    d: "M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z",
-                    fill: "#34A853"
-                  }), /* @__PURE__ */ jsx("path", {
-                    d: "M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z",
-                    fill: "#FBBC05"
-                  }), /* @__PURE__ */ jsx("path", {
-                    d: "M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z",
-                    fill: "#EA4335"
-                  })]
-                }), "Google"]
-              }), /* @__PURE__ */ jsxs(Button, {
-                variant: "outline",
-                type: "button",
-                disabled: isLoginPending,
-                onClick: handleAppleLogin,
-                children: [/* @__PURE__ */ jsx("svg", {
-                  className: "mr-2 h-4 w-4",
-                  viewBox: "0 0 24 24",
-                  fill: "currentColor",
-                  children: /* @__PURE__ */ jsx("path", {
-                    d: "M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"
-                  })
-                }), "Apple"]
-              })]
+            }), /* @__PURE__ */ jsxs(Button, {
+              variant: "outline",
+              type: "button",
+              disabled: isPending,
+              onClick: handleGoogleLogin,
+              className: "w-full",
+              children: [/* @__PURE__ */ jsxs("svg", {
+                className: "mr-2 h-4 w-4",
+                viewBox: "0 0 24 24",
+                children: [/* @__PURE__ */ jsx("path", {
+                  d: "M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z",
+                  fill: "#4285F4"
+                }), /* @__PURE__ */ jsx("path", {
+                  d: "M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z",
+                  fill: "#34A853"
+                }), /* @__PURE__ */ jsx("path", {
+                  d: "M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z",
+                  fill: "#FBBC05"
+                }), /* @__PURE__ */ jsx("path", {
+                  d: "M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z",
+                  fill: "#EA4335"
+                })]
+              }), "Войти через Google"]
             })]
           })
         })
@@ -2847,9 +1746,478 @@ const SignIn = () => {
   });
 };
 const signIn = withComponentProps(SignIn);
-const route4 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route2 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: signIn,
+  meta: meta$g
+}, Symbol.toStringTag, { value: "Module" }));
+const SMSVerification = ({ phoneNumber, onSuccess }) => {
+  const [code, setCode] = useState(["", "", "", "", "", ""]);
+  const [timeLeft, setTimeLeft] = useState(300);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [canResend, setCanResend] = useState(false);
+  const [waitMinutes, setWaitMinutes] = useState(0);
+  const inputRefs = useRef([]);
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      setCanResend(true);
+      return;
+    }
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1e3);
+    return () => clearInterval(timer);
+  }, [timeLeft]);
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+  const handleChange = (index2, value) => {
+    var _a;
+    if (!/^\d*$/.test(value)) return;
+    const newCode = [...code];
+    newCode[index2] = value;
+    setCode(newCode);
+    if (value && index2 < 5) {
+      (_a = inputRefs.current[index2 + 1]) == null ? void 0 : _a.focus();
+    }
+    if (newCode.every((digit) => digit !== "") && value) {
+      handleVerify(newCode.join(""));
+    }
+  };
+  const handleKeyDown = (index2, e) => {
+    var _a;
+    if (e.key === "Backspace" && !code[index2] && index2 > 0) {
+      (_a = inputRefs.current[index2 - 1]) == null ? void 0 : _a.focus();
+    }
+  };
+  const handleVerify = async (codeStr) => {
+    var _a;
+    setIsVerifying(true);
+    try {
+      const response = await fetch(
+        `${"https://ptapi.oci.tj"}/api-v1/auth/verify-phone`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phoneNumber,
+            code: codeStr
+          })
+        }
+      );
+      const data = await response.json();
+      if (response.ok) {
+        toast.success("Телефон успешно подтвержден!");
+        onSuccess(data.token);
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message || "Неверный код");
+      setCode(["", "", "", "", "", ""]);
+      (_a = inputRefs.current[0]) == null ? void 0 : _a.focus();
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+  const handleResend = async () => {
+    var _a;
+    setIsResending(true);
+    try {
+      const response = await fetch(
+        `${"https://ptapi.oci.tj"}/api-v1/auth/resend-code`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber })
+        }
+      );
+      const data = await response.json();
+      if (response.ok) {
+        toast.success("Код отправлен повторно");
+        setTimeLeft(300);
+        setCanResend(false);
+        setWaitMinutes(0);
+        setCode(["", "", "", "", "", ""]);
+        (_a = inputRefs.current[0]) == null ? void 0 : _a.focus();
+      } else if (response.status === 429) {
+        setWaitMinutes(data.waitMinutes || 1);
+        toast.error(data.message || "Слишком много попыток");
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message || "Ошибка отправки SMS");
+    } finally {
+      setIsResending(false);
+    }
+  };
+  return /* @__PURE__ */ jsxs("div", { className: "space-y-6 p-6 border border-border rounded-lg bg-card", children: [
+    /* @__PURE__ */ jsxs("div", { className: "text-center", children: [
+      /* @__PURE__ */ jsx("h3", { className: "text-xl font-semibold mb-2", children: "Введите код из SMS" }),
+      /* @__PURE__ */ jsxs("p", { className: "text-sm text-muted-foreground", children: [
+        "Код отправлен на номер ",
+        phoneNumber
+      ] })
+    ] }),
+    /* @__PURE__ */ jsx("div", { className: "flex gap-2 justify-center", children: code.map((digit, index2) => /* @__PURE__ */ jsx(
+      Input,
+      {
+        ref: (el) => {
+          inputRefs.current[index2] = el;
+        },
+        type: "text",
+        inputMode: "numeric",
+        maxLength: 1,
+        value: digit,
+        onChange: (e) => handleChange(index2, e.target.value),
+        onKeyDown: (e) => handleKeyDown(index2, e),
+        className: "w-12 h-12 text-center text-lg font-semibold",
+        autoFocus: index2 === 0,
+        disabled: isVerifying
+      },
+      index2
+    )) }),
+    isVerifying && /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-center gap-2 text-sm text-muted-foreground", children: [
+      /* @__PURE__ */ jsx(Loader2, { className: "h-4 w-4 animate-spin" }),
+      /* @__PURE__ */ jsx("span", { children: "Проверка кода..." })
+    ] }),
+    /* @__PURE__ */ jsx("div", { className: "text-center", children: /* @__PURE__ */ jsxs("p", { className: "text-sm text-muted-foreground", children: [
+      "Код действителен:",
+      " ",
+      /* @__PURE__ */ jsx("span", { className: `font-semibold ${timeLeft < 60 ? "text-destructive" : ""}`, children: formatTime(timeLeft) })
+    ] }) }),
+    /* @__PURE__ */ jsx("div", { className: "text-center", children: /* @__PURE__ */ jsx(
+      Button,
+      {
+        variant: "ghost",
+        onClick: handleResend,
+        disabled: !canResend || isResending || waitMinutes > 0,
+        className: "text-sm",
+        children: isResending ? /* @__PURE__ */ jsxs(Fragment, { children: [
+          /* @__PURE__ */ jsx(Loader2, { className: "mr-2 h-4 w-4 animate-spin" }),
+          "Отправка..."
+        ] }) : waitMinutes > 0 ? `Следующая попытка через ${waitMinutes} мин` : canResend ? "Отправить код снова" : "Отправить снова"
+      }
+    ) }),
+    /* @__PURE__ */ jsx("div", { className: "text-center text-xs text-muted-foreground", children: /* @__PURE__ */ jsx("p", { children: "Не получили код? Проверьте правильность номера телефона" }) })
+  ] });
+};
+function meta$f({}) {
+  return [{
+    title: "TaskHub | Sign Up"
+  }, {
+    name: "description",
+    content: "Sign Up to TaskHub!"
+  }];
+}
+const SignUp = () => {
+  const [error, setError] = useState(null);
+  const [isPending, setIsPending] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
+  const [verificationType, setVerificationType] = useState("link");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const navigate = useNavigate();
+  const form = useForm({
+    resolver: zodResolver(phoneSignUpSchema),
+    defaultValues: {
+      name: "",
+      phoneNumber: "",
+      email: "",
+      password: "",
+      confirmPassword: ""
+    }
+  });
+  const onSubmit = async (values) => {
+    setError(null);
+    setIsPending(true);
+    try {
+      const response = await fetch(`${"https://ptapi.oci.tj"}/api-v1/auth/register-phone`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(values)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        if (data.requiresVerification) {
+          setPhoneNumber(data.phoneNumber);
+          setVerificationType(data.verificationType || "link");
+          setShowVerification(true);
+          if (data.verificationType === "link") {
+            toast.success("Ссылка отправлена на ваш телефон", {
+              description: `Проверьте SMS на номере ${data.phoneNumber} и нажмите на ссылку`
+            });
+          } else {
+            toast.success("Код отправлен на ваш телефон", {
+              description: `Проверьте SMS на номере ${data.phoneNumber}`
+            });
+          }
+          setError(null);
+        } else {
+          if (data.token && data.user) {
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("user", JSON.stringify(data.user));
+            toast.success("Регистрация завершена!", {
+              description: "Добро пожаловать в TaskHub"
+            });
+            setTimeout(() => {
+              navigate("/dashboard");
+            }, 500);
+          } else {
+            throw new Error("Токен не получен");
+          }
+        }
+      } else {
+        throw new Error(data.message || "Ошибка регистрации");
+      }
+    } catch (err) {
+      const message = err.message || toastMessages.errors.unknownError;
+      setError(message);
+      toast.error("Ошибка регистрации", {
+        description: message
+      });
+    } finally {
+      setIsPending(false);
+    }
+  };
+  const handleVerificationSuccess = (token) => {
+    localStorage.setItem("token", token);
+    toast.success("Регистрация завершена!", {
+      description: "Добро пожаловать в TaskHub"
+    });
+    setTimeout(() => {
+      navigate("/dashboard");
+    }, 500);
+  };
+  if (showVerification) {
+    if (verificationType === "link") {
+      return /* @__PURE__ */ jsx("div", {
+        className: "min-h-screen flex flex-col items-center justify-center bg-muted p-4",
+        children: /* @__PURE__ */ jsxs(Card, {
+          className: "border-border/50 w-full max-w-md shadow-xl",
+          children: [/* @__PURE__ */ jsxs(CardHeader, {
+            className: "text-center",
+            children: [/* @__PURE__ */ jsx(CardTitle, {
+              className: "text-2xl",
+              children: "Проверьте SMS"
+            }), /* @__PURE__ */ jsx(CardDescription, {
+              children: "Ссылка для подтверждения отправлена на ваш телефон"
+            })]
+          }), /* @__PURE__ */ jsxs(CardContent, {
+            className: "space-y-4",
+            children: [/* @__PURE__ */ jsxs(Alert, {
+              children: [/* @__PURE__ */ jsx(AlertCircle, {
+                className: "h-4 w-4"
+              }), /* @__PURE__ */ jsx(AlertDescription, {
+                children: /* @__PURE__ */ jsxs("div", {
+                  className: "space-y-2",
+                  children: [/* @__PURE__ */ jsx("p", {
+                    className: "font-medium",
+                    children: "Следующие шаги:"
+                  }), /* @__PURE__ */ jsxs("ol", {
+                    className: "list-decimal list-inside space-y-1 text-sm",
+                    children: [/* @__PURE__ */ jsxs("li", {
+                      children: ["Откройте SMS на номере ", phoneNumber]
+                    }), /* @__PURE__ */ jsx("li", {
+                      children: "Нажмите на ссылку подтверждения"
+                    }), /* @__PURE__ */ jsx("li", {
+                      children: "Вы будете автоматически перенаправлены"
+                    })]
+                  }), /* @__PURE__ */ jsx("p", {
+                    className: "text-sm text-muted-foreground mt-3",
+                    children: "Ссылка действительна 10 минут"
+                  })]
+                })
+              })]
+            }), /* @__PURE__ */ jsx("div", {
+              className: "text-center text-sm text-muted-foreground",
+              children: "Не получили SMS?"
+            })]
+          }), /* @__PURE__ */ jsx(CardFooter, {
+            className: "flex justify-center gap-2",
+            children: /* @__PURE__ */ jsx(Button, {
+              variant: "ghost",
+              size: "sm",
+              onClick: () => {
+                setShowVerification(false);
+                setPhoneNumber("");
+              },
+              children: "Изменить данные регистрации"
+            })
+          })]
+        })
+      });
+    }
+    return /* @__PURE__ */ jsx("div", {
+      className: "min-h-screen flex flex-col items-center justify-center bg-muted p-4",
+      children: /* @__PURE__ */ jsxs(Card, {
+        className: "border-border/50 w-full max-w-md shadow-xl",
+        children: [/* @__PURE__ */ jsxs(CardHeader, {
+          className: "text-center",
+          children: [/* @__PURE__ */ jsx(CardTitle, {
+            className: "text-2xl",
+            children: "Подтверждение телефона"
+          }), /* @__PURE__ */ jsx(CardDescription, {
+            children: "Введите код из SMS для завершения регистрации"
+          })]
+        }), /* @__PURE__ */ jsx(CardContent, {
+          children: /* @__PURE__ */ jsx(SMSVerification, {
+            phoneNumber,
+            onSuccess: handleVerificationSuccess
+          })
+        }), /* @__PURE__ */ jsx(CardFooter, {
+          className: "flex justify-center",
+          children: /* @__PURE__ */ jsx(Button, {
+            variant: "ghost",
+            size: "sm",
+            onClick: () => {
+              setShowVerification(false);
+              setPhoneNumber("");
+            },
+            children: "Изменить данные регистрации"
+          })
+        })]
+      })
+    });
+  }
+  return /* @__PURE__ */ jsx("div", {
+    className: "min-h-screen flex flex-col items-center justify-center bg-muted p-4",
+    children: /* @__PURE__ */ jsxs(Card, {
+      className: "border-border/50 w-full max-w-md shadow-xl",
+      children: [/* @__PURE__ */ jsxs(CardHeader, {
+        className: "mb-6 text-center",
+        children: [/* @__PURE__ */ jsx(CardTitle, {
+          className: "text-3xl",
+          children: "Создать аккаунт"
+        }), /* @__PURE__ */ jsx(CardDescription, {
+          children: "Введите ваши данные для создания учетной записи"
+        })]
+      }), /* @__PURE__ */ jsx(CardContent, {
+        children: /* @__PURE__ */ jsx(Form, {
+          ...form,
+          children: /* @__PURE__ */ jsxs("form", {
+            onSubmit: form.handleSubmit(onSubmit),
+            className: "space-y-4",
+            children: [error && /* @__PURE__ */ jsxs(Alert, {
+              variant: "destructive",
+              children: [/* @__PURE__ */ jsx(AlertCircle, {
+                className: "h-4 w-4"
+              }), /* @__PURE__ */ jsx(AlertDescription, {
+                children: error
+              })]
+            }), /* @__PURE__ */ jsx(FormField, {
+              control: form.control,
+              name: "name",
+              render: ({
+                field
+              }) => /* @__PURE__ */ jsxs(FormItem, {
+                children: [/* @__PURE__ */ jsx(FormLabel, {
+                  children: "Полное имя *"
+                }), /* @__PURE__ */ jsx(FormControl, {
+                  children: /* @__PURE__ */ jsx(Input, {
+                    placeholder: "Имя Фамилия",
+                    ...field
+                  })
+                }), /* @__PURE__ */ jsx(FormMessage, {})]
+              })
+            }), /* @__PURE__ */ jsx(FormField, {
+              control: form.control,
+              name: "phoneNumber",
+              render: ({
+                field
+              }) => /* @__PURE__ */ jsxs(FormItem, {
+                children: [/* @__PURE__ */ jsx(FormLabel, {
+                  children: "Номер телефона *"
+                }), /* @__PURE__ */ jsx(FormControl, {
+                  children: /* @__PURE__ */ jsx(Input, {
+                    placeholder: "+992901234567",
+                    ...field
+                  })
+                }), /* @__PURE__ */ jsx(FormMessage, {})]
+              })
+            }), /* @__PURE__ */ jsx(FormField, {
+              control: form.control,
+              name: "email",
+              render: ({
+                field
+              }) => /* @__PURE__ */ jsxs(FormItem, {
+                children: [/* @__PURE__ */ jsx(FormLabel, {
+                  children: "Email *"
+                }), /* @__PURE__ */ jsx(FormControl, {
+                  children: /* @__PURE__ */ jsx(Input, {
+                    type: "email",
+                    placeholder: "email@example.com",
+                    ...field
+                  })
+                }), /* @__PURE__ */ jsx(FormMessage, {})]
+              })
+            }), /* @__PURE__ */ jsx(FormField, {
+              control: form.control,
+              name: "password",
+              render: ({
+                field
+              }) => /* @__PURE__ */ jsxs(FormItem, {
+                children: [/* @__PURE__ */ jsx(FormLabel, {
+                  children: "Пароль *"
+                }), /* @__PURE__ */ jsx(FormControl, {
+                  children: /* @__PURE__ */ jsx(Input, {
+                    type: "password",
+                    placeholder: "Минимум 8 символов",
+                    ...field
+                  })
+                }), /* @__PURE__ */ jsx(FormMessage, {})]
+              })
+            }), /* @__PURE__ */ jsx(FormField, {
+              control: form.control,
+              name: "confirmPassword",
+              render: ({
+                field
+              }) => /* @__PURE__ */ jsxs(FormItem, {
+                children: [/* @__PURE__ */ jsx(FormLabel, {
+                  children: "Подтвердите пароль *"
+                }), /* @__PURE__ */ jsx(FormControl, {
+                  children: /* @__PURE__ */ jsx(Input, {
+                    type: "password",
+                    placeholder: "Повторите пароль",
+                    ...field
+                  })
+                }), /* @__PURE__ */ jsx(FormMessage, {})]
+              })
+            }), /* @__PURE__ */ jsx(Button, {
+              type: "submit",
+              size: "lg",
+              className: "w-full",
+              disabled: isPending,
+              children: isPending ? /* @__PURE__ */ jsxs(Fragment, {
+                children: [/* @__PURE__ */ jsx(Loader2, {
+                  className: "mr-2 h-4 w-4 animate-spin"
+                }), "Создание учетной записи..."]
+              }) : "Создать аккаунт"
+            })]
+          })
+        })
+      }), /* @__PURE__ */ jsx(CardFooter, {
+        children: /* @__PURE__ */ jsxs("div", {
+          className: "text-center text-sm w-full",
+          children: ["У вас уже есть аккаунт?", " ", /* @__PURE__ */ jsx(Link, {
+            to: "/",
+            className: "text-blue-600 font-semibold hover:underline",
+            children: "Войти"
+          })]
+        })
+      })]
+    })
+  });
+};
+const signUp = withComponentProps(SignUp);
+const route3 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: signUp,
   meta: meta$f
 }, Symbol.toStringTag, { value: "Module" }));
 function meta$e({}) {
@@ -2860,18 +2228,25 @@ function meta$e({}) {
     content: "Forgot Password to TaskHub!"
   }];
 }
-const forgotPasswordSchema = z.object({
-  email: z.string().email({
-    message: "Please enter a valid email"
+const forgotPasswordSchema = z$1.object({
+  emailOrPhone: z$1.string().min(1, {
+    message: "Введите email или номер телефона"
+  }).refine((val) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^\+992\d{9}$/;
+    return emailRegex.test(val) || phoneRegex.test(val);
+  }, {
+    message: "Введите корректный email или номер телефона (+992XXXXXXXXX)"
   })
 });
 const forgotPassword = withComponentProps(function ForgotPasswordPage() {
   const [error, setError] = useState(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [resetMethod, setResetMethod] = useState("email");
   const form = useForm({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
-      email: ""
+      emailOrPhone: ""
     }
   });
   const {
@@ -2880,15 +2255,19 @@ const forgotPassword = withComponentProps(function ForgotPasswordPage() {
   } = useRequestResetPasswordMutation();
   const onSubmit = async (values) => {
     setError(null);
+    const isPhone = values.emailOrPhone.startsWith("+992");
+    setResetMethod(isPhone ? "phone" : "email");
     try {
-      mutate(values, {
+      mutate({
+        emailOrPhone: values.emailOrPhone
+      }, {
         onSuccess: () => {
           setIsSuccess(true);
           form.reset();
         },
         onError: (error2) => {
           var _a, _b;
-          setError(((_b = (_a = error2 == null ? void 0 : error2.response) == null ? void 0 : _a.data) == null ? void 0 : _b.message) || error2.message || "Failed to send reset password email");
+          setError(((_b = (_a = error2 == null ? void 0 : error2.response) == null ? void 0 : _a.data) == null ? void 0 : _b.message) || error2.message || "Не удалось отправить ссылку для сброса пароля");
           console.log(error2);
         }
       });
@@ -2896,7 +2275,7 @@ const forgotPassword = withComponentProps(function ForgotPasswordPage() {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("An unknown error occurred");
+        setError("Произошла неизвестная ошибка");
       }
     }
   };
@@ -2911,13 +2290,13 @@ const forgotPassword = withComponentProps(function ForgotPasswordPage() {
           children: "Забыли Пароль"
         }), /* @__PURE__ */ jsx("p", {
           className: "text-muted-foreground",
-          children: "Введите свой адрес электронной почты, чтобы сбросить пароль"
+          children: "Введите свой email или номер телефона для сброса пароля"
         })]
       }), /* @__PURE__ */ jsxs(Card, {
         className: "border-border/50",
         children: [/* @__PURE__ */ jsx(CardHeader, {
           children: /* @__PURE__ */ jsxs(Link, {
-            to: "/sign-in",
+            to: "/",
             className: "flex items-center text-sm text-muted-foreground hover:text-foreground",
             children: [/* @__PURE__ */ jsx(ArrowLeft, {
               className: "mr-2 h-4 w-4"
@@ -2933,16 +2312,16 @@ const forgotPassword = withComponentProps(function ForgotPasswordPage() {
               })
             }), /* @__PURE__ */ jsx("h3", {
               className: "text-xl font-semibold",
-              children: "Проверьте почту"
+              children: resetMethod === "email" ? "Проверьте почту" : "Проверьте SMS"
             }), /* @__PURE__ */ jsx("p", {
               className: "text-center text-muted-foreground",
-              children: "Мы отправили ссылку для сброса пароля на ваш адрес электронной почты. Пожалуйста, проверьте ваш почтовый ящик."
+              children: resetMethod === "email" ? "Мы отправили ссылку для сброса пароля на ваш адрес электронной почты. Пожалуйста, проверьте ваш почтовый ящик." : "Мы отправили ссылку для сброса пароля на ваш номер телефона. Пожалуйста, проверьте SMS сообщения."
             }), /* @__PURE__ */ jsx(Button, {
               variant: "outline",
               asChild: true,
               className: "mt-4",
               children: /* @__PURE__ */ jsx(Link, {
-                to: "/sign-in",
+                to: "/",
                 children: "Вернуться к входу"
               })
             })]
@@ -2960,16 +2339,16 @@ const forgotPassword = withComponentProps(function ForgotPasswordPage() {
                 })]
               }), /* @__PURE__ */ jsx(FormField, {
                 control: form.control,
-                name: "email",
+                name: "emailOrPhone",
                 render: ({
                   field
                 }) => /* @__PURE__ */ jsxs(FormItem, {
                   children: [/* @__PURE__ */ jsx(FormLabel, {
-                    children: "Почта"
+                    children: "Email или Телефон"
                   }), /* @__PURE__ */ jsx(FormControl, {
                     children: /* @__PURE__ */ jsx(Input, {
-                      type: "email",
-                      placeholder: "email@example.com",
+                      type: "text",
+                      placeholder: "email@example.com или +992XXXXXXXXX",
                       ...field
                     })
                   }), /* @__PURE__ */ jsx(FormMessage, {})]
@@ -2982,8 +2361,8 @@ const forgotPassword = withComponentProps(function ForgotPasswordPage() {
                 children: isPending ? /* @__PURE__ */ jsxs(Fragment, {
                   children: [/* @__PURE__ */ jsx(Loader2, {
                     className: "mr-2 h-4 w-4 animate-spin"
-                  }), "Отправка ссылки..."]
-                }) : "Send Reset Link"
+                  }), "Отправка..."]
+                }) : "Отправить ссылку для сброса"
               })]
             })
           })
@@ -2991,7 +2370,7 @@ const forgotPassword = withComponentProps(function ForgotPasswordPage() {
           children: /* @__PURE__ */ jsxs("div", {
             className: "text-center text-sm w-full",
             children: ["Помните свой пароль?", " ", /* @__PURE__ */ jsx(Link, {
-              to: "/sign-in",
+              to: "/",
               className: "text-blue-600 font-semibold hover:underline",
               children: "Войти"
             })]
@@ -3001,7 +2380,7 @@ const forgotPassword = withComponentProps(function ForgotPasswordPage() {
     })
   });
 });
-const route5 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route4 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: forgotPassword,
   meta: meta$e
@@ -3053,7 +2432,7 @@ const VerifyEmailPage = () => {
         className: "border-border/50 shadow-xl",
         children: [/* @__PURE__ */ jsx(CardHeader, {
           children: /* @__PURE__ */ jsxs(Link, {
-            to: "/sign-in",
+            to: "/",
             className: "flex items-center text-sm text-muted-foreground hover:text-foreground",
             children: [/* @__PURE__ */ jsx(ArrowLeft, {
               className: "mr-2 h-4 w-4"
@@ -3088,7 +2467,7 @@ const VerifyEmailPage = () => {
                 asChild: true,
                 className: "mt-4",
                 children: /* @__PURE__ */ jsx(Link, {
-                  to: "/sign-in",
+                  to: "/",
                   children: "Перейти к входу"
                 })
               })]
@@ -3109,7 +2488,7 @@ const VerifyEmailPage = () => {
                 asChild: true,
                 className: "mt-4",
                 children: /* @__PURE__ */ jsx(Link, {
-                  to: "/sign-in",
+                  to: "/",
                   children: "Вернуться к входу"
                 })
               })]
@@ -3130,10 +2509,158 @@ const VerifyEmailPage = () => {
   });
 };
 const verifyEmail = withComponentProps(VerifyEmailPage);
-const route6 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route5 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: verifyEmail,
   meta: meta$d
+}, Symbol.toStringTag, { value: "Module" }));
+const verify_$token = withComponentProps(function VerifyPhoneToken() {
+  const {
+    token
+  } = useParams();
+  const navigate = useNavigate();
+  const [status, setStatus] = useState("loading");
+  const [message, setMessage] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  useEffect(() => {
+    const verifyToken = async () => {
+      if (!token) {
+        setStatus("error");
+        setMessage("Токен верификации отсутствует");
+        return;
+      }
+      try {
+        const response = await fetch(`${"https://ptapi.oci.tj"}/api-v1/auth/verify-phone-link/${token}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json"
+          }
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setStatus("success");
+          setMessage(data.message || "Телефон успешно подтвержден!");
+          setPhoneNumber(data.phoneNumber || "");
+          setTimeout(() => {
+            navigate("/", {
+              state: {
+                message: "Телефон подтвержден! Теперь вы можете войти в систему.",
+                phoneNumber: data.phoneNumber
+              }
+            });
+          }, 3e3);
+        } else {
+          setStatus("error");
+          setMessage(data.message || "Ошибка верификации");
+        }
+      } catch (error) {
+        console.error("Verification error:", error);
+        setStatus("error");
+        setMessage("Ошибка подключения к серверу");
+      }
+    };
+    verifyToken();
+  }, [token, navigate]);
+  return /* @__PURE__ */ jsx("div", {
+    className: "min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4",
+    children: /* @__PURE__ */ jsxs("div", {
+      className: "w-full max-w-md",
+      children: [/* @__PURE__ */ jsx("div", {
+        className: "bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8",
+        children: /* @__PURE__ */ jsxs("div", {
+          className: "text-center",
+          children: [/* @__PURE__ */ jsxs("div", {
+            className: "mb-6",
+            children: [/* @__PURE__ */ jsx("h1", {
+              className: "text-3xl font-bold text-gray-900 dark:text-white",
+              children: "Protocol"
+            }), /* @__PURE__ */ jsx("p", {
+              className: "text-sm text-gray-600 dark:text-gray-400 mt-2",
+              children: "Подтверждение телефона"
+            })]
+          }), /* @__PURE__ */ jsxs("div", {
+            className: "mb-6",
+            children: [status === "loading" && /* @__PURE__ */ jsx("div", {
+              className: "flex justify-center",
+              children: /* @__PURE__ */ jsx(Loader2, {
+                className: "h-16 w-16 text-blue-600 animate-spin"
+              })
+            }), status === "success" && /* @__PURE__ */ jsx("div", {
+              className: "flex justify-center",
+              children: /* @__PURE__ */ jsx(CheckCircle, {
+                className: "h-16 w-16 text-green-600"
+              })
+            }), status === "error" && /* @__PURE__ */ jsx("div", {
+              className: "flex justify-center",
+              children: /* @__PURE__ */ jsx(XCircle, {
+                className: "h-16 w-16 text-red-600"
+              })
+            })]
+          }), /* @__PURE__ */ jsxs("div", {
+            className: "mb-6",
+            children: [status === "loading" && /* @__PURE__ */ jsxs("div", {
+              children: [/* @__PURE__ */ jsx("h2", {
+                className: "text-xl font-semibold text-gray-900 dark:text-white mb-2",
+                children: "Проверка..."
+              }), /* @__PURE__ */ jsx("p", {
+                className: "text-gray-600 dark:text-gray-400",
+                children: "Подтверждаем ваш номер телефона"
+              })]
+            }), status === "success" && /* @__PURE__ */ jsxs("div", {
+              children: [/* @__PURE__ */ jsx("h2", {
+                className: "text-xl font-semibold text-green-600 mb-2",
+                children: "Успешно!"
+              }), /* @__PURE__ */ jsx("p", {
+                className: "text-gray-700 dark:text-gray-300 mb-2",
+                children: message
+              }), phoneNumber && /* @__PURE__ */ jsxs("p", {
+                className: "text-sm text-gray-600 dark:text-gray-400",
+                children: ["Телефон: ", phoneNumber]
+              }), /* @__PURE__ */ jsx("p", {
+                className: "text-sm text-gray-500 dark:text-gray-400 mt-4",
+                children: "Перенаправление на страницу входа..."
+              })]
+            }), status === "error" && /* @__PURE__ */ jsxs("div", {
+              children: [/* @__PURE__ */ jsx("h2", {
+                className: "text-xl font-semibold text-red-600 mb-2",
+                children: "Ошибка"
+              }), /* @__PURE__ */ jsx("p", {
+                className: "text-gray-700 dark:text-gray-300 mb-4",
+                children: message
+              }), /* @__PURE__ */ jsx("p", {
+                className: "text-sm text-gray-600 dark:text-gray-400",
+                children: "Возможно, ссылка устарела или уже использована"
+              })]
+            })]
+          }), /* @__PURE__ */ jsxs("div", {
+            className: "space-y-3",
+            children: [status === "error" && /* @__PURE__ */ jsxs(Fragment, {
+              children: [/* @__PURE__ */ jsx(Link, {
+                to: "/sign-up",
+                className: "block w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors",
+                children: "Повторить регистрацию"
+              }), /* @__PURE__ */ jsx(Link, {
+                to: "/",
+                className: "block w-full py-3 px-4 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium rounded-lg transition-colors",
+                children: "Войти в систему"
+              })]
+            }), status === "success" && /* @__PURE__ */ jsx(Link, {
+              to: "/",
+              className: "block w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors",
+              children: "Перейти к входу"
+            })]
+          })]
+        })
+      }), /* @__PURE__ */ jsx("p", {
+        className: "text-center text-sm text-gray-600 dark:text-gray-400 mt-6",
+        children: "© 2024 Protocol. Все права защищены."
+      })]
+    })
+  });
+});
+const route6 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: verify_$token
 }, Symbol.toStringTag, { value: "Module" }));
 function meta$c() {
   return [{
@@ -3154,13 +2681,13 @@ const AuthCallback = () => {
     const error = searchParams.get("error");
     if (error) {
       toast.error(toastMessages.auth.oauthError);
-      navigate("/sign-in");
+      navigate("/");
       return;
     }
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        fetch(`${"https://ptapi.oci.tj/api-v1"}/users/me`, {
+        fetch(`${"https://ptapi.oci.tj"}/users/me`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -3178,16 +2705,16 @@ const AuthCallback = () => {
         }).catch((error2) => {
           console.error("OAuth callback error:", error2);
           toast.error(toastMessages.errors.serverError);
-          navigate("/sign-in");
+          navigate("/");
         });
       } catch (error2) {
         console.error("Token parsing error:", error2);
         toast.error(toastMessages.auth.invalidToken);
-        navigate("/sign-in");
+        navigate("/");
       }
     } else {
       toast.error(toastMessages.auth.tokenNotFound);
-      navigate("/sign-in");
+      navigate("/");
     }
   }, [searchParams, navigate, login]);
   return /* @__PURE__ */ jsxs("div", {
@@ -3921,20 +3448,21 @@ const useGetCompletedTasksQuery = (params) => {
     queryFn: () => fetchData(`/tasks/completed${queryString ? `?${queryString}` : ""}`)
   });
 };
-const createTaskSchema = z.object({
-  title: z.string().min(1, "Название обязательно"),
-  description: z.string().optional(),
-  status: z.enum(["To Do", "In Progress", "Done"]),
-  priority: z.enum(["Low", "Medium", "High"]),
-  dueDate: z.string().optional(),
-  assignees: z.array(z.string()),
-  responsibleManager: z.string().optional()
+const createTaskSchema = z$1.object({
+  title: z$1.string().min(1, "Название обязательно"),
+  description: z$1.string().optional(),
+  status: z$1.enum(["To Do", "In Progress", "Done"]),
+  priority: z$1.enum(["Low", "Medium", "High"]),
+  dueDate: z$1.string().optional(),
+  assignees: z$1.array(z$1.string()),
+  responsibleManager: z$1.string().optional()
 });
 const CreateTaskDialog = ({
   open,
   onOpenChange,
   organizations
 }) => {
+  const { t } = useLanguage();
   const form = useForm({
     resolver: zodResolver(createTaskSchema),
     defaultValues: {
@@ -3946,6 +3474,11 @@ const CreateTaskDialog = ({
       assignees: []
     }
   });
+  const [isMultiTask, setIsMultiTask] = useState(false);
+  const [multipleTasks, setMultipleTasks] = useState([
+    { description: "", dueDate: "" },
+    { description: "", dueDate: "" }
+  ]);
   const { data: usersData } = useQuery({
     queryKey: ["all-users"],
     queryFn: () => fetchData("/users/all"),
@@ -3953,23 +3486,69 @@ const CreateTaskDialog = ({
   });
   const { mutate, isPending } = useCreateTaskMutation();
   const allUsers = (usersData == null ? void 0 : usersData.users) || [];
-  const onSubmit = (data) => {
-    mutate(
-      { taskData: data },
-      {
-        onSuccess: () => {
-          toast.success("Задача успешно создана");
+  const onSubmit = async (data) => {
+    if (isMultiTask) {
+      if (multipleTasks.length < 2) {
+        toast.error(t("tasks.min_tasks_required"));
+        return;
+      }
+      if (multipleTasks.some((t2) => !t2.description.trim())) {
+        toast.error("Все описания задач обязательны");
+        return;
+      }
+      try {
+        const apiUrl = "https://ptapi.oci.tj";
+        const token = localStorage.getItem("token");
+        const response = await fetch(`${apiUrl}/tasks/create-multiple`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            title: data.title,
+            tasks: multipleTasks,
+            status: data.status,
+            priority: data.priority,
+            assignees: data.assignees,
+            responsibleManager: data.responsibleManager
+          })
+        });
+        const result = await response.json();
+        if (result.tasks && Array.isArray(result.tasks) && result.tasks.length > 0) {
+          toast.success(`Успешно создано ${result.tasks.length} задач`);
           onOpenChange(false);
           form.reset();
-        },
-        onError: (error) => {
-          toast.error(error.message || "Ошибка создания задачи");
+          setIsMultiTask(false);
+          setMultipleTasks([
+            { description: "", dueDate: "" },
+            { description: "", dueDate: "" }
+          ]);
+        } else if (!response.ok) {
+          throw new Error(result.message || "Ошибка создания мультизадач");
         }
+      } catch (error) {
+        console.error("Ошибка создания мультизадач:", error);
+        toast.error(error.message || "Ошибка создания мультизадач");
       }
-    );
+    } else {
+      mutate(
+        { taskData: data },
+        {
+          onSuccess: () => {
+            toast.success("Задача успешно создана");
+            onOpenChange(false);
+            form.reset();
+          },
+          onError: (error) => {
+            toast.error(error.message || "Ошибка создания задачи");
+          }
+        }
+      );
+    }
   };
-  return /* @__PURE__ */ jsx(Dialog, { open, onOpenChange, children: /* @__PURE__ */ jsxs(DialogContent, { className: "sm:max-w-[540px]", children: [
-    /* @__PURE__ */ jsx(DialogHeader, { children: /* @__PURE__ */ jsx(DialogTitle, { children: "Создать новую задачу" }) }),
+  return /* @__PURE__ */ jsx(Dialog, { open, onOpenChange, children: /* @__PURE__ */ jsxs(DialogContent, { className: "sm:max-w-[540px] max-h-[90vh] overflow-y-auto", children: [
+    /* @__PURE__ */ jsx(DialogHeader, { children: /* @__PURE__ */ jsx(DialogTitle, { children: t("tasks.create_new_task") }) }),
     /* @__PURE__ */ jsx(Form, { ...form, children: /* @__PURE__ */ jsxs("form", { onSubmit: form.handleSubmit(onSubmit), children: [
       /* @__PURE__ */ jsxs("div", { className: "grid gap-4 py-4", children: [
         /* @__PURE__ */ jsx(
@@ -3978,29 +3557,175 @@ const CreateTaskDialog = ({
             control: form.control,
             name: "title",
             render: ({ field }) => /* @__PURE__ */ jsxs(FormItem, { children: [
-              /* @__PURE__ */ jsx(FormLabel, { children: "Название" }),
-              /* @__PURE__ */ jsx(FormControl, { children: /* @__PURE__ */ jsx(Input, { ...field, placeholder: "Введите название задачи" }) }),
+              /* @__PURE__ */ jsx(FormLabel, { children: t("tasks.task_name") }),
+              /* @__PURE__ */ jsx(FormControl, { children: /* @__PURE__ */ jsx(Input, { ...field, placeholder: t("tasks.enter_task_name") }) }),
               /* @__PURE__ */ jsx(FormMessage, {})
             ] })
           }
         ),
-        /* @__PURE__ */ jsx(
-          FormField,
-          {
-            control: form.control,
-            name: "description",
-            render: ({ field }) => /* @__PURE__ */ jsxs(FormItem, { children: [
-              /* @__PURE__ */ jsx(FormLabel, { children: "Описание" }),
-              /* @__PURE__ */ jsx(FormControl, { children: /* @__PURE__ */ jsx(
-                Textarea,
-                {
-                  ...field,
-                  placeholder: "Введите описание задачи"
+        /* @__PURE__ */ jsxs("div", { className: "flex items-center space-x-2 p-3 bg-muted/50 rounded-lg", children: [
+          /* @__PURE__ */ jsx(
+            Checkbox,
+            {
+              id: "multi-task",
+              checked: isMultiTask,
+              onCheckedChange: (checked) => {
+                setIsMultiTask(!!checked);
+                if (checked && multipleTasks.length < 2) {
+                  setMultipleTasks([
+                    { description: "", dueDate: "" },
+                    { description: "", dueDate: "" }
+                  ]);
                 }
-              ) }),
-              /* @__PURE__ */ jsx(FormMessage, {})
-            ] })
-          }
+              }
+            }
+          ),
+          /* @__PURE__ */ jsxs("div", { className: "grid gap-1", children: [
+            /* @__PURE__ */ jsx(
+              "label",
+              {
+                htmlFor: "multi-task",
+                className: "text-sm font-medium leading-none cursor-pointer",
+                children: t("tasks.multi_task")
+              }
+            ),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-muted-foreground", children: t("tasks.multi_task_desc") })
+          ] })
+        ] }),
+        !isMultiTask ? (
+          // Обычный режим - одна задача
+          /* @__PURE__ */ jsxs(Fragment, { children: [
+            /* @__PURE__ */ jsx(
+              FormField,
+              {
+                control: form.control,
+                name: "description",
+                render: ({ field }) => /* @__PURE__ */ jsxs(FormItem, { children: [
+                  /* @__PURE__ */ jsx(FormLabel, { children: t("tasks.task_desc") }),
+                  /* @__PURE__ */ jsx(FormControl, { children: /* @__PURE__ */ jsx(
+                    Textarea,
+                    {
+                      ...field,
+                      placeholder: t("tasks.enter_task_desc")
+                    }
+                  ) }),
+                  /* @__PURE__ */ jsx(FormMessage, {})
+                ] })
+              }
+            ),
+            /* @__PURE__ */ jsx(
+              FormField,
+              {
+                control: form.control,
+                name: "dueDate",
+                render: ({ field }) => /* @__PURE__ */ jsxs(FormItem, { children: [
+                  /* @__PURE__ */ jsx(FormLabel, { children: t("tasks.due_date") }),
+                  /* @__PURE__ */ jsx(FormControl, { children: /* @__PURE__ */ jsxs(Popover, { children: [
+                    /* @__PURE__ */ jsx(PopoverTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
+                      Button,
+                      {
+                        variant: "outline",
+                        className: "w-full justify-start text-left font-normal " + (!field.value ? "text-muted-foreground" : ""),
+                        children: [
+                          /* @__PURE__ */ jsx(CalendarIcon, { className: "mr-2 h-4 w-4" }),
+                          field.value ? format(new Date(field.value), "PPP", { locale: ru }) : /* @__PURE__ */ jsx("span", { children: t("tasks.select_date") })
+                        ]
+                      }
+                    ) }),
+                    /* @__PURE__ */ jsx(PopoverContent, { className: "w-auto p-0", children: /* @__PURE__ */ jsx(
+                      RussianCalendar,
+                      {
+                        mode: "single",
+                        selected: field.value ? new Date(field.value) : void 0,
+                        onSelect: (date) => field.onChange(
+                          date ? date.toISOString() : void 0
+                        ),
+                        initialFocus: true
+                      }
+                    ) })
+                  ] }) }),
+                  /* @__PURE__ */ jsx(FormMessage, {})
+                ] })
+              }
+            )
+          ] })
+        ) : (
+          // Режим мультизадач
+          /* @__PURE__ */ jsxs("div", { className: "space-y-4", children: [
+            multipleTasks.map((task, index2) => /* @__PURE__ */ jsxs(Card, { className: "p-4", children: [
+              /* @__PURE__ */ jsxs("div", { className: "flex items-start justify-between mb-3", children: [
+                /* @__PURE__ */ jsx("h4", { className: "text-sm font-semibold flex-1", children: t("tasks.task_number").replace("{number}", (index2 + 1).toString()) }),
+                multipleTasks.length > 2 && /* @__PURE__ */ jsx(
+                  Button,
+                  {
+                    type: "button",
+                    variant: "ghost",
+                    size: "sm",
+                    className: "shrink-0 -mt-1",
+                    onClick: () => {
+                      setMultipleTasks(multipleTasks.filter((_, i) => i !== index2));
+                    },
+                    children: /* @__PURE__ */ jsx(X, { className: "h-4 w-4" })
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ jsxs("div", { className: "space-y-3", children: [
+                /* @__PURE__ */ jsxs("div", { children: [
+                  /* @__PURE__ */ jsx("label", { className: "text-sm font-medium", children: t("tasks.task_desc") }),
+                  /* @__PURE__ */ jsx(
+                    Textarea,
+                    {
+                      value: task.description,
+                      onChange: (e) => {
+                        const newTasks = [...multipleTasks];
+                        newTasks[index2].description = e.target.value;
+                        setMultipleTasks(newTasks);
+                      },
+                      placeholder: t("tasks.enter_task_desc"),
+                      className: "mt-1"
+                    }
+                  )
+                ] }),
+                /* @__PURE__ */ jsxs("div", { children: [
+                  /* @__PURE__ */ jsx("label", { className: "text-sm font-medium", children: t("tasks.due_date") }),
+                  /* @__PURE__ */ jsxs(Popover, { children: [
+                    /* @__PURE__ */ jsx(PopoverTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(Button, { variant: "outline", className: "w-full justify-start mt-1", children: [
+                      /* @__PURE__ */ jsx(CalendarIcon, { className: "mr-2 h-4 w-4" }),
+                      task.dueDate ? format(new Date(task.dueDate), "PPP", { locale: ru }) : t("tasks.select_date")
+                    ] }) }),
+                    /* @__PURE__ */ jsx(PopoverContent, { className: "w-auto p-0", children: /* @__PURE__ */ jsx(
+                      RussianCalendar,
+                      {
+                        mode: "single",
+                        selected: task.dueDate ? new Date(task.dueDate) : void 0,
+                        onSelect: (date) => {
+                          const newTasks = [...multipleTasks];
+                          newTasks[index2].dueDate = date ? date.toISOString() : "";
+                          setMultipleTasks(newTasks);
+                        },
+                        initialFocus: true
+                      }
+                    ) })
+                  ] })
+                ] })
+              ] })
+            ] }, index2)),
+            /* @__PURE__ */ jsxs(
+              Button,
+              {
+                type: "button",
+                variant: "outline",
+                onClick: () => {
+                  setMultipleTasks([...multipleTasks, { description: "", dueDate: "" }]);
+                },
+                className: "w-full",
+                children: [
+                  "+ ",
+                  t("tasks.add_task")
+                ]
+              }
+            )
+          ] })
         ),
         /* @__PURE__ */ jsxs("div", { className: "grid gap-4 md:grid-cols-2", children: [
           /* @__PURE__ */ jsx(
@@ -4009,18 +3734,18 @@ const CreateTaskDialog = ({
               control: form.control,
               name: "status",
               render: ({ field }) => /* @__PURE__ */ jsxs(FormItem, { children: [
-                /* @__PURE__ */ jsx(FormLabel, { children: "Статус" }),
+                /* @__PURE__ */ jsx(FormLabel, { children: t("tasks.task_status") }),
                 /* @__PURE__ */ jsx(FormControl, { children: /* @__PURE__ */ jsxs(
                   Select,
                   {
                     value: field.value,
                     onValueChange: field.onChange,
                     children: [
-                      /* @__PURE__ */ jsx(SelectTrigger, { children: /* @__PURE__ */ jsx(SelectValue, { placeholder: "Выберите статус" }) }),
+                      /* @__PURE__ */ jsx(SelectTrigger, { children: /* @__PURE__ */ jsx(SelectValue, { placeholder: t("tasks.select_status") }) }),
                       /* @__PURE__ */ jsxs(SelectContent, { children: [
-                        /* @__PURE__ */ jsx(SelectItem, { value: "To Do", children: "К выполнению" }),
-                        /* @__PURE__ */ jsx(SelectItem, { value: "In Progress", children: "В процессе" }),
-                        /* @__PURE__ */ jsx(SelectItem, { value: "Done", children: "Выполнено" })
+                        /* @__PURE__ */ jsx(SelectItem, { value: "To Do", children: t("status.todo") }),
+                        /* @__PURE__ */ jsx(SelectItem, { value: "In Progress", children: t("status.in_progress") }),
+                        /* @__PURE__ */ jsx(SelectItem, { value: "Done", children: t("status.done") })
                       ] })
                     ]
                   }
@@ -4035,18 +3760,18 @@ const CreateTaskDialog = ({
               control: form.control,
               name: "priority",
               render: ({ field }) => /* @__PURE__ */ jsxs(FormItem, { children: [
-                /* @__PURE__ */ jsx(FormLabel, { children: "Приоритет" }),
+                /* @__PURE__ */ jsx(FormLabel, { children: t("tasks.task_priority") }),
                 /* @__PURE__ */ jsx(FormControl, { children: /* @__PURE__ */ jsxs(
                   Select,
                   {
                     value: field.value,
                     onValueChange: field.onChange,
                     children: [
-                      /* @__PURE__ */ jsx(SelectTrigger, { children: /* @__PURE__ */ jsx(SelectValue, { placeholder: "Выберите приоритет" }) }),
+                      /* @__PURE__ */ jsx(SelectTrigger, { children: /* @__PURE__ */ jsx(SelectValue, { placeholder: t("tasks.select_priority") }) }),
                       /* @__PURE__ */ jsxs(SelectContent, { children: [
-                        /* @__PURE__ */ jsx(SelectItem, { value: "Low", children: "Низкий" }),
-                        /* @__PURE__ */ jsx(SelectItem, { value: "Medium", children: "Средний" }),
-                        /* @__PURE__ */ jsx(SelectItem, { value: "High", children: "Высокий" })
+                        /* @__PURE__ */ jsx(SelectItem, { value: "Low", children: t("priority.low") }),
+                        /* @__PURE__ */ jsx(SelectItem, { value: "Medium", children: t("priority.medium") }),
+                        /* @__PURE__ */ jsx(SelectItem, { value: "High", children: t("priority.high") })
                       ] })
                     ]
                   }
@@ -4060,61 +3785,26 @@ const CreateTaskDialog = ({
           FormField,
           {
             control: form.control,
-            name: "dueDate",
-            render: ({ field }) => /* @__PURE__ */ jsxs(FormItem, { children: [
-              /* @__PURE__ */ jsx(FormLabel, { children: "Срок выполнения" }),
-              /* @__PURE__ */ jsx(FormControl, { children: /* @__PURE__ */ jsxs(Popover, { children: [
-                /* @__PURE__ */ jsx(PopoverTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
-                  Button,
-                  {
-                    variant: "outline",
-                    className: "w-full justify-start text-left font-normal " + (!field.value ? "text-muted-foreground" : ""),
-                    children: [
-                      /* @__PURE__ */ jsx(CalendarIcon, { className: "mr-2 h-4 w-4" }),
-                      field.value ? format(new Date(field.value), "PPP", { locale: ru }) : /* @__PURE__ */ jsx("span", { children: "Выберите дату" })
-                    ]
-                  }
-                ) }),
-                /* @__PURE__ */ jsx(PopoverContent, { className: "w-auto p-0", children: /* @__PURE__ */ jsx(
-                  RussianCalendar,
-                  {
-                    mode: "single",
-                    selected: field.value ? new Date(field.value) : void 0,
-                    onSelect: (date) => field.onChange(
-                      date ? date.toISOString() : void 0
-                    ),
-                    initialFocus: true
-                  }
-                ) })
-              ] }) }),
-              /* @__PURE__ */ jsx(FormMessage, {})
-            ] })
-          }
-        ),
-        /* @__PURE__ */ jsx(
-          FormField,
-          {
-            control: form.control,
             name: "responsibleManager",
             render: ({ field }) => {
-              const managers = allUsers.filter((user) => user && ["admin", "manager"].includes(user.role));
+              const managers = allUsers.filter((user) => user && ["admin", "manager", "super_admin"].includes(user.role));
               return /* @__PURE__ */ jsxs(FormItem, { children: [
-                /* @__PURE__ */ jsx(FormLabel, { children: "Ответственный менеджер" }),
+                /* @__PURE__ */ jsx(FormLabel, { children: t("tasks.task_manager") }),
                 /* @__PURE__ */ jsx(FormControl, { children: /* @__PURE__ */ jsxs(
                   Select,
                   {
-                    value: field.value || void 0,
+                    value: field.value || "none",
                     onValueChange: (value) => {
                       field.onChange(value === "none" ? void 0 : value);
                     },
                     children: [
-                      /* @__PURE__ */ jsx(SelectTrigger, { children: /* @__PURE__ */ jsx(SelectValue, { placeholder: "Выберите ответственного менеджера" }) }),
-                      /* @__PURE__ */ jsxs(SelectContent, { children: [
-                        /* @__PURE__ */ jsx(SelectItem, { value: "none", children: "Не назначен" }),
-                        managers.map((manager) => /* @__PURE__ */ jsxs(SelectItem, { value: manager._id, children: [
+                      /* @__PURE__ */ jsx(SelectTrigger, { children: /* @__PURE__ */ jsx(SelectValue, { placeholder: t("tasks.select_manager") }) }),
+                      /* @__PURE__ */ jsxs(SelectContent, { className: "max-h-60 overflow-y-auto", children: [
+                        /* @__PURE__ */ jsx(SelectItem, { value: "none", children: t("tasks.not_assigned") }),
+                        managers.filter((m) => m._id).map((manager) => /* @__PURE__ */ jsxs(SelectItem, { value: manager._id || "", children: [
                           manager.name,
                           " (",
-                          manager.role === "admin" ? "Админ" : "Менеджер",
+                          manager.role === "admin" ? t("tasks.admin") : manager.role === "super_admin" ? "Супер админ" : t("tasks.manager"),
                           ")"
                         ] }, manager._id))
                       ] })
@@ -4134,19 +3824,19 @@ const CreateTaskDialog = ({
             render: ({ field }) => {
               const selectedMembers = field.value || [];
               return /* @__PURE__ */ jsxs(FormItem, { children: [
-                /* @__PURE__ */ jsx(FormLabel, { children: "Назначить участникам" }),
+                /* @__PURE__ */ jsx(FormLabel, { children: t("tasks.assign_to") }),
                 /* @__PURE__ */ jsx(FormControl, { children: /* @__PURE__ */ jsxs(Popover, { children: [
                   /* @__PURE__ */ jsx(PopoverTrigger, { asChild: true, children: /* @__PURE__ */ jsx(
                     Button,
                     {
                       variant: "outline",
                       className: "w-full justify-start text-left font-normal min-h-11",
-                      children: selectedMembers.length === 0 ? /* @__PURE__ */ jsx("span", { className: "text-muted-foreground", children: "Выберите участников" }) : selectedMembers.length <= 2 ? selectedMembers.map((m) => {
+                      children: selectedMembers.length === 0 ? /* @__PURE__ */ jsx("span", { className: "text-muted-foreground", children: t("tasks.select_members") }) : selectedMembers.length <= 2 ? selectedMembers.map((m) => {
                         const user = allUsers.find(
                           (u) => u && u._id === m
                         );
                         return (user == null ? void 0 : user.name) || "Неизвестный";
-                      }).join(", ") : `Выбрано участников: ${selectedMembers.length}`
+                      }).join(", ") : t("tasks.selected_count").replace("{count}", selectedMembers.length.toString())
                     }
                   ) }),
                   /* @__PURE__ */ jsx(
@@ -4183,7 +3873,7 @@ const CreateTaskDialog = ({
                                 }
                               ),
                               /* @__PURE__ */ jsx("span", { className: "truncate flex-1", children: user.name }),
-                              /* @__PURE__ */ jsx("span", { className: "text-xs text-muted-foreground", children: user.role === "admin" ? "Админ" : user.role === "manager" ? "Менеджер" : "Участник" })
+                              /* @__PURE__ */ jsx("span", { className: "text-xs text-muted-foreground", children: user.role === "admin" ? t("tasks.admin") : user.role === "manager" ? t("tasks.manager") : t("tasks.member") })
                             ]
                           },
                           user._id
@@ -4205,10 +3895,10 @@ const CreateTaskDialog = ({
             type: "button",
             variant: "outline",
             onClick: () => onOpenChange(false),
-            children: "Отмена"
+            children: t("tasks.cancel")
           }
         ),
-        /* @__PURE__ */ jsx(Button, { type: "submit", disabled: isPending, children: isPending ? "Создание..." : "Создать задачу" })
+        /* @__PURE__ */ jsx(Button, { type: "submit", disabled: isPending, children: isPending ? t("tasks.creating") : t("tasks.create") })
       ] })
     ] }) })
   ] }) });
@@ -4296,7 +3986,10 @@ const Header = ({
             /* @__PURE__ */ jsx(DropdownMenuSeparator, {}),
             /* @__PURE__ */ jsx(DropdownMenuItem, { children: /* @__PURE__ */ jsx(Link, { to: "/user/profile", children: t("nav.profile") }) }),
             /* @__PURE__ */ jsx(DropdownMenuSeparator, {}),
-            /* @__PURE__ */ jsx(DropdownMenuItem, { onClick: () => logout(), children: t("nav.logout") })
+            /* @__PURE__ */ jsx(DropdownMenuItem, { onClick: () => {
+              logout();
+              navigate("/");
+            }, children: t("nav.logout") })
           ] })
         ] })
       ] })
@@ -4406,6 +4099,7 @@ const SidebarComponent = ({
 }) => {
   const { logout, user } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const getNavItems = () => {
     if ((user == null ? void 0 : user.role) === "super_admin") {
@@ -4547,7 +4241,10 @@ const SidebarComponent = ({
               variant: "ghost",
               size: isCollapsed ? "icon" : "default",
               className: "justify-start",
-              onClick: logout,
+              onClick: () => {
+                logout();
+                navigate("/");
+              },
               children: [
                 /* @__PURE__ */ jsx(LogOut, { className: cn("h-4 w-4", isCollapsed ? "" : "mr-2") }),
                 /* @__PURE__ */ jsx("span", { className: "hidden md:block", children: !isCollapsed && t("nav.logout") })
@@ -5261,7 +4958,7 @@ const DashboardLayout = () => {
     message: "Loading..."
   });
   if (!isAuthenticated) return /* @__PURE__ */ jsx(Navigate, {
-    to: "/sign-in",
+    to: "/",
     replace: true
   });
   const handleOrganizationSelect = (organization) => {
@@ -5323,6 +5020,54 @@ const formatDueDateRussian = (date) => {
 const formatDateDetailedRussian = (date) => {
   return formatDateRussian(date, "full");
 };
+const getRelativeTimeRussian = (date) => {
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  const now = /* @__PURE__ */ new Date();
+  const diffInMs = now.getTime() - dateObj.getTime();
+  const diffInDays = Math.floor(diffInMs / (1e3 * 60 * 60 * 24));
+  const diffInHours = Math.floor(diffInMs / (1e3 * 60 * 60));
+  const diffInMinutes = Math.floor(diffInMs / (1e3 * 60));
+  if (diffInDays > 0) {
+    if (diffInDays === 1) return "вчера";
+    if (diffInDays < 7) return `${diffInDays} дня назад`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} недели назад`;
+    if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} месяца назад`;
+    return `${Math.floor(diffInDays / 365)} года назад`;
+  }
+  if (diffInHours > 0) {
+    if (diffInHours === 1) return "час назад";
+    return `${diffInHours} часа назад`;
+  }
+  if (diffInMinutes > 0) {
+    if (diffInMinutes === 1) return "минуту назад";
+    return `${diffInMinutes} минут назад`;
+  }
+  return "только что";
+};
+const getRelativeTimeTajik = (date) => {
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  const now = /* @__PURE__ */ new Date();
+  const diffInMs = now.getTime() - dateObj.getTime();
+  const diffInDays = Math.floor(diffInMs / (1e3 * 60 * 60 * 24));
+  const diffInHours = Math.floor(diffInMs / (1e3 * 60 * 60));
+  const diffInMinutes = Math.floor(diffInMs / (1e3 * 60));
+  if (diffInDays > 0) {
+    if (diffInDays === 1) return "дирӯз";
+    if (diffInDays < 7) return `${diffInDays} рӯз пеш`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} ҳафта пеш`;
+    if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} моҳ пеш`;
+    return `${Math.floor(diffInDays / 365)} сол пеш`;
+  }
+  if (diffInHours > 0) {
+    if (diffInHours === 1) return "як соат пеш";
+    return `${diffInHours} соат пеш`;
+  }
+  if (diffInMinutes > 0) {
+    if (diffInMinutes === 1) return "як дақиқа пеш";
+    return `${diffInMinutes} дақиқа пеш`;
+  }
+  return "ҳозир";
+};
 function meta$b({}) {
   return [{
     title: "Vazifa | Панель управления"
@@ -5338,6 +5083,7 @@ const DashboardPage = () => {
   const {
     t
   } = useLanguage();
+  const navigate = useNavigate();
   const {
     data: myTasks2,
     isPending: myTasksLoading
@@ -5352,6 +5098,20 @@ const DashboardPage = () => {
   });
   const isAdmin = (user == null ? void 0 : user.role) && ["admin", "manager"].includes(user.role);
   const tasksLoading = isAdmin ? allTasksLoading : myTasksLoading;
+  const handleCardClick = (filter) => {
+    if (isAdmin) {
+      navigate(`/dashboard/all-tasks?status=${filter}`);
+    } else {
+      navigate(`/dashboard/my-tasks?filter=${filter}`);
+    }
+  };
+  const handleOverdueClick = () => {
+    if (isAdmin) {
+      navigate(`/dashboard/all-tasks`);
+    } else {
+      navigate(`/dashboard/my-tasks?filter=all`);
+    }
+  };
   if (tasksLoading) {
     return /* @__PURE__ */ jsx(Loader, {
       message: t("common.loading_data")
@@ -5374,7 +5134,8 @@ const DashboardPage = () => {
     }), /* @__PURE__ */ jsxs("div", {
       className: "grid gap-6 md:grid-cols-2 lg:grid-cols-4",
       children: [/* @__PURE__ */ jsxs("div", {
-        className: "rounded-lg border bg-card text-card-foreground shadow-sm p-6",
+        onClick: () => handleCardClick("all"),
+        className: "rounded-lg border bg-card text-card-foreground shadow-sm p-6 cursor-pointer hover:shadow-lg hover:border-primary transition-all",
         children: [/* @__PURE__ */ jsx("div", {
           className: "flex flex-row items-center justify-between space-y-0 pb-2",
           children: /* @__PURE__ */ jsx("h3", {
@@ -5386,7 +5147,8 @@ const DashboardPage = () => {
           children: tasks.length
         })]
       }), /* @__PURE__ */ jsxs("div", {
-        className: "rounded-lg border bg-card text-card-foreground shadow-sm p-6",
+        onClick: () => handleCardClick("In Progress"),
+        className: "rounded-lg border bg-card text-card-foreground shadow-sm p-6 cursor-pointer hover:shadow-lg hover:border-primary transition-all",
         children: [/* @__PURE__ */ jsx("div", {
           className: "flex flex-row items-center justify-between space-y-0 pb-2",
           children: /* @__PURE__ */ jsx("h3", {
@@ -5398,7 +5160,8 @@ const DashboardPage = () => {
           children: tasks.filter((task) => task.status === "In Progress").length
         })]
       }), /* @__PURE__ */ jsxs("div", {
-        className: "rounded-lg border bg-card text-card-foreground shadow-sm p-6",
+        onClick: () => handleCardClick("Done"),
+        className: "rounded-lg border bg-card text-card-foreground shadow-sm p-6 cursor-pointer hover:shadow-lg hover:border-primary transition-all",
         children: [/* @__PURE__ */ jsx("div", {
           className: "flex flex-row items-center justify-between space-y-0 pb-2",
           children: /* @__PURE__ */ jsx("h3", {
@@ -5410,7 +5173,8 @@ const DashboardPage = () => {
           children: tasks.filter((task) => task.status === "Done").length
         })]
       }), /* @__PURE__ */ jsxs("div", {
-        className: "rounded-lg border bg-card text-card-foreground shadow-sm p-6",
+        onClick: handleOverdueClick,
+        className: "rounded-lg border bg-card text-card-foreground shadow-sm p-6 cursor-pointer hover:shadow-lg hover:border-red-500 transition-all",
         children: [/* @__PURE__ */ jsx("div", {
           className: "flex flex-row items-center justify-between space-y-0 pb-2",
           children: /* @__PURE__ */ jsx("h3", {
@@ -6702,6 +6466,11 @@ const AllTasksPage = () => {
       }), /* @__PURE__ */ jsxs("div", {
         className: "grid gap-4 md:grid-cols-5",
         children: [/* @__PURE__ */ jsxs(Card, {
+          onClick: () => {
+            setStatusFilter("all");
+            setPriorityFilter("all");
+          },
+          className: "cursor-pointer hover:shadow-lg hover:border-primary transition-all",
           children: [/* @__PURE__ */ jsx(CardHeader, {
             className: "flex flex-row items-center justify-between space-y-0 pb-2",
             children: /* @__PURE__ */ jsx(CardTitle, {
@@ -6718,6 +6487,11 @@ const AllTasksPage = () => {
             })]
           })]
         }), /* @__PURE__ */ jsxs(Card, {
+          onClick: () => {
+            setStatusFilter("To Do");
+            setPriorityFilter("all");
+          },
+          className: "cursor-pointer hover:shadow-lg hover:border-blue-500 transition-all",
           children: [/* @__PURE__ */ jsx(CardHeader, {
             className: "flex flex-row items-center justify-between space-y-0 pb-2",
             children: /* @__PURE__ */ jsx(CardTitle, {
@@ -6731,6 +6505,11 @@ const AllTasksPage = () => {
             })
           })]
         }), /* @__PURE__ */ jsxs(Card, {
+          onClick: () => {
+            setStatusFilter("In Progress");
+            setPriorityFilter("all");
+          },
+          className: "cursor-pointer hover:shadow-lg hover:border-yellow-500 transition-all",
           children: [/* @__PURE__ */ jsx(CardHeader, {
             className: "flex flex-row items-center justify-between space-y-0 pb-2",
             children: /* @__PURE__ */ jsx(CardTitle, {
@@ -6744,6 +6523,11 @@ const AllTasksPage = () => {
             })
           })]
         }), /* @__PURE__ */ jsxs(Card, {
+          onClick: () => {
+            setStatusFilter("Done");
+            setPriorityFilter("all");
+          },
+          className: "cursor-pointer hover:shadow-lg hover:border-green-500 transition-all",
           children: [/* @__PURE__ */ jsx(CardHeader, {
             className: "flex flex-row items-center justify-between space-y-0 pb-2",
             children: /* @__PURE__ */ jsx(CardTitle, {
@@ -6757,6 +6541,11 @@ const AllTasksPage = () => {
             })
           })]
         }), /* @__PURE__ */ jsxs(Card, {
+          onClick: () => {
+            setStatusFilter("all");
+            setPriorityFilter("High");
+          },
+          className: "cursor-pointer hover:shadow-lg hover:border-red-500 transition-all",
           children: [/* @__PURE__ */ jsx(CardHeader, {
             className: "flex flex-row items-center justify-between space-y-0 pb-2",
             children: /* @__PURE__ */ jsx(CardTitle, {
@@ -7022,9 +6811,11 @@ const AllTasksPage = () => {
                     className: "font-mono text-sm text-muted-foreground",
                     children: index2 + 1
                   }), /* @__PURE__ */ jsx(TableCell, {
-                    children: /* @__PURE__ */ jsxs("div", {
+                    children: /* @__PURE__ */ jsxs(Link, {
+                      to: `/dashboard/task/${task._id}`,
+                      className: "block hover:text-primary transition-colors",
                       children: [/* @__PURE__ */ jsx("div", {
-                        className: "font-medium",
+                        className: "font-medium hover:underline",
                         children: task.title
                       }), task.description && /* @__PURE__ */ jsx("div", {
                         className: "text-sm text-muted-foreground truncate max-w-xs",
@@ -7131,9 +6922,9 @@ const managerTasks = withComponentProps(function ManagerTasksPage() {
       const data = await fetchData("/tasks/my-manager-tasks/");
       return data.myManagerTasks;
     },
-    enabled: !!user && ["admin", "manager"].includes(user.role || "")
+    enabled: !!user && ["admin", "manager", "super_admin"].includes(user.role || "")
   });
-  if (!user || !["admin", "manager"].includes(user.role || "")) {
+  if (!user || !["admin", "manager", "super_admin"].includes(user.role || "")) {
     return /* @__PURE__ */ jsx("div", {
       className: "flex items-center justify-center h-64",
       children: /* @__PURE__ */ jsx("p", {
@@ -7213,7 +7004,7 @@ const managerTasks = withComponentProps(function ManagerTasksPage() {
               children: [/* @__PURE__ */ jsx(CardTitle, {
                 className: "text-lg",
                 children: /* @__PURE__ */ jsxs(Link, {
-                  to: `/task/${task._id}`,
+                  to: `/dashboard/task/${task._id}`,
                   className: "hover:text-primary transition-colors",
                   children: [task.title, task.isImportant && /* @__PURE__ */ jsx(Star, {
                     className: "inline-block ml-2 h-4 w-4 text-yellow-500 fill-current"
@@ -7280,6 +7071,10 @@ const importantTasks = withComponentProps(function ImportantTasksPage() {
     user
   } = useAuth();
   const {
+    t,
+    language
+  } = useLanguage();
+  const {
     data: importantTasks2,
     isLoading
   } = useQuery({
@@ -7295,7 +7090,7 @@ const importantTasks = withComponentProps(function ImportantTasksPage() {
       className: "flex items-center justify-center h-64",
       children: /* @__PURE__ */ jsx("p", {
         className: "text-muted-foreground",
-        children: "У вас нет доступа к этой странице. Только супер админы могут просматривать важные задачи."
+        children: t("important_tasks.no_access")
       })
     });
   }
@@ -7331,6 +7126,21 @@ const importantTasks = withComponentProps(function ImportantTasksPage() {
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
+  const formatDate = (date) => {
+    const d = new Date(date);
+    if (language === "tj") {
+      return d.toLocaleDateString("tg-TJ", {
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      });
+    }
+    return d.toLocaleDateString("ru-RU", {
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
+  };
   return /* @__PURE__ */ jsxs("div", {
     className: "space-y-6",
     children: [/* @__PURE__ */ jsx("div", {
@@ -7340,10 +7150,10 @@ const importantTasks = withComponentProps(function ImportantTasksPage() {
           className: "text-3xl font-bold tracking-tight flex items-center gap-2",
           children: [/* @__PURE__ */ jsx(Star, {
             className: "h-8 w-8 text-yellow-500 fill-current"
-          }), "Важные задачи"]
+          }), t("important_tasks.title")]
         }), /* @__PURE__ */ jsx("p", {
           className: "text-muted-foreground",
-          children: "Задачи, отмеченные администраторами как важные"
+          children: t("important_tasks.description")
         })]
       })
     }), !importantTasks2 || importantTasks2.length === 0 ? /* @__PURE__ */ jsx(Card, {
@@ -7353,10 +7163,10 @@ const importantTasks = withComponentProps(function ImportantTasksPage() {
           className: "h-12 w-12 text-muted-foreground mb-4"
         }), /* @__PURE__ */ jsx("h3", {
           className: "text-lg font-semibold mb-2",
-          children: "Нет важных задач"
+          children: t("important_tasks.no_tasks_title")
         }), /* @__PURE__ */ jsx("p", {
           className: "text-muted-foreground text-center",
-          children: "Пока нет задач, отмеченных как важные"
+          children: t("important_tasks.no_tasks_description")
         })]
       })
     }) : /* @__PURE__ */ jsx("div", {
@@ -7383,18 +7193,18 @@ const importantTasks = withComponentProps(function ImportantTasksPage() {
                 children: task.description
               }), task.markedImportantBy && task.markedImportantAt && /* @__PURE__ */ jsxs("p", {
                 className: "text-xs text-muted-foreground",
-                children: ["Отмечено как важное", " ", typeof task.markedImportantBy === "object" ? task.markedImportantBy.name : "администратором", " ", new Date(task.markedImportantAt).toLocaleDateString("ru-RU")]
+                children: [t("important_tasks.marked_important"), " ", typeof task.markedImportantBy === "object" ? task.markedImportantBy.name : t("important_tasks.by_admin"), " ", formatDate(task.markedImportantAt)]
               })]
             }), /* @__PURE__ */ jsxs("div", {
               className: "flex gap-2 ml-4",
               children: [/* @__PURE__ */ jsx(Badge, {
                 variant: "outline",
                 className: getPriorityColor(task.priority),
-                children: task.priority === "High" ? "Высокий" : task.priority === "Medium" ? "Средний" : "Низкий"
+                children: getPriority(task.priority, language)
               }), /* @__PURE__ */ jsx(Badge, {
                 variant: "outline",
                 className: getStatusColor(task.status),
-                children: task.status === "To Do" ? "К выполнению" : task.status === "In Progress" ? "В процессе" : task.status === "Review" ? "На проверке" : "Выполнено"
+                children: getTaskStatus(task.status, language)
               })]
             })]
           })
@@ -7409,21 +7219,21 @@ const importantTasks = withComponentProps(function ImportantTasksPage() {
                 children: [/* @__PURE__ */ jsx(User, {
                   className: "h-4 w-4"
                 }), /* @__PURE__ */ jsx("span", {
-                  children: task.assignees.length === 1 ? task.assignees[0].name : `${task.assignees.length} исполнителей`
+                  children: task.assignees.length === 1 ? task.assignees[0].name : `${task.assignees.length} ${t("important_tasks.assignees")}`
                 })]
               }), task.responsibleManager && /* @__PURE__ */ jsxs("div", {
                 className: "flex items-center gap-1",
                 children: [/* @__PURE__ */ jsx(User, {
                   className: "h-4 w-4"
                 }), /* @__PURE__ */ jsxs("span", {
-                  children: ["Менеджер:", " ", typeof task.responsibleManager === "object" ? task.responsibleManager.name : "Не указан"]
+                  children: [t("important_tasks.manager"), " ", typeof task.responsibleManager === "object" ? task.responsibleManager.name : t("important_tasks.not_specified")]
                 })]
               }), task.dueDate && /* @__PURE__ */ jsxs("div", {
                 className: "flex items-center gap-1",
                 children: [/* @__PURE__ */ jsx(Calendar$1, {
                   className: "h-4 w-4"
                 }), /* @__PURE__ */ jsx("span", {
-                  children: formatDueDateRussian(task.dueDate)
+                  children: formatDueDateRussian(String(task.dueDate))
                 })]
               })]
             }), /* @__PURE__ */ jsxs("div", {
@@ -7431,7 +7241,7 @@ const importantTasks = withComponentProps(function ImportantTasksPage() {
               children: [/* @__PURE__ */ jsx(Clock, {
                 className: "h-4 w-4"
               }), /* @__PURE__ */ jsx("span", {
-                children: formatDateDetailedRussian(task.createdAt)
+                children: formatDateDetailedRussian(String(task.createdAt))
               })]
             })]
           })
@@ -7494,6 +7304,7 @@ const AnalyticsPage = () => {
   const {
     user
   } = useAuth();
+  const navigate = useNavigate();
   const [timeFilter, setTimeFilter] = useState("7days");
   const [selectedMember, setSelectedMember] = useState("all");
   const canViewAnalytics = (user == null ? void 0 : user.role) && ["admin", "manager", "super_admin"].includes(user.role);
@@ -7640,7 +7451,7 @@ const AnalyticsPage = () => {
   const totalTasks = filteredTasks.length;
   const completedTasks = filteredTasks.filter((t2) => t2.status === "Done").length;
   const inProgressTasks = filteredTasks.filter((t2) => t2.status === "In Progress").length;
-  filteredTasks.filter((t2) => t2.status === "To Do").length;
+  const todoTasks = filteredTasks.filter((t2) => t2.status === "To Do").length;
   filteredTasks.filter((t2) => t2.priority === "High").length;
   const overdueTasks = filteredTasks.filter((t2) => t2.dueDate && new Date(t2.dueDate) < /* @__PURE__ */ new Date() && t2.status !== "Done").length;
   const completionRate = totalTasks > 0 ? Math.round(completedTasks / totalTasks * 100) : 0;
@@ -7790,8 +7601,10 @@ const AnalyticsPage = () => {
         })
       })]
     }), /* @__PURE__ */ jsxs("div", {
-      className: "grid gap-4 md:grid-cols-2 lg:grid-cols-4",
+      className: "grid gap-4 md:grid-cols-2 lg:grid-cols-5",
       children: [/* @__PURE__ */ jsxs(Card, {
+        onClick: () => navigate("/dashboard/all-tasks"),
+        className: "cursor-pointer hover:shadow-lg hover:border-primary transition-all",
         children: [/* @__PURE__ */ jsxs(CardHeader, {
           className: "flex flex-row items-center justify-between space-y-0 pb-2",
           children: [/* @__PURE__ */ jsx(CardTitle, {
@@ -7810,24 +7623,28 @@ const AnalyticsPage = () => {
           })]
         })]
       }), /* @__PURE__ */ jsxs(Card, {
+        onClick: () => navigate("/dashboard/all-tasks?status=To Do"),
+        className: "cursor-pointer hover:shadow-lg hover:border-blue-500 transition-all",
         children: [/* @__PURE__ */ jsxs(CardHeader, {
           className: "flex flex-row items-center justify-between space-y-0 pb-2",
           children: [/* @__PURE__ */ jsx(CardTitle, {
             className: "text-sm font-medium",
-            children: t("analytics.completed")
-          }), /* @__PURE__ */ jsx(CheckCircle, {
-            className: "h-4 w-4 text-green-600"
+            children: "К выполнению"
+          }), /* @__PURE__ */ jsx(ClipboardList, {
+            className: "h-4 w-4 text-blue-600"
           })]
         }), /* @__PURE__ */ jsxs(CardContent, {
           children: [/* @__PURE__ */ jsx("div", {
-            className: "text-2xl font-bold text-green-600",
-            children: completedTasks
+            className: "text-2xl font-bold text-blue-600",
+            children: todoTasks
           }), /* @__PURE__ */ jsx("p", {
             className: "text-xs text-muted-foreground",
-            children: t("analytics.completion_rate").replace("{rate}", completionRate.toString())
+            children: "Ожидают начала"
           })]
         })]
       }), /* @__PURE__ */ jsxs(Card, {
+        onClick: () => navigate("/dashboard/all-tasks?status=In Progress"),
+        className: "cursor-pointer hover:shadow-lg hover:border-yellow-500 transition-all",
         children: [/* @__PURE__ */ jsxs(CardHeader, {
           className: "flex flex-row items-center justify-between space-y-0 pb-2",
           children: [/* @__PURE__ */ jsx(CardTitle, {
@@ -7846,6 +7663,28 @@ const AnalyticsPage = () => {
           })]
         })]
       }), /* @__PURE__ */ jsxs(Card, {
+        onClick: () => navigate("/dashboard/all-tasks?status=Done"),
+        className: "cursor-pointer hover:shadow-lg hover:border-green-500 transition-all",
+        children: [/* @__PURE__ */ jsxs(CardHeader, {
+          className: "flex flex-row items-center justify-between space-y-0 pb-2",
+          children: [/* @__PURE__ */ jsx(CardTitle, {
+            className: "text-sm font-medium",
+            children: t("analytics.completed")
+          }), /* @__PURE__ */ jsx(CheckCircle, {
+            className: "h-4 w-4 text-green-600"
+          })]
+        }), /* @__PURE__ */ jsxs(CardContent, {
+          children: [/* @__PURE__ */ jsx("div", {
+            className: "text-2xl font-bold text-green-600",
+            children: completedTasks
+          }), /* @__PURE__ */ jsx("p", {
+            className: "text-xs text-muted-foreground",
+            children: t("analytics.completion_rate").replace("{rate}", completionRate.toString())
+          })]
+        })]
+      }), /* @__PURE__ */ jsxs(Card, {
+        onClick: () => navigate("/dashboard/all-tasks"),
+        className: "cursor-pointer hover:shadow-lg hover:border-red-500 transition-all",
         children: [/* @__PURE__ */ jsxs(CardHeader, {
           className: "flex flex-row items-center justify-between space-y-0 pb-2",
           children: [/* @__PURE__ */ jsx(CardTitle, {
@@ -9100,7 +8939,7 @@ const TaskAttachments = ({
       setUploading(true);
       setUploadProgress(0);
       try {
-        const url = `${"https://ptapi.oci.tj/api-v1"}/upload`;
+        const url = `${"https://ptapi.oci.tj"}/upload`;
         const formData = new FormData();
         formData.append("file", file);
         const token = localStorage.getItem("token");
@@ -9468,7 +9307,7 @@ const CommentSection = ({
       try {
         const formData = new FormData();
         formData.append("file", file);
-        const response = await fetch(`${"https://ptapi.oci.tj/api-v1"}/upload`, {
+        const response = await fetch(`${"https://ptapi.oci.tj"}/upload`, {
           method: "POST",
           body: formData,
           headers: {
@@ -9520,7 +9359,7 @@ const CommentSection = ({
         formData.append("file", file);
         try {
           setIsUploading(true);
-          const response = await fetch(`${"https://ptapi.oci.tj/api-v1"}/upload`, {
+          const response = await fetch(`${"https://ptapi.oci.tj"}/upload`, {
             method: "POST",
             body: formData,
             headers: {
@@ -10023,7 +9862,7 @@ const ResponseSection = ({
       try {
         const formData = new FormData();
         formData.append("file", file);
-        const response = await fetch(`${"https://ptapi.oci.tj/api-v1"}/upload`, {
+        const response = await fetch(`${"https://ptapi.oci.tj"}/upload`, {
           method: "POST",
           body: formData,
           headers: {
@@ -10071,7 +9910,7 @@ const ResponseSection = ({
         formData.append("file", file);
         try {
           setIsUploading(true);
-          const response = await fetch(`${"https://ptapi.oci.tj/api-v1"}/upload`, {
+          const response = await fetch(`${"https://ptapi.oci.tj"}/upload`, {
             method: "POST",
             body: formData,
             headers: {
@@ -10308,6 +10147,7 @@ const getActivityIcon = (action) => {
   }
 };
 const TaskActivity = ({ resourceId }) => {
+  const { language } = useLanguage();
   const [page, setPage] = useState(1);
   const { data, isPending } = useQuery({
     queryKey: ["activities", resourceId, page],
@@ -10330,7 +10170,7 @@ const TaskActivity = ({ resourceId }) => {
             " ",
             (_b = activity == null ? void 0 : activity.details) == null ? void 0 : _b.description
           ] }),
-          /* @__PURE__ */ jsx("p", { className: "text-xs text-muted-foreground", children: formatDistanceToNow(activity.createdAt) })
+          /* @__PURE__ */ jsx("p", { className: "text-xs text-muted-foreground", children: language === "tj" ? getRelativeTimeTajik(activity.createdAt) : getRelativeTimeRussian(activity.createdAt) })
         ] })
       ] }, activity._id);
     }) }),
@@ -10954,7 +10794,7 @@ const UserLayout = () => {
     message: "Loading..."
   });
   if (!isAuthenticated) return /* @__PURE__ */ jsx(Navigate, {
-    to: "/sign-in",
+    to: "/",
     replace: true
   });
   return /* @__PURE__ */ jsx("div", {
@@ -11405,27 +11245,27 @@ function meta$2() {
     content: "Profile to TaskHub!"
   }];
 }
-const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, {
+const changePasswordSchema = z$1.object({
+  currentPassword: z$1.string().min(1, {
     message: "Current password is required"
   }),
-  newPassword: z.string().min(8, {
+  newPassword: z$1.string().min(8, {
     message: "New password is required"
   }),
-  confirmPassword: z.string().min(8, {
+  confirmPassword: z$1.string().min(8, {
     message: "Confirm password is required"
   })
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"]
 });
-const profileSchema = z.object({
-  name: z.string().min(1, {
+const profileSchema = z$1.object({
+  name: z$1.string().min(1, {
     message: "Name is required"
   }),
-  lastName: z.string().optional(),
-  phoneNumber: z.string().optional(),
-  profilePicture: z.string().optional()
+  lastName: z$1.string().optional(),
+  phoneNumber: z$1.string().optional(),
+  profilePicture: z$1.string().optional()
 });
 const ProfilePage = () => {
   var _a;
@@ -11478,7 +11318,7 @@ const ProfilePage = () => {
         form.reset();
         setTimeout(() => {
           logout();
-          navigate("/sign-in");
+          navigate("/");
         }, 3e3);
       },
       onError: (error2) => {
@@ -11858,7 +11698,7 @@ const ResetPasswordPage = () => {
         className: "border-border/50 shadow-xl",
         children: [/* @__PURE__ */ jsx(CardHeader, {
           children: /* @__PURE__ */ jsxs(Link, {
-            to: "/sign-in",
+            to: "/",
             className: "flex items-center text-sm text-muted-foreground hover:text-foreground",
             children: [/* @__PURE__ */ jsx(ArrowLeft, {
               className: "mr-2 h-4 w-4"
@@ -11882,7 +11722,7 @@ const ResetPasswordPage = () => {
               asChild: true,
               className: "mt-4",
               children: /* @__PURE__ */ jsx(Link, {
-                to: "/sign-in",
+                to: "/",
                 children: "Перейти к входу"
               })
             })]
@@ -11947,7 +11787,7 @@ const ResetPasswordPage = () => {
           children: /* @__PURE__ */ jsxs("div", {
             className: "text-center text-sm w-full",
             children: ["Забыли пароль?", " ", /* @__PURE__ */ jsx(Link, {
-              to: "/sign-in",
+              to: "/",
               className: "text-blue-600 font-semibold hover:underline",
               children: "Войти"
             })]
@@ -12000,7 +11840,7 @@ const route23 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   default: notFound,
   meta
 }, Symbol.toStringTag, { value: "Module" }));
-const serverManifest = { "entry": { "module": "/assets/entry.client-ChfswXNM.js", "imports": ["/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/index-DPgvUOtM.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": true, "module": "/assets/root-BRWexPcq.js", "imports": ["/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/index-DPgvUOtM.js", "/assets/with-props-DrY_Tf_H.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/language-context-y1Oex2Hk.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-BfaWVdkx.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": ["/assets/root-D763u9Ot.css"], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/auth-layout": { "id": "routes/auth/auth-layout", "parentId": "root", "path": void 0, "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/auth-layout-CDQBsl64.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/loader-CSFfw6Ah.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-BfaWVdkx.js", "/assets/index-DPgvUOtM.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/root/welcome": { "id": "routes/root/welcome", "parentId": "routes/auth/auth-layout", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/welcome-Cq5HLbdJ.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/button-XR5pxM8N.js", "/assets/circle-check-big-BgF8B2gk.js", "/assets/users-CgampM0I.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/download-DM7fB3e0.js", "/assets/utils-Banh-JWj.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/sign-up": { "id": "routes/auth/sign-up", "parentId": "routes/auth/auth-layout", "path": "sign-up", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/sign-up-_Mg5C6s5.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/form-D6FB8BOG.js", "/assets/index-BfaWVdkx.js", "/assets/alert-BKRtGY9T.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/input-CJCQfRcV.js", "/assets/use-auth-C3zh5VIL.js", "/assets/schema-C4qaBX0V.js", "/assets/toast-messages-BMbI_7GX.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/circle-check-big-BgF8B2gk.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/utils-Banh-JWj.js", "/assets/label-DaFJ9alP.js", "/assets/index-DG-_N8_5.js", "/assets/index-DPgvUOtM.js", "/assets/useMutation-68EnYOhG.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/createLucideIcon-BJPWR32b.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/sign-in": { "id": "routes/auth/sign-in", "parentId": "routes/auth/auth-layout", "path": "sign-in", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/sign-in-BCfcZyBJ.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/form-D6FB8BOG.js", "/assets/index-BfaWVdkx.js", "/assets/use-auth-C3zh5VIL.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/alert-BKRtGY9T.js", "/assets/button-XR5pxM8N.js", "/assets/input-CJCQfRcV.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/card-8YhapM5f.js", "/assets/schema-C4qaBX0V.js", "/assets/toast-messages-BMbI_7GX.js", "/assets/utils-Banh-JWj.js", "/assets/label-DaFJ9alP.js", "/assets/index-DG-_N8_5.js", "/assets/index-DPgvUOtM.js", "/assets/useMutation-68EnYOhG.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/createLucideIcon-BJPWR32b.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/forgot-password": { "id": "routes/auth/forgot-password", "parentId": "routes/auth/auth-layout", "path": "forgot-password", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/forgot-password-DmInC5o9.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/button-XR5pxM8N.js", "/assets/input-CJCQfRcV.js", "/assets/card-8YhapM5f.js", "/assets/form-D6FB8BOG.js", "/assets/alert-BKRtGY9T.js", "/assets/use-auth-C3zh5VIL.js", "/assets/arrow-left-DiY0Ij7t.js", "/assets/circle-check-DquTaWt4.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/utils-Banh-JWj.js", "/assets/label-DaFJ9alP.js", "/assets/index-DG-_N8_5.js", "/assets/index-DPgvUOtM.js", "/assets/useMutation-68EnYOhG.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-BfaWVdkx.js", "/assets/createLucideIcon-BJPWR32b.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/verify-email": { "id": "routes/auth/verify-email", "parentId": "routes/auth/auth-layout", "path": "verify-email", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/verify-email-D_i7ugKL.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/use-auth-C3zh5VIL.js", "/assets/arrow-left-DiY0Ij7t.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/circle-check-DquTaWt4.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/utils-Banh-JWj.js", "/assets/useMutation-68EnYOhG.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-BfaWVdkx.js", "/assets/index-DPgvUOtM.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/callback": { "id": "routes/auth/callback", "parentId": "routes/auth/auth-layout", "path": "auth/callback", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/callback-DkoJF_0f.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/index-BfaWVdkx.js", "/assets/loader-CSFfw6Ah.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/toast-messages-BMbI_7GX.js", "/assets/index-DPgvUOtM.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/dashboard-layout": { "id": "routes/dashboard/dashboard-layout", "parentId": "root", "path": void 0, "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": true, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/dashboard-layout-jJLnHQ-j.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/avatar-dkEnamGe.js", "/assets/button-XR5pxM8N.js", "/assets/dropdown-menu-DSlBohCQ.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/language-context-y1Oex2Hk.js", "/assets/form-D6FB8BOG.js", "/assets/index-BfaWVdkx.js", "/assets/useQuery-WJV2oBDk.js", "/assets/utils-Banh-JWj.js", "/assets/DayPicker-CTTChjSm.js", "/assets/popover-DpkBJQAM.js", "/assets/index-B3RsySn-.js", "/assets/Combination-4wCguz1d.js", "/assets/select-SnUs58Gt.js", "/assets/index-Bl6jwTEF.js", "/assets/index-B5yWDCnx.js", "/assets/index-DG-_N8_5.js", "/assets/dialog-BxxNwsNx.js", "/assets/input-CJCQfRcV.js", "/assets/textarea-zYoYtde5.js", "/assets/use-task-DdLHKsnT.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/calendar-1DqX6RAU.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/bell-DUF-WIjj.js", "/assets/scroll-area-Dah6NjMx.js", "/assets/user-D8gbe0zo.js", "/assets/star-CF1HDe57.js", "/assets/users-CgampM0I.js", "/assets/circle-check-DquTaWt4.js", "/assets/settings-DVPXezI9.js", "/assets/loader-CSFfw6Ah.js", "/assets/useMutation-68EnYOhG.js", "/assets/schema-C4qaBX0V.js", "/assets/card-8YhapM5f.js", "/assets/badge-Bm2oiHoJ.js", "/assets/index-CQDohrZ2.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/label-DaFJ9alP.js", "/assets/index-DPgvUOtM.js", "/assets/en-US-DuGUIuVI.js", "/assets/index-BdQq_4o_.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/index": { "id": "routes/dashboard/index", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/index-CjOfJfsX.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/loader-CSFfw6Ah.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/language-context-y1Oex2Hk.js", "/assets/use-task-DdLHKsnT.js", "/assets/useQuery-WJV2oBDk.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/index-BfaWVdkx.js", "/assets/index-DPgvUOtM.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/useMutation-68EnYOhG.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/my-tasks": { "id": "routes/dashboard/my-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/my-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/my-tasks-vww1U5y7.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/loader-CSFfw6Ah.js", "/assets/language-context-y1Oex2Hk.js", "/assets/badge-Bm2oiHoJ.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/dropdown-menu-DSlBohCQ.js", "/assets/input-CJCQfRcV.js", "/assets/index-B3RsySn-.js", "/assets/index-B5yWDCnx.js", "/assets/index-DG-_N8_5.js", "/assets/index-CQDohrZ2.js", "/assets/Combination-4wCguz1d.js", "/assets/utils-Banh-JWj.js", "/assets/use-task-DdLHKsnT.js", "/assets/index-umI_Eshd.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/translations-D806p-9r.js", "/assets/arrow-up-narrow-wide-7UJo0gks.js", "/assets/funnel-CX0Olupr.js", "/assets/circle-check-DquTaWt4.js", "/assets/clock-C5QVHLxB.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/index-Bl6jwTEF.js", "/assets/index-DPgvUOtM.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/useQuery-WJV2oBDk.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/useMutation-68EnYOhG.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/achieved": { "id": "routes/dashboard/achieved", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/achieved", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/achieved-DhEHIUvr.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/badge-Bm2oiHoJ.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/input-CJCQfRcV.js", "/assets/select-SnUs58Gt.js", "/assets/table-BqJU3lrN.js", "/assets/date-filters-C8xhM8iO.js", "/assets/popover-DpkBJQAM.js", "/assets/use-task-DdLHKsnT.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/translations-D806p-9r.js", "/assets/loader-CSFfw6Ah.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/utils-Banh-JWj.js", "/assets/circle-check-big-BgF8B2gk.js", "/assets/funnel-CX0Olupr.js", "/assets/calendar-1DqX6RAU.js", "/assets/eye-CU1csZNp.js", "/assets/DayPicker-CTTChjSm.js", "/assets/index-DPgvUOtM.js", "/assets/index-BdQq_4o_.js", "/assets/index-B3RsySn-.js", "/assets/index-Bl6jwTEF.js", "/assets/index-DG-_N8_5.js", "/assets/index-CQDohrZ2.js", "/assets/Combination-4wCguz1d.js", "/assets/endOfMonth-CFYlpobd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/en-US-DuGUIuVI.js", "/assets/index-B5yWDCnx.js", "/assets/useQuery-WJV2oBDk.js", "/assets/useMutation-68EnYOhG.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/all-tasks": { "id": "routes/dashboard/all-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/all-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/all-tasks-BD5BoWlp.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/loader-CSFfw6Ah.js", "/assets/language-context-y1Oex2Hk.js", "/assets/badge-Bm2oiHoJ.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/utils-Banh-JWj.js", "/assets/input-CJCQfRcV.js", "/assets/select-SnUs58Gt.js", "/assets/table-BqJU3lrN.js", "/assets/avatar-dkEnamGe.js", "/assets/date-filters-C8xhM8iO.js", "/assets/popover-DpkBJQAM.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/translations-D806p-9r.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/use-task-DdLHKsnT.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/calendar-1DqX6RAU.js", "/assets/arrow-up-narrow-wide-7UJo0gks.js", "/assets/eye-CU1csZNp.js", "/assets/DayPicker-CTTChjSm.js", "/assets/index-DPgvUOtM.js", "/assets/index-BdQq_4o_.js", "/assets/index-B3RsySn-.js", "/assets/index-Bl6jwTEF.js", "/assets/index-DG-_N8_5.js", "/assets/index-CQDohrZ2.js", "/assets/Combination-4wCguz1d.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/endOfMonth-CFYlpobd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/en-US-DuGUIuVI.js", "/assets/index-B5yWDCnx.js", "/assets/index-BfaWVdkx.js", "/assets/index-umI_Eshd.js", "/assets/useQuery-WJV2oBDk.js", "/assets/useMutation-68EnYOhG.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/manager-tasks": { "id": "routes/dashboard/manager-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/manager-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/manager-tasks-yRZO0zUn.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/useQuery-WJV2oBDk.js", "/assets/badge-Bm2oiHoJ.js", "/assets/card-8YhapM5f.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/language-context-y1Oex2Hk.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/user-D8gbe0zo.js", "/assets/star-CF1HDe57.js", "/assets/calendar-1DqX6RAU.js", "/assets/clock-C5QVHLxB.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/utils-Banh-JWj.js", "/assets/index-BfaWVdkx.js", "/assets/index-DPgvUOtM.js", "/assets/index-umI_Eshd.js", "/assets/createLucideIcon-BJPWR32b.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/important-tasks": { "id": "routes/dashboard/important-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/important-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/important-tasks-JFrOGefJ.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/useQuery-WJV2oBDk.js", "/assets/badge-Bm2oiHoJ.js", "/assets/card-8YhapM5f.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/star-CF1HDe57.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/user-D8gbe0zo.js", "/assets/calendar-1DqX6RAU.js", "/assets/clock-C5QVHLxB.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/utils-Banh-JWj.js", "/assets/index-BfaWVdkx.js", "/assets/index-DPgvUOtM.js", "/assets/index-umI_Eshd.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/analytics": { "id": "routes/dashboard/analytics", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/analytics", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/analytics-DuqsssSC.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/loader-CSFfw6Ah.js", "/assets/card-8YhapM5f.js", "/assets/index-B3RsySn-.js", "/assets/index-DG-_N8_5.js", "/assets/utils-Banh-JWj.js", "/assets/button-XR5pxM8N.js", "/assets/select-SnUs58Gt.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/useQuery-WJV2oBDk.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/language-context-y1Oex2Hk.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/circle-check-big-BgF8B2gk.js", "/assets/clock-C5QVHLxB.js", "/assets/index-DPgvUOtM.js", "/assets/index-BdQq_4o_.js", "/assets/index-Bl6jwTEF.js", "/assets/index-CQDohrZ2.js", "/assets/Combination-4wCguz1d.js", "/assets/index-BfaWVdkx.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/members": { "id": "routes/dashboard/members", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/members", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/members-CWfvePCY.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/index-BfaWVdkx.js", "/assets/loader-CSFfw6Ah.js", "/assets/avatar-dkEnamGe.js", "/assets/badge-Bm2oiHoJ.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/dropdown-menu-DSlBohCQ.js", "/assets/input-CJCQfRcV.js", "/assets/select-SnUs58Gt.js", "/assets/table-BqJU3lrN.js", "/assets/dialog-BxxNwsNx.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/useQuery-WJV2oBDk.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/useMutation-68EnYOhG.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/users-CgampM0I.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/shield-C_AkyCic.js", "/assets/user-D8gbe0zo.js", "/assets/clock-C5QVHLxB.js", "/assets/circle-check-big-BgF8B2gk.js", "/assets/settings-DVPXezI9.js", "/assets/index-DPgvUOtM.js", "/assets/index-B3RsySn-.js", "/assets/index-DG-_N8_5.js", "/assets/utils-Banh-JWj.js", "/assets/Combination-4wCguz1d.js", "/assets/index-Bl6jwTEF.js", "/assets/index-CQDohrZ2.js", "/assets/index-B5yWDCnx.js", "/assets/index-BdQq_4o_.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/workspace-setting": { "id": "routes/dashboard/workspace-setting", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/settings", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/workspace-setting-Bu4jjtox.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/input-CJCQfRcV.js", "/assets/label-DaFJ9alP.js", "/assets/separator-BnDnEvZ9.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/index-BfaWVdkx.js", "/assets/settings-DVPXezI9.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/user-D8gbe0zo.js", "/assets/shield-C_AkyCic.js", "/assets/bell-DUF-WIjj.js", "/assets/utils-Banh-JWj.js", "/assets/index-DG-_N8_5.js", "/assets/index-DPgvUOtM.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/task.$taskId": { "id": "routes/dashboard/task.$taskId", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/task/:taskId", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/task._taskId-CtFKHALP.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/useQuery-WJV2oBDk.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/useMutation-68EnYOhG.js", "/assets/use-task-DdLHKsnT.js", "/assets/loader-CSFfw6Ah.js", "/assets/badge-Bm2oiHoJ.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/input-CJCQfRcV.js", "/assets/select-SnUs58Gt.js", "/assets/dialog-BxxNwsNx.js", "/assets/date-utils-BYRQ6yq9.js", "/assets/translations-D806p-9r.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/index-BfaWVdkx.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/textarea-zYoYtde5.js", "/assets/avatar-dkEnamGe.js", "/assets/scroll-area-Dah6NjMx.js", "/assets/separator-BnDnEvZ9.js", "/assets/popover-DpkBJQAM.js", "/assets/index-umI_Eshd.js", "/assets/formatDistanceToNow-CPvBVtqK.js", "/assets/download-DM7fB3e0.js", "/assets/eye-CU1csZNp.js", "/assets/circle-check-DquTaWt4.js", "/assets/circle-check-big-BgF8B2gk.js", "/assets/arrow-left-DiY0Ij7t.js", "/assets/star-CF1HDe57.js", "/assets/user-D8gbe0zo.js", "/assets/users-CgampM0I.js", "/assets/calendar-1DqX6RAU.js", "/assets/clock-C5QVHLxB.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/utils-Banh-JWj.js", "/assets/index-DPgvUOtM.js", "/assets/index-BdQq_4o_.js", "/assets/index-B3RsySn-.js", "/assets/index-Bl6jwTEF.js", "/assets/index-DG-_N8_5.js", "/assets/index-CQDohrZ2.js", "/assets/Combination-4wCguz1d.js", "/assets/index-B5yWDCnx.js", "/assets/en-US-DuGUIuVI.js", "/assets/endOfMonth-CFYlpobd.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/user/user-layout": { "id": "routes/user/user-layout", "parentId": "root", "path": void 0, "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/user-layout-CnEKLxLm.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/loader-CSFfw6Ah.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-BfaWVdkx.js", "/assets/index-DPgvUOtM.js", "/assets/index-umI_Eshd.js", "/assets/differenceInCalendarDays-DEPn_fpH.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/user/notifications": { "id": "routes/user/notifications", "parentId": "routes/user/user-layout", "path": "user/notifications", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/notifications-B2YbO_S_.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/index-BfaWVdkx.js", "/assets/loader-CSFfw6Ah.js", "/assets/use-user-DwE4U3dx.js", "/assets/avatar-dkEnamGe.js", "/assets/badge-Bm2oiHoJ.js", "/assets/button-XR5pxM8N.js", "/assets/scroll-area-Dah6NjMx.js", "/assets/formatDistanceToNow-CPvBVtqK.js", "/assets/index-DPgvUOtM.js", "/assets/useQuery-WJV2oBDk.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/useMutation-68EnYOhG.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/index-umI_Eshd.js", "/assets/index-B3RsySn-.js", "/assets/index-DG-_N8_5.js", "/assets/utils-Banh-JWj.js", "/assets/index-B5yWDCnx.js", "/assets/index-CQDohrZ2.js", "/assets/index-BdQq_4o_.js", "/assets/en-US-DuGUIuVI.js", "/assets/endOfMonth-CFYlpobd.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/user/profile": { "id": "routes/user/profile", "parentId": "routes/user/user-layout", "path": "user/profile", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/profile-DBbyh0j9.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/form-D6FB8BOG.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/index-BfaWVdkx.js", "/assets/loader-CSFfw6Ah.js", "/assets/card-8YhapM5f.js", "/assets/button-XR5pxM8N.js", "/assets/input-CJCQfRcV.js", "/assets/label-DaFJ9alP.js", "/assets/use-user-DwE4U3dx.js", "/assets/dialog-BxxNwsNx.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/alert-BKRtGY9T.js", "/assets/avatar-dkEnamGe.js", "/assets/separator-BnDnEvZ9.js", "/assets/auth-context-zt_Gj_g8.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/utils-Banh-JWj.js", "/assets/index-DPgvUOtM.js", "/assets/index-DG-_N8_5.js", "/assets/useQuery-WJV2oBDk.js", "/assets/differenceInCalendarDays-DEPn_fpH.js", "/assets/useMutation-68EnYOhG.js", "/assets/index-B3RsySn-.js", "/assets/Combination-4wCguz1d.js", "/assets/index-B5yWDCnx.js", "/assets/createLucideIcon-BJPWR32b.js", "/assets/index-umI_Eshd.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/reset-password": { "id": "routes/auth/reset-password", "parentId": "root", "path": "reset-password", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/reset-password-BUsphyfM.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/form-D6FB8BOG.js", "/assets/button-XR5pxM8N.js", "/assets/card-8YhapM5f.js", "/assets/input-CJCQfRcV.js", "/assets/alert-BKRtGY9T.js", "/assets/fetch-utils-CYuiSzcf.js", "/assets/schema-C4qaBX0V.js", "/assets/use-auth-C3zh5VIL.js", "/assets/arrow-left-DiY0Ij7t.js", "/assets/circle-check-DquTaWt4.js", "/assets/circle-alert-DrBVIyNz.js", "/assets/loader-circle-DsE_dbWh.js", "/assets/utils-Banh-JWj.js", "/assets/label-DaFJ9alP.js", "/assets/index-DG-_N8_5.js", "/assets/index-DPgvUOtM.js", "/assets/useMutation-68EnYOhG.js", "/assets/index-BfaWVdkx.js", "/assets/createLucideIcon-BJPWR32b.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/not-found": { "id": "routes/not-found", "parentId": "root", "path": "*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/not-found-CONYcL5q.js", "imports": ["/assets/with-props-DrY_Tf_H.js", "/assets/chunk-D4RADZKF-D9_AVvzA.js", "/assets/button-XR5pxM8N.js", "/assets/utils-Banh-JWj.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 } }, "url": "/assets/manifest-1b5d08f6.js", "version": "1b5d08f6", "sri": void 0 };
+const serverManifest = { "entry": { "module": "/assets/entry.client-By2RqoIa.js", "imports": ["/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/index-SQXACE-4.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": true, "module": "/assets/root-BDUd1uy4.js", "imports": ["/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/index-SQXACE-4.js", "/assets/with-props-DZFoMOGS.js", "/assets/auth-context-BRfrjLsp.js", "/assets/language-context-DwF0ibTh.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/index-CSzYmE0U.js", "/assets/index-D9oiEvlI.js", "/assets/differenceInCalendarDays-DdX_lYA2.js"], "css": ["/assets/root-DYgbzcfO.css"], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/auth-layout": { "id": "routes/auth/auth-layout", "parentId": "root", "path": void 0, "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/auth-layout-CW8AEnuo.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/loader-09zPHqqK.js", "/assets/auth-context-BRfrjLsp.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/index-CSzYmE0U.js", "/assets/index-SQXACE-4.js", "/assets/index-D9oiEvlI.js", "/assets/differenceInCalendarDays-DdX_lYA2.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/sign-in": { "id": "routes/auth/sign-in", "parentId": "routes/auth/auth-layout", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/sign-in-DpR6BBTW.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/form-DZzfTWTj.js", "/assets/index-CSzYmE0U.js", "/assets/use-auth-DySE9sPW.js", "/assets/auth-context-BRfrjLsp.js", "/assets/alert-DqHgJ41w.js", "/assets/button-DXi4Qs_L.js", "/assets/input-IkQKRTMy.js", "/assets/circle-alert-DroFiDLN.js", "/assets/loader-circle-NsKzwp7P.js", "/assets/card-BsXsZQeO.js", "/assets/schema-BMX0QkVm.js", "/assets/toast-messages-BMbI_7GX.js", "/assets/index-DzszfRT3.js", "/assets/label-DnEgSiPv.js", "/assets/index-7DfICFps.js", "/assets/index-SQXACE-4.js", "/assets/useMutation-Ug0BUQy9.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/index-D9oiEvlI.js", "/assets/differenceInCalendarDays-DdX_lYA2.js", "/assets/createLucideIcon-CKae7mtu.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/sign-up": { "id": "routes/auth/sign-up", "parentId": "routes/auth/auth-layout", "path": "sign-up", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/sign-up-BEGlDU6a.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/form-DZzfTWTj.js", "/assets/index-CSzYmE0U.js", "/assets/alert-DqHgJ41w.js", "/assets/button-DXi4Qs_L.js", "/assets/card-BsXsZQeO.js", "/assets/input-IkQKRTMy.js", "/assets/schema-BMX0QkVm.js", "/assets/loader-circle-NsKzwp7P.js", "/assets/toast-messages-BMbI_7GX.js", "/assets/circle-alert-DroFiDLN.js", "/assets/index-DzszfRT3.js", "/assets/label-DnEgSiPv.js", "/assets/index-7DfICFps.js", "/assets/index-SQXACE-4.js", "/assets/createLucideIcon-CKae7mtu.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/forgot-password": { "id": "routes/auth/forgot-password", "parentId": "routes/auth/auth-layout", "path": "forgot-password", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/forgot-password-DcrImz-R.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/button-DXi4Qs_L.js", "/assets/input-IkQKRTMy.js", "/assets/card-BsXsZQeO.js", "/assets/form-DZzfTWTj.js", "/assets/alert-DqHgJ41w.js", "/assets/use-auth-DySE9sPW.js", "/assets/arrow-left-CioVwuCL.js", "/assets/circle-check-BIk_6xY0.js", "/assets/circle-alert-DroFiDLN.js", "/assets/loader-circle-NsKzwp7P.js", "/assets/index-DzszfRT3.js", "/assets/label-DnEgSiPv.js", "/assets/index-7DfICFps.js", "/assets/index-SQXACE-4.js", "/assets/useMutation-Ug0BUQy9.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/index-CSzYmE0U.js", "/assets/createLucideIcon-CKae7mtu.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/verify-email": { "id": "routes/auth/verify-email", "parentId": "routes/auth/auth-layout", "path": "verify-email", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/verify-email-NUYr5VYn.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/button-DXi4Qs_L.js", "/assets/card-BsXsZQeO.js", "/assets/use-auth-DySE9sPW.js", "/assets/arrow-left-CioVwuCL.js", "/assets/loader-circle-NsKzwp7P.js", "/assets/circle-check-BIk_6xY0.js", "/assets/circle-x-CblRDiPG.js", "/assets/index-DzszfRT3.js", "/assets/useMutation-Ug0BUQy9.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/index-CSzYmE0U.js", "/assets/index-SQXACE-4.js", "/assets/createLucideIcon-CKae7mtu.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/verify.$token": { "id": "routes/verify.$token", "parentId": "routes/auth/auth-layout", "path": "verify/:token", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/verify._token-omfxaRKa.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/loader-circle-NsKzwp7P.js", "/assets/circle-check-big-C6XYVBqU.js", "/assets/circle-x-CblRDiPG.js", "/assets/createLucideIcon-CKae7mtu.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/callback": { "id": "routes/auth/callback", "parentId": "routes/auth/auth-layout", "path": "auth/callback", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/callback-89blGkuu.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/index-CSzYmE0U.js", "/assets/loader-09zPHqqK.js", "/assets/auth-context-BRfrjLsp.js", "/assets/toast-messages-BMbI_7GX.js", "/assets/index-SQXACE-4.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/index-D9oiEvlI.js", "/assets/differenceInCalendarDays-DdX_lYA2.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/dashboard-layout": { "id": "routes/dashboard/dashboard-layout", "parentId": "root", "path": void 0, "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": true, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/dashboard-layout-DrBPCsO5.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/avatar-BrNFCVTh.js", "/assets/button-DXi4Qs_L.js", "/assets/dropdown-menu-NXVKWIIS.js", "/assets/auth-context-BRfrjLsp.js", "/assets/language-context-DwF0ibTh.js", "/assets/form-DZzfTWTj.js", "/assets/index-CSzYmE0U.js", "/assets/useQuery-BfZYG4Bu.js", "/assets/card-BsXsZQeO.js", "/assets/index-DzszfRT3.js", "/assets/DayPicker-B7DBXuI6.js", "/assets/popover-BS4go8yB.js", "/assets/index-DOBHTXVc.js", "/assets/Combination-BnIgCuso.js", "/assets/select-CzaKESy1.js", "/assets/index-DQjhtfC1.js", "/assets/index-4oqkfR53.js", "/assets/index-7DfICFps.js", "/assets/dialog-t2vAfIxl.js", "/assets/input-IkQKRTMy.js", "/assets/textarea-Btv-WhEw.js", "/assets/use-task-CEYgmF7y.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/calendar-BiVnGx_-.js", "/assets/createLucideIcon-CKae7mtu.js", "/assets/bell-XTNdTybh.js", "/assets/scroll-area-C96JGsDD.js", "/assets/user-D_BZu4xt.js", "/assets/star-B_Bun3Hp.js", "/assets/clipboard-list-Bj36NxRE.js", "/assets/users-C7wkPL1j.js", "/assets/circle-check-BIk_6xY0.js", "/assets/settings-CIFR7PJp.js", "/assets/loader-09zPHqqK.js", "/assets/useMutation-Ug0BUQy9.js", "/assets/schema-BMX0QkVm.js", "/assets/badge-Dg-iJNId.js", "/assets/index-PdpdsD6y.js", "/assets/index-D9oiEvlI.js", "/assets/differenceInCalendarDays-DdX_lYA2.js", "/assets/label-DnEgSiPv.js", "/assets/index-SQXACE-4.js", "/assets/en-US-DuGUIuVI.js", "/assets/index-BdQq_4o_.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/index": { "id": "routes/dashboard/index", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/index-BZf1jBQl.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/loader-09zPHqqK.js", "/assets/auth-context-BRfrjLsp.js", "/assets/language-context-DwF0ibTh.js", "/assets/use-task-CEYgmF7y.js", "/assets/useQuery-BfZYG4Bu.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/date-utils-iFeXSzOZ.js", "/assets/index-CSzYmE0U.js", "/assets/index-SQXACE-4.js", "/assets/index-D9oiEvlI.js", "/assets/differenceInCalendarDays-DdX_lYA2.js", "/assets/useMutation-Ug0BUQy9.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/my-tasks": { "id": "routes/dashboard/my-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/my-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/my-tasks-fF9AFsS9.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/loader-09zPHqqK.js", "/assets/language-context-DwF0ibTh.js", "/assets/badge-Dg-iJNId.js", "/assets/button-DXi4Qs_L.js", "/assets/card-BsXsZQeO.js", "/assets/dropdown-menu-NXVKWIIS.js", "/assets/input-IkQKRTMy.js", "/assets/index-DOBHTXVc.js", "/assets/index-4oqkfR53.js", "/assets/index-7DfICFps.js", "/assets/index-PdpdsD6y.js", "/assets/Combination-BnIgCuso.js", "/assets/index-DzszfRT3.js", "/assets/use-task-CEYgmF7y.js", "/assets/index-D9oiEvlI.js", "/assets/date-utils-iFeXSzOZ.js", "/assets/translations-DbaL5CzK.js", "/assets/arrow-up-narrow-wide-tzc8En0I.js", "/assets/funnel-BjcA4KsN.js", "/assets/circle-check-BIk_6xY0.js", "/assets/clock-DjglJpR6.js", "/assets/createLucideIcon-CKae7mtu.js", "/assets/index-DQjhtfC1.js", "/assets/index-SQXACE-4.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/useQuery-BfZYG4Bu.js", "/assets/differenceInCalendarDays-DdX_lYA2.js", "/assets/useMutation-Ug0BUQy9.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/achieved": { "id": "routes/dashboard/achieved", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/achieved", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/achieved-BCfEHuq6.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/badge-Dg-iJNId.js", "/assets/button-DXi4Qs_L.js", "/assets/card-BsXsZQeO.js", "/assets/input-IkQKRTMy.js", "/assets/select-CzaKESy1.js", "/assets/table-DfStPPJC.js", "/assets/date-filters-Dz8AEGlx.js", "/assets/popover-BS4go8yB.js", "/assets/use-task-CEYgmF7y.js", "/assets/date-utils-iFeXSzOZ.js", "/assets/translations-DbaL5CzK.js", "/assets/loader-09zPHqqK.js", "/assets/createLucideIcon-CKae7mtu.js", "/assets/index-DzszfRT3.js", "/assets/circle-check-big-C6XYVBqU.js", "/assets/funnel-BjcA4KsN.js", "/assets/calendar-BiVnGx_-.js", "/assets/eye-BkIADoZ_.js", "/assets/DayPicker-B7DBXuI6.js", "/assets/index-SQXACE-4.js", "/assets/index-BdQq_4o_.js", "/assets/index-DOBHTXVc.js", "/assets/index-DQjhtfC1.js", "/assets/index-7DfICFps.js", "/assets/index-PdpdsD6y.js", "/assets/Combination-BnIgCuso.js", "/assets/endOfMonth-CunzQUlw.js", "/assets/differenceInCalendarDays-DdX_lYA2.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/en-US-DuGUIuVI.js", "/assets/index-4oqkfR53.js", "/assets/useQuery-BfZYG4Bu.js", "/assets/useMutation-Ug0BUQy9.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/all-tasks": { "id": "routes/dashboard/all-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/all-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/all-tasks-BAqAlN-L.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/loader-09zPHqqK.js", "/assets/language-context-DwF0ibTh.js", "/assets/badge-Dg-iJNId.js", "/assets/button-DXi4Qs_L.js", "/assets/card-BsXsZQeO.js", "/assets/index-DzszfRT3.js", "/assets/input-IkQKRTMy.js", "/assets/select-CzaKESy1.js", "/assets/table-DfStPPJC.js", "/assets/avatar-BrNFCVTh.js", "/assets/date-filters-Dz8AEGlx.js", "/assets/popover-BS4go8yB.js", "/assets/date-utils-iFeXSzOZ.js", "/assets/translations-DbaL5CzK.js", "/assets/auth-context-BRfrjLsp.js", "/assets/use-task-CEYgmF7y.js", "/assets/circle-alert-DroFiDLN.js", "/assets/calendar-BiVnGx_-.js", "/assets/arrow-up-narrow-wide-tzc8En0I.js", "/assets/eye-BkIADoZ_.js", "/assets/DayPicker-B7DBXuI6.js", "/assets/index-SQXACE-4.js", "/assets/index-BdQq_4o_.js", "/assets/index-DOBHTXVc.js", "/assets/index-DQjhtfC1.js", "/assets/index-7DfICFps.js", "/assets/index-PdpdsD6y.js", "/assets/Combination-BnIgCuso.js", "/assets/createLucideIcon-CKae7mtu.js", "/assets/endOfMonth-CunzQUlw.js", "/assets/differenceInCalendarDays-DdX_lYA2.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/en-US-DuGUIuVI.js", "/assets/index-4oqkfR53.js", "/assets/index-CSzYmE0U.js", "/assets/index-D9oiEvlI.js", "/assets/useQuery-BfZYG4Bu.js", "/assets/useMutation-Ug0BUQy9.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/manager-tasks": { "id": "routes/dashboard/manager-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/manager-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/manager-tasks-BS_03GqQ.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/useQuery-BfZYG4Bu.js", "/assets/badge-Dg-iJNId.js", "/assets/card-BsXsZQeO.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/auth-context-BRfrjLsp.js", "/assets/language-context-DwF0ibTh.js", "/assets/date-utils-iFeXSzOZ.js", "/assets/user-D_BZu4xt.js", "/assets/star-B_Bun3Hp.js", "/assets/calendar-BiVnGx_-.js", "/assets/clock-DjglJpR6.js", "/assets/differenceInCalendarDays-DdX_lYA2.js", "/assets/index-DzszfRT3.js", "/assets/index-CSzYmE0U.js", "/assets/index-SQXACE-4.js", "/assets/index-D9oiEvlI.js", "/assets/createLucideIcon-CKae7mtu.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/important-tasks": { "id": "routes/dashboard/important-tasks", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/important-tasks", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/important-tasks-J_-JlBfE.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/useQuery-BfZYG4Bu.js", "/assets/badge-Dg-iJNId.js", "/assets/card-BsXsZQeO.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/auth-context-BRfrjLsp.js", "/assets/language-context-DwF0ibTh.js", "/assets/translations-DbaL5CzK.js", "/assets/date-utils-iFeXSzOZ.js", "/assets/star-B_Bun3Hp.js", "/assets/createLucideIcon-CKae7mtu.js", "/assets/user-D_BZu4xt.js", "/assets/calendar-BiVnGx_-.js", "/assets/clock-DjglJpR6.js", "/assets/differenceInCalendarDays-DdX_lYA2.js", "/assets/index-DzszfRT3.js", "/assets/index-CSzYmE0U.js", "/assets/index-SQXACE-4.js", "/assets/index-D9oiEvlI.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/analytics": { "id": "routes/dashboard/analytics", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/analytics", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/analytics-CHk3BCOH.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/loader-09zPHqqK.js", "/assets/card-BsXsZQeO.js", "/assets/index-DOBHTXVc.js", "/assets/index-7DfICFps.js", "/assets/index-DzszfRT3.js", "/assets/button-DXi4Qs_L.js", "/assets/select-CzaKESy1.js", "/assets/auth-context-BRfrjLsp.js", "/assets/useQuery-BfZYG4Bu.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/language-context-DwF0ibTh.js", "/assets/circle-alert-DroFiDLN.js", "/assets/createLucideIcon-CKae7mtu.js", "/assets/clipboard-list-Bj36NxRE.js", "/assets/clock-DjglJpR6.js", "/assets/circle-check-big-C6XYVBqU.js", "/assets/index-SQXACE-4.js", "/assets/index-BdQq_4o_.js", "/assets/index-DQjhtfC1.js", "/assets/index-PdpdsD6y.js", "/assets/Combination-BnIgCuso.js", "/assets/index-CSzYmE0U.js", "/assets/index-D9oiEvlI.js", "/assets/differenceInCalendarDays-DdX_lYA2.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/members": { "id": "routes/dashboard/members", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/members", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/members-Bue12GzD.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/index-CSzYmE0U.js", "/assets/loader-09zPHqqK.js", "/assets/avatar-BrNFCVTh.js", "/assets/badge-Dg-iJNId.js", "/assets/button-DXi4Qs_L.js", "/assets/card-BsXsZQeO.js", "/assets/dropdown-menu-NXVKWIIS.js", "/assets/input-IkQKRTMy.js", "/assets/select-CzaKESy1.js", "/assets/table-DfStPPJC.js", "/assets/dialog-t2vAfIxl.js", "/assets/date-utils-iFeXSzOZ.js", "/assets/auth-context-BRfrjLsp.js", "/assets/useQuery-BfZYG4Bu.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/useMutation-Ug0BUQy9.js", "/assets/circle-alert-DroFiDLN.js", "/assets/users-C7wkPL1j.js", "/assets/createLucideIcon-CKae7mtu.js", "/assets/shield-BIPXOmMt.js", "/assets/user-D_BZu4xt.js", "/assets/clock-DjglJpR6.js", "/assets/circle-check-big-C6XYVBqU.js", "/assets/settings-CIFR7PJp.js", "/assets/index-SQXACE-4.js", "/assets/index-DOBHTXVc.js", "/assets/index-7DfICFps.js", "/assets/index-DzszfRT3.js", "/assets/Combination-BnIgCuso.js", "/assets/index-DQjhtfC1.js", "/assets/index-PdpdsD6y.js", "/assets/index-4oqkfR53.js", "/assets/index-BdQq_4o_.js", "/assets/index-D9oiEvlI.js", "/assets/differenceInCalendarDays-DdX_lYA2.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/workspace-setting": { "id": "routes/dashboard/workspace-setting", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/settings", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/workspace-setting-t-_f6YII.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/button-DXi4Qs_L.js", "/assets/card-BsXsZQeO.js", "/assets/input-IkQKRTMy.js", "/assets/label-DnEgSiPv.js", "/assets/separator-BX1z1Ogo.js", "/assets/auth-context-BRfrjLsp.js", "/assets/index-CSzYmE0U.js", "/assets/settings-CIFR7PJp.js", "/assets/createLucideIcon-CKae7mtu.js", "/assets/user-D_BZu4xt.js", "/assets/shield-BIPXOmMt.js", "/assets/bell-XTNdTybh.js", "/assets/index-DzszfRT3.js", "/assets/index-7DfICFps.js", "/assets/index-SQXACE-4.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/index-D9oiEvlI.js", "/assets/differenceInCalendarDays-DdX_lYA2.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/dashboard/task.$taskId": { "id": "routes/dashboard/task.$taskId", "parentId": "routes/dashboard/dashboard-layout", "path": "dashboard/task/:taskId", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/task._taskId-C7o85eS1.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/useQuery-BfZYG4Bu.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/useMutation-Ug0BUQy9.js", "/assets/use-task-CEYgmF7y.js", "/assets/loader-09zPHqqK.js", "/assets/badge-Dg-iJNId.js", "/assets/button-DXi4Qs_L.js", "/assets/card-BsXsZQeO.js", "/assets/input-IkQKRTMy.js", "/assets/select-CzaKESy1.js", "/assets/dialog-t2vAfIxl.js", "/assets/date-utils-iFeXSzOZ.js", "/assets/translations-DbaL5CzK.js", "/assets/auth-context-BRfrjLsp.js", "/assets/index-CSzYmE0U.js", "/assets/loader-circle-NsKzwp7P.js", "/assets/createLucideIcon-CKae7mtu.js", "/assets/textarea-Btv-WhEw.js", "/assets/avatar-BrNFCVTh.js", "/assets/scroll-area-C96JGsDD.js", "/assets/separator-BX1z1Ogo.js", "/assets/popover-BS4go8yB.js", "/assets/index-D9oiEvlI.js", "/assets/formatDistanceToNow-CnAFtDTq.js", "/assets/eye-BkIADoZ_.js", "/assets/language-context-DwF0ibTh.js", "/assets/circle-check-BIk_6xY0.js", "/assets/circle-check-big-C6XYVBqU.js", "/assets/arrow-left-CioVwuCL.js", "/assets/star-B_Bun3Hp.js", "/assets/user-D_BZu4xt.js", "/assets/users-C7wkPL1j.js", "/assets/calendar-BiVnGx_-.js", "/assets/clock-DjglJpR6.js", "/assets/differenceInCalendarDays-DdX_lYA2.js", "/assets/index-DzszfRT3.js", "/assets/index-SQXACE-4.js", "/assets/index-BdQq_4o_.js", "/assets/index-DOBHTXVc.js", "/assets/index-DQjhtfC1.js", "/assets/index-7DfICFps.js", "/assets/index-PdpdsD6y.js", "/assets/Combination-BnIgCuso.js", "/assets/index-4oqkfR53.js", "/assets/en-US-DuGUIuVI.js", "/assets/endOfMonth-CunzQUlw.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/user/user-layout": { "id": "routes/user/user-layout", "parentId": "root", "path": void 0, "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/user-layout-Dh-FxItp.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/loader-09zPHqqK.js", "/assets/auth-context-BRfrjLsp.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/index-CSzYmE0U.js", "/assets/index-SQXACE-4.js", "/assets/index-D9oiEvlI.js", "/assets/differenceInCalendarDays-DdX_lYA2.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/user/notifications": { "id": "routes/user/notifications", "parentId": "routes/user/user-layout", "path": "user/notifications", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/notifications-R4aT35dV.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/index-CSzYmE0U.js", "/assets/loader-09zPHqqK.js", "/assets/use-user-Dkbdx9b-.js", "/assets/avatar-BrNFCVTh.js", "/assets/badge-Dg-iJNId.js", "/assets/button-DXi4Qs_L.js", "/assets/scroll-area-C96JGsDD.js", "/assets/formatDistanceToNow-CnAFtDTq.js", "/assets/index-SQXACE-4.js", "/assets/useQuery-BfZYG4Bu.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/differenceInCalendarDays-DdX_lYA2.js", "/assets/useMutation-Ug0BUQy9.js", "/assets/auth-context-BRfrjLsp.js", "/assets/index-D9oiEvlI.js", "/assets/index-DOBHTXVc.js", "/assets/index-7DfICFps.js", "/assets/index-DzszfRT3.js", "/assets/index-4oqkfR53.js", "/assets/index-PdpdsD6y.js", "/assets/index-BdQq_4o_.js", "/assets/en-US-DuGUIuVI.js", "/assets/endOfMonth-CunzQUlw.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/user/profile": { "id": "routes/user/profile", "parentId": "routes/user/user-layout", "path": "user/profile", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/profile-DhaBY02w.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/form-DZzfTWTj.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/index-CSzYmE0U.js", "/assets/loader-09zPHqqK.js", "/assets/card-BsXsZQeO.js", "/assets/button-DXi4Qs_L.js", "/assets/input-IkQKRTMy.js", "/assets/label-DnEgSiPv.js", "/assets/use-user-Dkbdx9b-.js", "/assets/dialog-t2vAfIxl.js", "/assets/loader-circle-NsKzwp7P.js", "/assets/alert-DqHgJ41w.js", "/assets/avatar-BrNFCVTh.js", "/assets/separator-BX1z1Ogo.js", "/assets/auth-context-BRfrjLsp.js", "/assets/circle-alert-DroFiDLN.js", "/assets/index-DzszfRT3.js", "/assets/index-SQXACE-4.js", "/assets/index-7DfICFps.js", "/assets/useQuery-BfZYG4Bu.js", "/assets/differenceInCalendarDays-DdX_lYA2.js", "/assets/useMutation-Ug0BUQy9.js", "/assets/index-DOBHTXVc.js", "/assets/Combination-BnIgCuso.js", "/assets/index-4oqkfR53.js", "/assets/createLucideIcon-CKae7mtu.js", "/assets/index-D9oiEvlI.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/auth/reset-password": { "id": "routes/auth/reset-password", "parentId": "root", "path": "reset-password", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/reset-password-CphYyAFW.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/form-DZzfTWTj.js", "/assets/button-DXi4Qs_L.js", "/assets/card-BsXsZQeO.js", "/assets/input-IkQKRTMy.js", "/assets/alert-DqHgJ41w.js", "/assets/fetch-utils-B8j2yESG.js", "/assets/schema-BMX0QkVm.js", "/assets/use-auth-DySE9sPW.js", "/assets/arrow-left-CioVwuCL.js", "/assets/circle-check-BIk_6xY0.js", "/assets/circle-alert-DroFiDLN.js", "/assets/loader-circle-NsKzwp7P.js", "/assets/index-DzszfRT3.js", "/assets/label-DnEgSiPv.js", "/assets/index-7DfICFps.js", "/assets/index-SQXACE-4.js", "/assets/useMutation-Ug0BUQy9.js", "/assets/index-CSzYmE0U.js", "/assets/createLucideIcon-CKae7mtu.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/not-found": { "id": "routes/not-found", "parentId": "root", "path": "*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/not-found-BKtPP2si.js", "imports": ["/assets/with-props-DZFoMOGS.js", "/assets/chunk-D4RADZKF-CrjPcDIC.js", "/assets/button-DXi4Qs_L.js", "/assets/index-DzszfRT3.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 } }, "url": "/assets/manifest-ab165de6.js", "version": "ab165de6", "sri": void 0 };
 const assetsBuildDirectory = "build/client";
 const basename = "/";
 const future = { "unstable_middleware": false, "unstable_optimizeDeps": false, "unstable_splitRouteModules": false, "unstable_subResourceIntegrity": false, "unstable_viteEnvironmentApi": false };
@@ -12027,8 +11867,8 @@ const routes = {
     caseSensitive: void 0,
     module: route1
   },
-  "routes/root/welcome": {
-    id: "routes/root/welcome",
+  "routes/auth/sign-in": {
+    id: "routes/auth/sign-in",
     parentId: "routes/auth/auth-layout",
     path: void 0,
     index: true,
@@ -12043,26 +11883,26 @@ const routes = {
     caseSensitive: void 0,
     module: route3
   },
-  "routes/auth/sign-in": {
-    id: "routes/auth/sign-in",
-    parentId: "routes/auth/auth-layout",
-    path: "sign-in",
-    index: void 0,
-    caseSensitive: void 0,
-    module: route4
-  },
   "routes/auth/forgot-password": {
     id: "routes/auth/forgot-password",
     parentId: "routes/auth/auth-layout",
     path: "forgot-password",
     index: void 0,
     caseSensitive: void 0,
-    module: route5
+    module: route4
   },
   "routes/auth/verify-email": {
     id: "routes/auth/verify-email",
     parentId: "routes/auth/auth-layout",
     path: "verify-email",
+    index: void 0,
+    caseSensitive: void 0,
+    module: route5
+  },
+  "routes/verify.$token": {
+    id: "routes/verify.$token",
+    parentId: "routes/auth/auth-layout",
+    path: "verify/:token",
     index: void 0,
     caseSensitive: void 0,
     module: route6

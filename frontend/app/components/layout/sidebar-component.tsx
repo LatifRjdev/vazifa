@@ -120,6 +120,12 @@ export const SidebarComponent = ({
         href: "/dashboard/settings",
         icon: Settings,
       },
+      {
+        title: "Tech Admin",
+        href: "/dashboard/tech-admin",
+        icon: Wrench,
+        requiresRole: ["tech_admin"],
+      },
     ];
   };
 
@@ -184,7 +190,7 @@ export const SidebarComponent = ({
           className="justify-start"
           onClick={() => {
             logout();
-            navigate("/sign-in");
+            navigate("/");
           }}
         >
           <LogOut className={cn("h-4 w-4", isCollapsed ? "" : "mr-2")} />

@@ -72,8 +72,8 @@ export default function ForgotPasswordPage() {
     setResetMethod(isPhone ? 'phone' : 'email');
 
     try {
-      // Send to backend - it should handle both email and phone
-      mutate({ email: values.emailOrPhone }, {
+      // Send to backend - it handles both email and phone
+      mutate({ emailOrPhone: values.emailOrPhone }, {
         onSuccess: () => {
           setIsSuccess(true);
           form.reset();
@@ -109,7 +109,7 @@ export default function ForgotPasswordPage() {
         <Card className="border-border/50">
           <CardHeader>
             <Link
-              to="/sign-in"
+              to="/"
               className="flex items-center text-sm text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -131,7 +131,7 @@ export default function ForgotPasswordPage() {
                     : 'Мы отправили ссылку для сброса пароля на ваш номер телефона. Пожалуйста, проверьте SMS сообщения.'}
                 </p>
                 <Button variant="outline" asChild className="mt-4">
-                  <Link to="/sign-in">Вернуться к входу</Link>
+                  <Link to="/">Вернуться к входу</Link>
                 </Button>
               </div>
             ) : (
@@ -188,7 +188,7 @@ export default function ForgotPasswordPage() {
             <div className="text-center text-sm w-full">
               Помните свой пароль?{" "}
               <Link
-                to="/sign-in"
+                to="/"
                 className="text-blue-600 font-semibold hover:underline"
               >
                 Войти

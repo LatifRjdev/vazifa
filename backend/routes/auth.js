@@ -6,29 +6,24 @@ import {
   loginUser,
   registerUser,
   resetPasswordRequest,
-  verifyEmail,
   verifyResetTokenAndResetPassword,
   verify2FALogin,
   googleAuth,
   googleCallback,
   appleAuth,
   appleCallback,
-  // NEW: Phone authentication
   registerUserWithPhone,
-  verifyPhoneCode,
-  resendVerificationCode,
   loginWithEmailOrPhone,
 } from "../controllers/auth-controller.js";
-import { verifyPhoneViaLink } from "../controllers/phone-auth-controller.js";
 import {
   loginSchema,
   registerSchema,
   resetPasswordSchema,
-  verifyEmailTokenSchema,
 } from "../libs/validator-schema.js";
 
 const router = express.Router();
 
+// Email registration
 router.post(
   "/register",
   validateRequest({
@@ -36,6 +31,8 @@ router.post(
   }),
   registerUser
 );
+
+// Email login
 router.post(
   "/login",
   validateRequest({
@@ -43,23 +40,19 @@ router.post(
   }),
   loginUser
 );
-router.post(
-  "/verify-email",
-  validateRequest({
-    body: verifyEmailTokenSchema,
-  }),
-  verifyEmail
-);
+
+// Password reset request
 router.post(
   "/request-reset-password",
   validateRequest({
     body: z.object({
-      email: z.string().email(),
+      emailOrPhone: z.string().min(1, "Email или телефон обязателен"),
     }),
   }),
   resetPasswordRequest
 );
 
+// Password reset with token
 router.post(
   "/reset-password",
   validateRequest({
@@ -68,6 +61,7 @@ router.post(
   verifyResetTokenAndResetPassword
 );
 
+// 2FA verification
 router.post(
   "/verify-2fa-login",
   validateRequest({
@@ -79,7 +73,7 @@ router.post(
   verify2FALogin
 );
 
-// NEW: Phone authentication routes with SMS verification
+// Phone registration
 router.post(
   "/register-phone",
   validateRequest({
@@ -95,30 +89,7 @@ router.post(
   registerUserWithPhone
 );
 
-router.post(
-  "/verify-phone",
-  validateRequest({
-    body: z.object({
-      phoneNumber: z.string().regex(/^\+992\d{9}$/, "Invalid phone number format"),
-      code: z.string().length(6, "Код должен содержать 6 цифр"),
-    }),
-  }),
-  verifyPhoneCode
-);
-
-router.post(
-  "/resend-code",
-  validateRequest({
-    body: z.object({
-      phoneNumber: z.string().regex(/^\+992\d{9}$/, "Invalid phone number format"),
-    }),
-  }),
-  resendVerificationCode
-);
-
-// NEW: Link-based verification endpoint
-router.get("/verify-phone-link/:token", verifyPhoneViaLink);
-
+// Universal login (email or phone)
 router.post(
   "/login-universal",
   validateRequest({

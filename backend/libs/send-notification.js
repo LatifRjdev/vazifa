@@ -54,12 +54,26 @@ export async function sendNotification({
     };
 
     // Send Email if enabled
-    if (shouldSendEmail && recipient.settings.emailNotifications && recipient.email) {
+    if (shouldSendEmail && recipient.emailNotifications !== false && recipient.email) {
       try {
         const emailSubject = emailData?.subject || title;
         const emailBody = emailData?.html || message;
+        
+        // Generate task link if taskId is available
+        const taskLink = relatedData.taskId 
+          ? `${process.env.FRONTEND_URL || 'https://protocol.oci.tj'}/dashboard/task/${relatedData.taskId}`
+          : `${process.env.FRONTEND_URL || 'https://protocol.oci.tj'}/dashboard`;
+        
+        const buttonText = emailData?.buttonText || 'Открыть задачу';
 
-        await sendEmail(recipient.email, emailSubject, emailBody);
+        await sendEmail(
+          recipient.email,        // to
+          emailSubject,           // subject
+          recipient.name,         // name
+          emailBody,              // message
+          buttonText,             // buttonText
+          taskLink                // buttonLink
+        );
         results.email = true;
         console.log(`✅ Email sent to ${recipient.email}`);
       } catch (emailError) {
@@ -67,50 +81,45 @@ export async function sendNotification({
       }
     }
 
-    // Send SMS if enabled and user has phone number
-    if (shouldSendSMS && recipient.canReceiveSMS()) {
-      // Check if this notification type is enabled for SMS
+    // Send SMS if enabled and user has phone number (NO SETTINGS CHECK)
+    if (shouldSendSMS && recipient.phoneNumber) {
       const smsNotificationType = mapNotificationTypeToSMS(type);
       
-      if (recipient.isSMSNotificationEnabled(smsNotificationType)) {
-        try {
-          const smsText = smsMessage || formatSMSMessage(type, message, relatedData);
-          
-          const smsResult = await sendSMS(recipient.phoneNumber, smsText, "normal");
-          
-          // Log SMS
-          await SMSLog.logSMS({
-            phoneNumber: recipient.phoneNumber,
-            message: smsText,
-            type: smsNotificationType,
-            status: smsResult.success ? "sent" : "failed",
-            messageId: smsResult.messageId,
-            metadata: {
-              notificationId: notification._id,
-              notificationType: type,
-            },
-          });
+      try {
+        const smsText = smsMessage || formatSMSMessage(type, message, relatedData);
+        
+        const smsResult = await sendSMS(recipient.phoneNumber, smsText, "normal");
+        
+        // Log SMS
+        await SMSLog.logSMS({
+          phoneNumber: recipient.phoneNumber,
+          message: smsText,
+          type: smsNotificationType,
+          status: smsResult.success ? "sent" : "failed",
+          messageId: smsResult.messageId,
+          metadata: {
+            notificationId: notification._id,
+            notificationType: type,
+          },
+        });
 
-          results.sms = true;
-          console.log(`✅ SMS sent to ${recipient.phoneNumber}`);
-        } catch (smsError) {
-          console.error(`❌ SMS failed for ${recipient.phoneNumber}:`, smsError.message);
-          
-          // Log failed SMS
-          await SMSLog.logSMS({
-            phoneNumber: recipient.phoneNumber,
-            message: smsMessage || message,
-            type: smsNotificationType,
-            status: "failed",
-            errorMessage: smsError.message,
-            metadata: {
-              notificationId: notification._id,
-              notificationType: type,
-            },
-          });
-        }
-      } else {
-        console.log(`⏭️  SMS notification type '${smsNotificationType}' disabled for ${recipient.name}`);
+        results.sms = true;
+        console.log(`✅ SMS sent to ${recipient.phoneNumber}`);
+      } catch (smsError) {
+        console.error(`❌ SMS failed for ${recipient.phoneNumber}:`, smsError.message);
+        
+        // Log failed SMS
+        await SMSLog.logSMS({
+          phoneNumber: recipient.phoneNumber,
+          message: smsMessage || message,
+          type: smsNotificationType,
+          status: "failed",
+          errorMessage: smsError.message,
+          metadata: {
+            notificationId: notification._id,
+            notificationType: type,
+          },
+        });
       }
     }
 
@@ -169,71 +178,88 @@ function mapNotificationTypeToSMS(notificationType) {
  * Detailed Russian format with task links
  */
 function formatSMSMessage(type, message, relatedData) {
-  const baseUrl = process.env.FRONTEND_URL || "https://protocol.oci.tj";
-  let smsText = "";
-  let taskLink = "";
-
-  // Generate task link if taskId exists
-  if (relatedData.taskId) {
-    taskLink = `\n\nОткрыть задачу:\n${baseUrl}/task/${relatedData.taskId}`;
+  // Keep SMS short (max 70 chars for Cyrillic) - no emojis, no links
+  // Extract just the task title from the message
+  let taskTitle = "";
+  const titleMatch = message.match(/задачу[:\s]+["«]?([^"»]+)["»]?$/i) ||
+                     message.match(/задачи[:\s]+["«]?([^"»]+)["»]?$/i);
+  if (titleMatch) {
+    taskTitle = titleMatch[1].trim();
   }
+
+  // Truncate task title if too long
+  if (taskTitle.length > 30) {
+    taskTitle = taskTitle.substring(0, 27) + "...";
+  }
+
+  let smsText = "";
 
   switch (type) {
     case "task_assigned":
-      smsText = `📋 Новая задача: ${message}${taskLink}`;
+      smsText = taskTitle
+        ? `Vazifa: Вам назначена задача "${taskTitle}"`
+        : `Vazifa: Вам назначена новая задача`;
       break;
-    
+
     case "task_assigned_as_manager":
-      smsText = `👔 Вы назначены менеджером: ${message}${taskLink}`;
+      smsText = taskTitle
+        ? `Vazifa: Вы менеджер задачи "${taskTitle}"`
+        : `Vazifa: Вы назначены менеджером`;
       break;
-    
+
     case "task_completed":
-      smsText = `✅ Задача завершена: ${message}${taskLink}`;
+      smsText = taskTitle
+        ? `Vazifa: Задача "${taskTitle}" завершена`
+        : `Vazifa: Задача завершена`;
       break;
-    
+
     case "task_marked_important":
-      smsText = `⭐ Важная задача: ${message}${taskLink}`;
+      smsText = taskTitle
+        ? `Vazifa: Важная задача "${taskTitle}"`
+        : `Vazifa: Задача отмечена важной`;
       break;
-    
+
     case "comment_added":
-      smsText = `💬 Новый комментарий: ${message}${taskLink}`;
+      smsText = `Vazifa: Новый комментарий к задаче`;
       break;
-    
+
     case "mentioned":
-      smsText = `@️⃣ Вас упомянули: ${message}${taskLink}`;
+      smsText = `Vazifa: Вас упомянули в комментарии`;
       break;
-    
+
     case "response_added":
-      smsText = `📝 Новый ответ: ${message}${taskLink}`;
+      smsText = `Vazifa: Новый ответ на задачу`;
       break;
-    
+
     case "comment_reply":
-      smsText = `↩️ Ответ на комментарий: ${message}${taskLink}`;
+      smsText = `Vazifa: Ответ на ваш комментарий`;
       break;
-    
+
     case "due_date_approaching":
-      smsText = `⏰ Приближается срок: ${message}${taskLink}`;
+      smsText = taskTitle
+        ? `Vazifa: Срок задачи "${taskTitle}" скоро`
+        : `Vazifa: Срок задачи приближается`;
       break;
-    
+
     case "workspace_invite":
-      smsText = `🏢 Приглашение в workspace: ${message}`;
-      // No task link for workspace invites
+      smsText = `Vazifa: Приглашение в workspace`;
       break;
-    
+
     case "workspace_ownership_transferred":
-      smsText = `👑 Передача прав: ${message}`;
-      // No task link for ownership transfer
+      smsText = `Vazifa: Передача прав workspace`;
       break;
-    
+
     case "task_message":
-      smsText = `📨 Сообщение: ${message}${taskLink}`;
+      smsText = `Vazifa: Новое сообщение по задаче`;
       break;
-    
+
     default:
-      smsText = `🔔 Уведомление: ${message}`;
-      if (taskLink) {
-        smsText += taskLink;
-      }
+      smsText = `Vazifa: Новое уведомление`;
+  }
+
+  // Ensure max 70 characters for reliable delivery
+  if (smsText.length > 70) {
+    smsText = smsText.substring(0, 67) + "...";
   }
 
   return smsText;

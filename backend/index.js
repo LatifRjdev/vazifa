@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 
 import aj from "./libs/arcjet.js";
 import routes from "./routes/index.js";
+import { getSMPPService } from "./libs/send-sms-bullmq.js";
 
 // Configuration
 dotenv.config();
@@ -115,7 +116,17 @@ const PORT = process.env.PORT || 5001;
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => console.log("Connected to MongoDB"))
+  .then(() => {
+    console.log("Connected to MongoDB");
+    
+    // Initialize SMPP service for SMS notifications
+    try {
+      getSMPPService();
+      console.log("✅ SMPP Service initialized");
+    } catch (error) {
+      console.error("❌ Failed to initialize SMPP service:", error.message);
+    }
+  })
   .catch((err) => console.error("Failed to connect to MongoDB:", err));
 
 // Temporarily disable global Arcjet middleware for testing

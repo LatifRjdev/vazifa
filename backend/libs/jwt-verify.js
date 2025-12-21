@@ -3,7 +3,11 @@ import jwt from "jsonwebtoken";
 export const verifyJWT = (token) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    return decoded;
+    // Return decoded payload with isValid flag for consistency
+    return {
+      isValid: true,
+      ...decoded,
+    };
   } catch (error) {
     console.error("Token verification failed:", error.message);
     if (error.name === "TokenExpiredError") {
@@ -24,7 +28,7 @@ export const verifyJWT = (token) => {
       //Handle other errors
       console.log("Other error:", error.message);
       return {
-        // isValid: false,
+        isValid: false,
         message: "Something went wrong",
       };
     }

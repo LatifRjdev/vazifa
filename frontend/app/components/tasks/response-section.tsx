@@ -91,7 +91,7 @@ export const ResponseSection = ({
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api-v1'}/upload`, {
+        const response = await fetch('/api-v1/upload', {
           method: 'POST',
           body: formData,
           headers: {
@@ -104,7 +104,7 @@ export const ResponseSection = ({
         }
 
         const result = await response.json();
-        
+
         uploadedFiles.push({
           fileName: file.name,
           fileUrl: result.data.secure_url,
@@ -154,7 +154,7 @@ export const ResponseSection = ({
 
         try {
           setIsUploading(true);
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api-v1'}/upload`, {
+          const response = await fetch('/api-v1/upload', {
             method: 'POST',
             body: formData,
             headers: {
@@ -167,7 +167,7 @@ export const ResponseSection = ({
           }
 
           const result = await response.json();
-          
+
           setAttachments(prev => [...prev, {
             fileName: `Голосовое сообщение`,
             fileUrl: result.data.secure_url,

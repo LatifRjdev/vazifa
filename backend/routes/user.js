@@ -12,6 +12,10 @@ import {
   disable2FA,
   getAllUsers,
   deleteUser,
+  getUserProfileById,
+  getUserActivity,
+  getUserLoginHistory,
+  getUserTaskViews,
 } from "../controllers/user-controller.js";
 import { authenticateUser } from "../middleware/auth-middleware.js";
 import {
@@ -72,6 +76,38 @@ router.post("/disable-2fa", authenticateUser, disable2FA);
 
 // Get all users for task assignment
 router.get("/all", authenticateUser, getAllUsers);
+
+// Get user profile by ID (for managers/admins to view member details)
+router.get(
+  "/:userId/profile",
+  authenticateUser,
+  validateRequest({ params: z.object({ userId: z.string() }) }),
+  getUserProfileById
+);
+
+// Get user activity history
+router.get(
+  "/:userId/activity",
+  authenticateUser,
+  validateRequest({ params: z.object({ userId: z.string() }) }),
+  getUserActivity
+);
+
+// Get user login history
+router.get(
+  "/:userId/logins",
+  authenticateUser,
+  validateRequest({ params: z.object({ userId: z.string() }) }),
+  getUserLoginHistory
+);
+
+// Get tasks that user viewed or not viewed
+router.get(
+  "/:userId/task-views",
+  authenticateUser,
+  validateRequest({ params: z.object({ userId: z.string() }) }),
+  getUserTaskViews
+);
 
 // Delete user (admin only)
 router.delete(

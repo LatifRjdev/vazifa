@@ -10,8 +10,6 @@ export default [
     index("routes/auth/sign-in.tsx"),
     route("sign-up", "routes/auth/sign-up.tsx"),
     route("forgot-password", "routes/auth/forgot-password.tsx"),
-    route("verify-email", "routes/auth/verify-email.tsx"),
-    route("verify/:token", "routes/verify.$token.tsx"),
     route("auth/callback", "routes/auth/callback.tsx"),
   ]),
   layout("routes/dashboard/dashboard-layout.tsx", [
@@ -25,6 +23,15 @@ export default [
     route("dashboard/members", "routes/dashboard/members.tsx"),
     route("dashboard/settings", "routes/dashboard/workspace-setting.tsx"),
     route("dashboard/task/:taskId", "routes/dashboard/task.$taskId.tsx"),
+    // Tech Admin routes
+    route("dashboard/tech-admin", "routes/dashboard/tech-admin.tsx"),
+    route("dashboard/tech-admin/users", "routes/dashboard/tech-admin/users.tsx"),
+    route("dashboard/tech-admin/sms-logs", "routes/dashboard/tech-admin/sms-logs.tsx"),
+    route("dashboard/tech-admin/email-logs", "routes/dashboard/tech-admin/email-logs.tsx"),
+    route("dashboard/tech-admin/queue", "routes/dashboard/tech-admin/queue.tsx"),
+    route("dashboard/tech-admin/audit-logs", "routes/dashboard/tech-admin/audit-logs.tsx"),
+    route("dashboard/tech-admin/settings", "routes/dashboard/tech-admin/settings.tsx"),
+    route("dashboard/tech-admin/system", "routes/dashboard/tech-admin/system.tsx"),
   ]),
   layout("routes/user/user-layout.tsx", [
     route("user/notifications", "routes/user/notifications.tsx"),
