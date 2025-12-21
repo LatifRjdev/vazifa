@@ -52,11 +52,11 @@ const loginWithPhone = async (req, res) => {
       user.twoFAOtpExpires = Date.now() + 10 * 60 * 1000; // 10 min
       await user.save();
 
-      // Send OTP via SMS
+      // Send OTP via SMS (max 70 chars for Cyrillic)
       try {
         await sendSMS(
           phoneNumber,
-          `Код двухфакторной аутентификации: ${otp}\nДействителен 10 минут.`,
+          `Vazifa: Код входа: ${otp}`,
           "high"
         );
       } catch (error) {

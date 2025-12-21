@@ -269,21 +269,34 @@ const resetPasswordRequest = async (req, res) => {
     console.log("=".repeat(80));
 
     if (isPhone) {
-      // Send SMS with reset link
+      // Generate 6-digit reset code for SMS (70 chars limit)
+      const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const hashedCode = await bcrypt.hash(resetCode, 10);
+      
+      // Save reset code to user
+      user.resetPasswordCode = hashedCode;
+      user.resetPasswordCodeExpires = Date.now() + 15 * 60 * 1000; // 15 min
+      await user.save();
+      
+      // Send short SMS (max 70 chars for Cyrillic)
       try {
-        const smsMessage = `Сброс пароля Vazifa: ${resetUrl}`;
+        const smsMessage = `Vazifa: Код сброса пароля: ${resetCode}`;
         await sendSMS(emailOrPhone, smsMessage);
-        console.log("✅ Reset SMS sent successfully to:", emailOrPhone);
+        console.log("✅ Reset code SMS sent to:", emailOrPhone);
         res.status(200).json({
-          message: "Ссылка для сброса пароля отправлена на ваш номер телефона",
-          method: "phone"
+          message: "Код сброса пароля отправлен на ваш номер",
+          method: "phone",
+          requiresCode: true,
+          phoneNumber: emailOrPhone
         });
       } catch (error) {
-        console.log("⚠️ SMS service error:", error.message);
+        console.log("⚠️ SMS error:", error.message);
+        console.log("🔑 Reset code:", resetCode);
         res.status(200).json({
-          message: "Запрос обработан. Проверьте консоль сервера для получения ссылки.",
-          resetUrl: process.env.NODE_ENV === 'development' ? resetUrl : undefined,
-          method: "phone"
+          message: "Код сброса пароля: " + resetCode,
+          method: "phone",
+          requiresCode: true,
+          phoneNumber: emailOrPhone
         });
       }
     } else {
@@ -365,6 +378,59 @@ const verifyResetTokenAndResetPassword = async (req, res) => {
   } catch (error) {
     console.error("Verify reset token error:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Verify reset code (for phone SMS reset)
+const verifyResetCodeAndResetPassword = async (req, res) => {
+  try {
+    const { phoneNumber, code, newPassword, confirmPassword } = req.body;
+
+    if (!phoneNumber || !code || !newPassword) {
+      return res.status(400).json({ message: "Все поля обязательны" });
+    }
+
+    // Find user by phone
+    const user = await User.findOne({ phoneNumber }).select("+resetPasswordCode +resetPasswordCodeExpires");
+    
+    if (!user) {
+      return res.status(400).json({ message: "Пользователь не найден" });
+    }
+
+    // Check code expiry
+    if (!user.resetPasswordCode || !user.resetPasswordCodeExpires) {
+      return res.status(400).json({ message: "Код не запрошен" });
+    }
+
+    if (user.resetPasswordCodeExpires < Date.now()) {
+      return res.status(400).json({ message: "Код истёк" });
+    }
+
+    // Verify code
+    const isMatch = await bcrypt.compare(code, user.resetPasswordCode);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Неверный код" });
+    }
+
+    // Check passwords match
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: "Пароли не совпадают" });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password and clear reset code
+    user.password = hashedPassword;
+    user.resetPasswordCode = undefined;
+    user.resetPasswordCodeExpires = undefined;
+    await user.save();
+
+    res.status(200).json({ message: "Пароль успешно изменён" });
+  } catch (error) {
+    console.error("Verify reset code error:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
   }
 };
 
@@ -709,6 +775,7 @@ export {
   loginUser,
   resetPasswordRequest,
   verifyResetTokenAndResetPassword,
+  verifyResetCodeAndResetPassword,
   verify2FALogin,
   googleAuth,
   googleCallback,

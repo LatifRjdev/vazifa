@@ -92,6 +92,9 @@ const userSchema = new Schema(
     is2FAEnabled: { type: Boolean, default: false },
     twoFAOtp: { type: String, select: false },
     twoFAOtpExpires: { type: Date, select: false },
+    // Password reset code (for SMS - short 6-digit code)
+    resetPasswordCode: { type: String, select: false },
+    resetPasswordCodeExpires: { type: Date, select: false },
     // Admin management fields
     disabled: { type: Boolean, default: false },
     disabledAt: { type: Date },

@@ -7,6 +7,7 @@ import {
   registerUser,
   resetPasswordRequest,
   verifyResetTokenAndResetPassword,
+  verifyResetCodeAndResetPassword,
   verify2FALogin,
   googleAuth,
   googleCallback,
@@ -52,13 +53,27 @@ router.post(
   resetPasswordRequest
 );
 
-// Password reset with token
+// Password reset with token (for email)
 router.post(
   "/reset-password",
   validateRequest({
     body: resetPasswordSchema,
   }),
   verifyResetTokenAndResetPassword
+);
+
+// Password reset with code (for phone SMS)
+router.post(
+  "/verify-reset-code",
+  validateRequest({
+    body: z.object({
+      phoneNumber: z.string().regex(/^\+992\d{9}$/, "Номер телефона обязателен"),
+      code: z.string().length(6, "Код должен быть 6 цифр"),
+      newPassword: z.string().min(8, "Пароль минимум 8 символов"),
+      confirmPassword: z.string().min(8, "Подтверждение пароля обязательно"),
+    }),
+  }),
+  verifyResetCodeAndResetPassword
 );
 
 // 2FA verification
