@@ -410,77 +410,78 @@ export const CreateTaskDialog = ({
                   return (
                     <FormItem>
                       <FormLabel>{t('tasks.assign_to')}</FormLabel>
-                      <Popover open={assigneesOpen} onOpenChange={setAssigneesOpen} modal={false}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={assigneesOpen}
-                            className="w-full justify-start text-left font-normal min-h-11"
-                          >
-                            {selectedMembers.length === 0 ? (
-                              <span className="text-muted-foreground">{t('tasks.select_members')}</span>
-                            ) : selectedMembers.length <= 2 ? (
-                              selectedMembers.map((m) => {
-                                const user = allUsers.find((u) => u && u._id === m);
-                                return user?.name || "Неизвестный";
-                              }).join(", ")
-                            ) : (
-                              t('tasks.selected_count').replace('{count}', selectedMembers.length.toString())
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent 
-                          className="w-80 max-h-80 p-2" 
-                          align="start"
-                          onOpenAutoFocus={(e) => e.preventDefault()}
-                          onInteractOutside={(e) => e.preventDefault()}
+                      <div className="relative">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setAssigneesOpen(!assigneesOpen)}
+                          className="w-full justify-start text-left font-normal min-h-11"
                         >
-                          <div className="mb-2 sticky top-0 bg-background">
-                            <Input
-                              placeholder="Поиск по имени..."
-                              value={participantSearch}
-                              onChange={(e) => setParticipantSearch(e.target.value)}
-                              className="h-8"
-                            />
+                          {selectedMembers.length === 0 ? (
+                            <span className="text-muted-foreground">{t('tasks.select_members')}</span>
+                          ) : selectedMembers.length <= 2 ? (
+                            selectedMembers.map((m) => {
+                              const user = allUsers.find((u) => u && u._id === m);
+                              return user?.name || "Неизвестный";
+                            }).join(", ")
+                          ) : (
+                            t('tasks.selected_count').replace('{count}', selectedMembers.length.toString())
+                          )}
+                        </Button>
+                        {assigneesOpen && (
+                          <div className="absolute z-[100] top-full left-0 mt-1 w-full bg-background border rounded-md shadow-lg p-2">
+                            <div className="mb-2">
+                              <Input
+                                placeholder="Поиск по имени..."
+                                value={participantSearch}
+                                onChange={(e) => setParticipantSearch(e.target.value)}
+                                className="h-8"
+                                autoFocus
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                              {allUsers
+                                .filter(user => user && user._id)
+                                .filter(user => !participantSearch || user.name?.toLowerCase().includes(participantSearch.toLowerCase()))
+                                .map((user) => {
+                                  const isSelected = user._id ? selectedMembers.includes(user._id) : false;
+                                  return (
+                                    <div
+                                      key={user._id}
+                                      className="flex items-center gap-2 p-2 border rounded hover:bg-muted cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isSelected) {
+                                          field.onChange(selectedMembers.filter(m => m !== user._id));
+                                        } else {
+                                          field.onChange([...selectedMembers, user._id]);
+                                        }
+                                      }}
+                                    >
+                                      <Checkbox checked={isSelected} />
+                                      <span className="truncate flex-1">{user.name}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {user.role === "admin" ? t('tasks.admin') :
+                                         user.role === "chief_manager" ? "Гл. Менеджер" :
+                                         user.role === "manager" ? t('tasks.manager') : t('tasks.member')}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              {allUsers.filter(user => user && user._id && (!participantSearch || user.name?.toLowerCase().includes(participantSearch.toLowerCase()))).length === 0 && (
+                                <div className="text-center text-muted-foreground py-4 text-sm">
+                                  Участники не найдены
+                                </div>
+                              )}
+                            </div>
+                            <div className="mt-2 pt-2 border-t">
+                              <Button type="button" size="sm" onClick={() => setAssigneesOpen(false)} className="w-full">
+                                Готово ({selectedMembers.length} выбрано)
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex flex-col gap-2 max-h-56 overflow-y-auto">
-                            {allUsers
-                              .filter(user => user && user._id)
-                              .filter(user => !participantSearch || user.name?.toLowerCase().includes(participantSearch.toLowerCase()))
-                              .map((user) => {
-                                const isSelected = user._id ? selectedMembers.includes(user._id) : false;
-                                return (
-                                  <div
-                                    key={user._id}
-                                    className="flex items-center gap-2 p-2 border rounded hover:bg-muted cursor-pointer"
-                                    onClick={() => {
-                                      if (isSelected) {
-                                        field.onChange(selectedMembers.filter(m => m !== user._id));
-                                      } else {
-                                        field.onChange([...selectedMembers, user._id]);
-                                      }
-                                    }}
-                                  >
-                                    <Checkbox checked={isSelected} />
-                                    <span className="truncate flex-1">{user.name}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {user.role === "admin" ? t('tasks.admin') :
-                                       user.role === "chief_manager" ? "Гл. Менеджер" :
-                                       user.role === "manager" ? t('tasks.manager') : t('tasks.member')}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            {allUsers.filter(user => user && user._id && (!participantSearch || user.name?.toLowerCase().includes(participantSearch.toLowerCase()))).length === 0 && (
-                              <div className="text-center text-muted-foreground py-4 text-sm">
-                                Участники не найдены
-                              </div>
-                            )}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                        )}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   );
