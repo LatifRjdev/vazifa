@@ -958,25 +958,25 @@ const deleteTask = async (req, res) => {
     }
 
     // Проверить права доступа:
-    // - Админы, супер админы, главные менеджеры и менеджеры могут удалять любые задачи
-    // - Создатель задачи может удалить её в течение 24 часов после создания
-    const isAdminOrManager = ["admin", "super_admin", "chief_manager", "manager"].includes(req.user.role);
+    // - Только создатель задачи может удалить её в течение 24 часов после создания
     const isCreator = task.createdBy && task.createdBy.toString() === req.user._id.toString();
+
+    if (!isCreator) {
+      return res.status(403).json({
+        message: "Доступ запрещен. Только создатель задачи может её удалить."
+      });
+    }
 
     // Вычислить время с момента создания (в часах)
     const hoursSinceCreation = (Date.now() - new Date(task.createdAt).getTime()) / (1000 * 60 * 60);
-    const canCreatorDelete = isCreator && hoursSinceCreation <= 24;
 
-    if (!isAdminOrManager && !canCreatorDelete) {
-      if (isCreator && hoursSinceCreation > 24) {
-        const hoursAgo = Math.floor(hoursSinceCreation);
-        return res.status(403).json({
-          message: `Время для удаления задачи истекло. Задача была создана ${hoursAgo} часов назад. Создатель может удалить задачу только в течение 24 часов. Обратитесь к администратору.`,
-          code: "DELETE_TIME_EXPIRED",
-          hoursSinceCreation: hoursAgo,
-        });
-      }
-      return res.status(403).json({ message: "Доступ запрещен. Только админы, менеджеры или создатель задачи (в течение 24 часов) могут удалять задачи." });
+    if (hoursSinceCreation > 24) {
+      const hoursAgo = Math.floor(hoursSinceCreation);
+      return res.status(403).json({
+        message: `Время для удаления задачи истекло. Задача была создана ${hoursAgo} часов назад. Создатель может удалить задачу только в течение 24 часов.`,
+        code: "DELETE_TIME_EXPIRED",
+        hoursSinceCreation: hoursAgo,
+      });
     }
 
     // Record activity

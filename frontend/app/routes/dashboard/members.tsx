@@ -11,6 +11,7 @@ import {
   CheckCircle,
   Clock,
   Eye,
+  Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -63,7 +64,7 @@ import { formatDateDetailedRussian } from "@/lib/date-utils";
 import type { User as UserType, Task } from "@/types";
 import { useAuth } from "@/providers/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchData, updateData } from "@/lib/fetch-utils";
+import { fetchData, updateData, deleteData } from "@/lib/fetch-utils";
 
 import type { Route } from "../../+types/root";
 
@@ -82,6 +83,8 @@ const MembersPage = () => {
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [newRole, setNewRole] = useState<"admin" | "chief_manager" | "manager" | "member">("member");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserType | null>(null);
 
   // Проверка прав доступа
   const canManageMembers = user?.role && ["admin", "super_admin", "chief_manager", "manager"].includes(user.role);
@@ -115,6 +118,31 @@ const MembersPage = () => {
       toast.error(error.message || "Ошибка изменения роли");
     },
   });
+
+  // Мутация для удаления пользователя
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => deleteData(`/users/${userId}`),
+    onSuccess: () => {
+      toast.success("Пользователь успешно удален");
+      queryClient.invalidateQueries({ queryKey: ["all-users"] });
+      setIsDeleteDialogOpen(false);
+      setUserToDelete(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Ошибка удаления пользователя");
+    },
+  });
+
+  const handleDeleteUser = (member: UserType) => {
+    setUserToDelete(member);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteUser = () => {
+    if (userToDelete) {
+      deleteUserMutation.mutate(userToDelete._id);
+    }
+  };
 
   if (!canManageMembers) {
     return (
@@ -433,6 +461,13 @@ const MembersPage = () => {
                                 <Settings className="h-4 w-4 mr-2" />
                                 Изменить роль
                               </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteUser(member)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Удалить участника
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -472,7 +507,7 @@ const MembersPage = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" sideOffset={4}>
                   <SelectItem value="admin">
                     <div className="flex items-center gap-2">
                       <Crown className="h-4 w-4 text-yellow-600" />
@@ -514,6 +549,35 @@ const MembersPage = () => {
               disabled={changeRoleMutation.isPending}
             >
               {changeRoleMutation.isPending ? "Изменение..." : "Изменить роль"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Диалог удаления пользователя */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Удалить участника</DialogTitle>
+            <DialogDescription>
+              Вы уверены, что хотите удалить участника {userToDelete?.name}?
+              Все задачи, созданные этим пользователем, останутся в системе.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Отмена
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteUser}
+              disabled={deleteUserMutation.isPending}
+            >
+              {deleteUserMutation.isPending ? "Удаление..." : "Удалить"}
             </Button>
           </DialogFooter>
         </DialogContent>

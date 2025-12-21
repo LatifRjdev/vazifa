@@ -23,6 +23,7 @@ export default [
     route("dashboard/members", "routes/dashboard/members.tsx"),
     route("dashboard/settings", "routes/dashboard/workspace-setting.tsx"),
     route("dashboard/task/:taskId", "routes/dashboard/task.$taskId.tsx"),
+    route("dashboard/user/:userId", "routes/dashboard/user.$userId.tsx"),
     // Tech Admin routes (temporarily disabled for build)
     route("dashboard/tech-admin", "routes/dashboard/tech-admin.tsx"),
     // route("dashboard/tech-admin/users", "routes/dashboard/tech-admin/users.tsx"),
