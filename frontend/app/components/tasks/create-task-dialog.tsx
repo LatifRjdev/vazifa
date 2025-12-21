@@ -46,7 +46,6 @@ import { fetchData } from "@/lib/fetch-utils";
 import type { User } from "@/types";
 import { useLanguage } from "@/providers/language-context";
 
-// Схема для создания задач без обязательной организации
 const createTaskSchema = z.object({
   title: z.string().min(1, "Название обязательно"),
   description: z.string().optional(),
@@ -83,17 +82,14 @@ export const CreateTaskDialog = ({
     },
   });
 
-  // Состояния для мультизадач
   const [isMultiTask, setIsMultiTask] = useState(false);
   const [multipleTasks, setMultipleTasks] = useState<Array<{ description: string; dueDate: string }>>([
     { description: "", dueDate: "" },
     { description: "", dueDate: "" }
   ]);
-
-  // Состояние для поиска участников
   const [participantSearch, setParticipantSearch] = useState("");
+  const [assigneesOpen, setAssigneesOpen] = useState(false);
 
-  // Получить всех пользователей системы
   const { data: usersData } = useQuery({
     queryKey: ["all-users"],
     queryFn: () => fetchData("/users/all"),
@@ -108,7 +104,6 @@ export const CreateTaskDialog = ({
 
   const onSubmit = async (data: TaskFormData) => {
     if (isMultiTask) {
-      // Валидация для мультизадач
       if (multipleTasks.length < 2) {
         toast.error(t('tasks.min_tasks_required'));
         return;
@@ -120,7 +115,6 @@ export const CreateTaskDialog = ({
       }
       
       try {
-        // Отправка запроса на создание мультизадач (используем относительный путь для прокси)
         const token = localStorage.getItem('token');
 
         const response = await fetch('/api-v1/tasks/create-multiple', {
@@ -141,7 +135,6 @@ export const CreateTaskDialog = ({
         
         const result = await response.json();
         
-        // Проверяем если в ответе есть созданные задачи - значит успешно
         if (result.tasks && Array.isArray(result.tasks) && result.tasks.length > 0) {
           toast.success(`Успешно создано ${result.tasks.length} задач`);
           onOpenChange(false);
@@ -155,12 +148,10 @@ export const CreateTaskDialog = ({
           throw new Error(result.message || 'Ошибка создания мультизадач');
         }
       } catch (error: any) {
-        // Показываем ошибку только если действительно не удалось создать
         console.error('Ошибка создания мультизадач:', error);
         toast.error(error.message || 'Ошибка создания мультизадач');
       }
     } else {
-      // Обычное создание одной задачи
       mutate(
         { taskData: data },
         {
@@ -201,7 +192,6 @@ export const CreateTaskDialog = ({
                 )}
               />
 
-              {/* Чекбокс для мультизадач */}
               <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg">
                 <Checkbox
                   id="multi-task"
@@ -217,10 +207,7 @@ export const CreateTaskDialog = ({
                   }}
                 />
                 <div className="grid gap-1">
-                  <label
-                    htmlFor="multi-task"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
+                  <label htmlFor="multi-task" className="text-sm font-medium leading-none cursor-pointer">
                     {t('tasks.multi_task')}
                   </label>
                   <p className="text-xs text-muted-foreground">
@@ -230,7 +217,6 @@ export const CreateTaskDialog = ({
               </div>
 
               {!isMultiTask ? (
-                // Обычный режим - одна задача
                 <>
                   <FormField
                     control={form.control}
@@ -239,10 +225,7 @@ export const CreateTaskDialog = ({
                       <FormItem>
                         <FormLabel>{t('tasks.task_desc')}</FormLabel>
                         <FormControl>
-                          <Textarea
-                            {...field}
-                            placeholder={t('tasks.enter_task_desc')}
-                          />
+                          <Textarea {...field} placeholder={t('tasks.enter_task_desc')} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -259,31 +242,19 @@ export const CreateTaskDialog = ({
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button
-                                variant={"outline"}
-                                className={
-                                  "w-full justify-start text-left font-normal " +
-                                  (!field.value ? "text-muted-foreground" : "")
-                                }
+                                type="button"
+                                variant="outline"
+                                className={"w-full justify-start text-left font-normal " + (!field.value ? "text-muted-foreground" : "")}
                               >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value ? (
-                                  format(new Date(field.value), "PPP", { locale: ru })
-                                ) : (
-                                  <span>{t('tasks.select_date')}</span>
-                                )}
+                                {field.value ? format(new Date(field.value), "PPP", { locale: ru }) : <span>{t('tasks.select_date')}</span>}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0">
                               <RussianCalendar
                                 mode="single"
-                                selected={
-                                  field.value ? new Date(field.value) : undefined
-                                }
-                                onSelect={(date: Date | undefined) =>
-                                  field.onChange(
-                                    date ? date.toISOString() : undefined
-                                  )
-                                }
+                                selected={field.value ? new Date(field.value) : undefined}
+                                onSelect={(date: Date | undefined) => field.onChange(date ? date.toISOString() : undefined)}
                                 initialFocus
                               />
                             </PopoverContent>
@@ -295,7 +266,6 @@ export const CreateTaskDialog = ({
                   />
                 </>
               ) : (
-                // Режим мультизадач
                 <div className="space-y-4">
                   {multipleTasks.map((task, index) => (
                     <Card key={index} className="p-4">
@@ -304,15 +274,7 @@ export const CreateTaskDialog = ({
                           {t('tasks.task_number').replace('{number}', (index + 1).toString())}
                         </h4>
                         {multipleTasks.length > 2 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="shrink-0 -mt-1"
-                            onClick={() => {
-                              setMultipleTasks(multipleTasks.filter((_, i) => i !== index));
-                            }}
-                          >
+                          <Button type="button" variant="ghost" size="sm" className="shrink-0 -mt-1" onClick={() => setMultipleTasks(multipleTasks.filter((_, i) => i !== index))}>
                             <X className="h-4 w-4" />
                           </Button>
                         )}
@@ -335,7 +297,7 @@ export const CreateTaskDialog = ({
                           <label className="text-sm font-medium">{t('tasks.due_date')}</label>
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Button variant="outline" className="w-full justify-start mt-1">
+                              <Button type="button" variant="outline" className="w-full justify-start mt-1">
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {task.dueDate ? format(new Date(task.dueDate), "PPP", { locale: ru }) : t('tasks.select_date')}
                               </Button>
@@ -357,14 +319,7 @@ export const CreateTaskDialog = ({
                       </div>
                     </Card>
                   ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setMultipleTasks([...multipleTasks, { description: '', dueDate: '' }]);
-                    }}
-                    className="w-full"
-                  >
+                  <Button type="button" variant="outline" onClick={() => setMultipleTasks([...multipleTasks, { description: '', dueDate: '' }])} className="w-full">
                     + {t('tasks.add_task')}
                   </Button>
                 </div>
@@ -378,10 +333,7 @@ export const CreateTaskDialog = ({
                     <FormItem>
                       <FormLabel>{t('tasks.task_status')}</FormLabel>
                       <FormControl>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
+                        <Select value={field.value} onValueChange={field.onChange}>
                           <SelectTrigger>
                             <SelectValue placeholder={t('tasks.select_status')} />
                           </SelectTrigger>
@@ -404,10 +356,7 @@ export const CreateTaskDialog = ({
                     <FormItem>
                       <FormLabel>{t('tasks.task_priority')}</FormLabel>
                       <FormControl>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
+                        <Select value={field.value} onValueChange={field.onChange}>
                           <SelectTrigger>
                             <SelectValue placeholder={t('tasks.select_priority')} />
                           </SelectTrigger>
@@ -433,12 +382,7 @@ export const CreateTaskDialog = ({
                     <FormItem>
                       <FormLabel>{t('tasks.task_manager')}</FormLabel>
                       <FormControl>
-                        <Select
-                          value={field.value || "none"}
-                          onValueChange={(value) => {
-                            field.onChange(value === "none" ? undefined : value);
-                          }}
-                        >
+                        <Select value={field.value || "none"} onValueChange={(value) => field.onChange(value === "none" ? undefined : value)}>
                           <SelectTrigger>
                             <SelectValue placeholder={t('tasks.select_manager')} />
                           </SelectTrigger>
@@ -466,107 +410,70 @@ export const CreateTaskDialog = ({
                   return (
                     <FormItem>
                       <FormLabel>{t('tasks.assign_to')}</FormLabel>
-                      <FormControl>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-full justify-start text-left font-normal min-h-11"
-                            >
-                              {selectedMembers.length === 0 ? (
-                                <span className="text-muted-foreground">
-                                  {t('tasks.select_members')}
-                                </span>
-                              ) : selectedMembers.length <= 2 ? (
-                                selectedMembers
-                                  .map((m) => {
-                                    const user = allUsers.find(
-                                      (u) => u && u._id === m
-                                    );
-                                    return user?.name || "Неизвестный";
-                                  })
-                                  .join(", ")
-                              ) : (
-                                t('tasks.selected_count').replace('{count}', selectedMembers.length.toString())
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-
-                          <PopoverContent
-                            className="w-sm max-h-80 p-2"
-                            align="start"
+                      <Popover open={assigneesOpen} onOpenChange={setAssigneesOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal min-h-11"
                           >
-                            {/* Поле поиска участников */}
-                            <div className="mb-2 sticky top-0 bg-background">
-                              <Input
-                                placeholder="Поиск по имени..."
-                                value={participantSearch}
-                                onChange={(e) => setParticipantSearch(e.target.value)}
-                                className="h-8"
-                              />
-                            </div>
-                            <div className="flex flex-col gap-2 max-h-56 overflow-y-auto">
-                              {allUsers
-                                .filter(user => user && user._id)
-                                .filter(user =>
-                                  !participantSearch ||
-                                  user.name?.toLowerCase().includes(participantSearch.toLowerCase())
-                                )
-                                .map((user) => {
-                                  const isSelected = selectedMembers.includes(user._id);
-                                  return (
-                                    <div
-                                      key={user._id}
-                                      className="flex items-center gap-2 p-2 border rounded hover:bg-muted cursor-pointer"
-                                      onClick={() => {
-                                        if (isSelected) {
-                                          field.onChange(selectedMembers.filter(m => m !== user._id));
-                                        } else {
-                                          field.onChange([...selectedMembers, user._id]);
-                                        }
-                                      }}
-                                    >
-                                      <Checkbox
-                                        checked={isSelected}
-                                        onCheckedChange={(checked) => {
-                                          if (checked) {
-                                            field.onChange([
-                                              ...selectedMembers,
-                                              user._id,
-                                            ]);
-                                          } else {
-                                            field.onChange(
-                                              selectedMembers.filter(
-                                                (m) => m !== user._id
-                                              )
-                                            );
-                                          }
-                                        }}
-                                        id={`user-${user._id}`}
-                                      />
-                                      <span className="truncate flex-1">
-                                        {user.name}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {user.role === "admin" ? t('tasks.admin') :
-                                         user.role === "chief_manager" ? "Гл. Менеджер" :
-                                         user.role === "manager" ? t('tasks.manager') : t('tasks.member')}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                              {allUsers.filter(user =>
-                                user && user._id &&
-                                (!participantSearch || user.name?.toLowerCase().includes(participantSearch.toLowerCase()))
-                              ).length === 0 && (
-                                <div className="text-center text-muted-foreground py-4 text-sm">
-                                  Участники не найдены
-                                </div>
-                              )}
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </FormControl>
+                            {selectedMembers.length === 0 ? (
+                              <span className="text-muted-foreground">{t('tasks.select_members')}</span>
+                            ) : selectedMembers.length <= 2 ? (
+                              selectedMembers.map((m) => {
+                                const user = allUsers.find((u) => u && u._id === m);
+                                return user?.name || "Неизвестный";
+                              }).join(", ")
+                            ) : (
+                              t('tasks.selected_count').replace('{count}', selectedMembers.length.toString())
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 max-h-80 p-2" align="start">
+                          <div className="mb-2 sticky top-0 bg-background">
+                            <Input
+                              placeholder="Поиск по имени..."
+                              value={participantSearch}
+                              onChange={(e) => setParticipantSearch(e.target.value)}
+                              className="h-8"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-2 max-h-56 overflow-y-auto">
+                            {allUsers
+                              .filter(user => user && user._id)
+                              .filter(user => !participantSearch || user.name?.toLowerCase().includes(participantSearch.toLowerCase()))
+                              .map((user) => {
+                                const isSelected = user._id ? selectedMembers.includes(user._id) : false;
+                                return (
+                                  <div
+                                    key={user._id}
+                                    className="flex items-center gap-2 p-2 border rounded hover:bg-muted cursor-pointer"
+                                    onClick={() => {
+                                      if (isSelected) {
+                                        field.onChange(selectedMembers.filter(m => m !== user._id));
+                                      } else {
+                                        field.onChange([...selectedMembers, user._id]);
+                                      }
+                                    }}
+                                  >
+                                    <Checkbox checked={isSelected} />
+                                    <span className="truncate flex-1">{user.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {user.role === "admin" ? t('tasks.admin') :
+                                       user.role === "chief_manager" ? "Гл. Менеджер" :
+                                       user.role === "manager" ? t('tasks.manager') : t('tasks.member')}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            {allUsers.filter(user => user && user._id && (!participantSearch || user.name?.toLowerCase().includes(participantSearch.toLowerCase()))).length === 0 && (
+                              <div className="text-center text-muted-foreground py-4 text-sm">
+                                Участники не найдены
+                              </div>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   );
@@ -575,11 +482,7 @@ export const CreateTaskDialog = ({
             </div>
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 {t('tasks.cancel')}
               </Button>
               <Button type="submit" disabled={isPending}>
