@@ -90,6 +90,9 @@ export const CreateTaskDialog = ({
     { description: "", dueDate: "" }
   ]);
 
+  // Состояние для поиска участников
+  const [participantSearch, setParticipantSearch] = useState("");
+
   // Получить всех пользователей системы
   const { data: usersData } = useQuery({
     queryKey: ["all-users"],
@@ -117,11 +120,10 @@ export const CreateTaskDialog = ({
       }
       
       try {
-        // Отправка запроса на создание мультизадач
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        // Отправка запроса на создание мультизадач (используем относительный путь для прокси)
         const token = localStorage.getItem('token');
-        
-        const response = await fetch(`${apiUrl}/tasks/create-multiple`, {
+
+        const response = await fetch('/api-v1/tasks/create-multiple', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -491,45 +493,76 @@ export const CreateTaskDialog = ({
                           </PopoverTrigger>
 
                           <PopoverContent
-                            className="w-sm max-h-60 overflow-y-auto p-2"
+                            className="w-sm max-h-80 p-2"
                             align="start"
                           >
-                            <div className="flex flex-col gap-2">
-                              {allUsers.filter(user => user && user._id).map((user) => {
-                                const isSelected = selectedMembers.includes(user._id);
-                                return (
-                                  <div
-                                    key={user._id}
-                                    className="flex items-center gap-2 p-2 border rounded"
-                                  >
-                                    <Checkbox
-                                      checked={isSelected}
-                                      onCheckedChange={(checked) => {
-                                        if (checked) {
-                                          field.onChange([
-                                            ...selectedMembers,
-                                            user._id,
-                                          ]);
+                            {/* Поле поиска участников */}
+                            <div className="mb-2 sticky top-0 bg-background">
+                              <Input
+                                placeholder="Поиск по имени..."
+                                value={participantSearch}
+                                onChange={(e) => setParticipantSearch(e.target.value)}
+                                className="h-8"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-2 max-h-56 overflow-y-auto">
+                              {allUsers
+                                .filter(user => user && user._id)
+                                .filter(user =>
+                                  !participantSearch ||
+                                  user.name?.toLowerCase().includes(participantSearch.toLowerCase())
+                                )
+                                .map((user) => {
+                                  const isSelected = selectedMembers.includes(user._id);
+                                  return (
+                                    <div
+                                      key={user._id}
+                                      className="flex items-center gap-2 p-2 border rounded hover:bg-muted cursor-pointer"
+                                      onClick={() => {
+                                        if (isSelected) {
+                                          field.onChange(selectedMembers.filter(m => m !== user._id));
                                         } else {
-                                          field.onChange(
-                                            selectedMembers.filter(
-                                              (m) => m !== user._id
-                                            )
-                                          );
+                                          field.onChange([...selectedMembers, user._id]);
                                         }
                                       }}
-                                      id={`user-${user._id}`}
-                                    />
-                                    <span className="truncate flex-1">
-                                      {user.name}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {user.role === "admin" ? t('tasks.admin') :
-                                       user.role === "manager" ? t('tasks.manager') : t('tasks.member')}
-                                    </span>
-                                  </div>
-                                );
-                              })}
+                                    >
+                                      <Checkbox
+                                        checked={isSelected}
+                                        onCheckedChange={(checked) => {
+                                          if (checked) {
+                                            field.onChange([
+                                              ...selectedMembers,
+                                              user._id,
+                                            ]);
+                                          } else {
+                                            field.onChange(
+                                              selectedMembers.filter(
+                                                (m) => m !== user._id
+                                              )
+                                            );
+                                          }
+                                        }}
+                                        id={`user-${user._id}`}
+                                      />
+                                      <span className="truncate flex-1">
+                                        {user.name}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {user.role === "admin" ? t('tasks.admin') :
+                                         user.role === "chief_manager" ? "Гл. Менеджер" :
+                                         user.role === "manager" ? t('tasks.manager') : t('tasks.member')}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              {allUsers.filter(user =>
+                                user && user._id &&
+                                (!participantSearch || user.name?.toLowerCase().includes(participantSearch.toLowerCase()))
+                              ).length === 0 && (
+                                <div className="text-center text-muted-foreground py-4 text-sm">
+                                  Участники не найдены
+                                </div>
+                              )}
                             </div>
                           </PopoverContent>
                         </Popover>

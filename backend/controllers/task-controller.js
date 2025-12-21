@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import { recordActivity } from "../libs/index.js";
-import { sendNotification } from "../libs/send-notification.js";
+import { sendNotification, createNotification } from "../libs/send-notification.js";
+import { sendEmail } from "../libs/send-emails.js";
 import ActivityLog from "../models/activity-logs.js";
 import Comment from "../models/comments.js";
 import Response from "../models/responses.js";
@@ -308,12 +309,16 @@ const updateTaskStatus = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Проверить права доступа: только админы, супер админы или ответственный менеджер могут изменять статус
+    // Проверить права доступа:
+    // - админы и супер админы могут изменять любые задачи
+    // - chief_manager может изменять статус ЛЮБОЙ задачи
+    // - обычный менеджер может изменять только задачи где он ответственный
     const isAdmin = ["admin", "super_admin"].includes(req.user.role);
+    const isChiefManager = req.user.role === "chief_manager";
     const isResponsibleManager = task.responsibleManager && task.responsibleManager.toString() === req.user._id.toString();
-    
-    if (!isAdmin && !isResponsibleManager) {
-      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы или ответственный менеджер могут изменять статус задач." });
+
+    if (!isAdmin && !isChiefManager && !isResponsibleManager) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, главные менеджеры или ответственный менеджер могут изменять статус задач." });
     }
 
     const oldStatus = task.status;
@@ -354,6 +359,17 @@ const getTaskById = async (req, res) => {
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
+
+    // Record task view activity (don't await to not slow down response)
+    ActivityLog.create({
+      user: req.user._id,
+      action: "viewed_task",
+      resourceType: "Task",
+      resourceId: taskId,
+      details: {
+        taskTitle: task.title,
+      },
+    }).catch(err => console.error("Error recording task view:", err));
 
     const comments = await Comment.find({ task: taskId })
       .populate("author", "name profilePicture")
@@ -424,13 +440,53 @@ const updateTaskPriority = async (req, res) => {
   }
 };
 
+// Обновление срока выполнения задачи (только для админов и менеджеров)
+const updateTaskDueDate = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { dueDate } = req.body;
+
+    // Проверить права доступа (только админы, супер админы, главные менеджеры и менеджеры)
+    if (!["admin", "super_admin", "chief_manager", "manager"].includes(req.user.role)) {
+      return res.status(403).json({
+        message: "Доступ запрещен. Только админы и менеджеры могут изменять срок выполнения задач."
+      });
+    }
+
+    const task = await Task.findById(taskId);
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    const oldDueDate = task.dueDate;
+    task.dueDate = new Date(dueDate);
+    await task.save();
+
+    // Record activity
+    await recordActivity(req.user._id, "changed_task_deadline", "Task", taskId, {
+      description: `изменил срок выполнения задачи`,
+      oldDueDate: oldDueDate,
+      newDueDate: dueDate,
+    });
+
+    res.status(200).json({
+      message: "Срок выполнения успешно изменён",
+      task,
+    });
+  } catch (error) {
+    console.error("Error updating task due date:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 const updateTaskTitle = async (req, res) => {
   try {
     const { taskId } = req.params;
     const { title } = req.body;
 
     // Проверить права доступа (только админы, супер админы и менеджеры могут редактировать название задачи)
-    if (!["admin", "super_admin", "manager"].includes(req.user.role)) {
+    if (!["admin", "super_admin", "chief_manager", "manager"].includes(req.user.role)) {
       return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут редактировать название задачи." });
     }
 
@@ -528,6 +584,35 @@ const updateTaskAssignees = async (req, res) => {
       .populate("createdBy", "name profilePicture");
 
     console.log('Updated task assignees:', updatedTask.assignees);
+
+    // Determine newly added assignees
+    const newAssignees = assignees.filter(
+      id => !oldAssignees.some(oldId => oldId.toString() === id.toString())
+    );
+
+    // Notify newly added assignees
+    if (newAssignees.length > 0) {
+      console.log(`Notifying ${newAssignees.length} newly added assignees...`);
+      for (const userId of newAssignees) {
+        if (userId.toString() !== req.user._id.toString()) {
+          try {
+            await sendNotification({
+              recipientId: userId,
+              type: "task_assigned",
+              title: "Вы добавлены к задаче",
+              message: `${req.user.name} добавил вас к задаче: ${task.title}`,
+              relatedData: {
+                taskId: task._id,
+                actorId: req.user._id,
+              },
+            });
+            console.log(`✅ Notification sent to new assignee: ${userId}`);
+          } catch (error) {
+            console.error(`❌ Failed to notify assignee ${userId}:`, error.message);
+          }
+        }
+      }
+    }
 
     // Record activity
     await recordActivity(req.user._id, "updated_task", "Task", taskId, {
@@ -736,11 +821,12 @@ const getAllTasks = async (req, res) => {
       filter.assignees = { $in: [assignee] };
     }
 
-    // Получить все задачи без пагинации
+    // Получить все задачи БЕЗ пагинации (откатил мои изменения)
     const tasks = await Task.find(filter)
       .sort({ createdAt: -1 })
       .populate("assignees", "name profilePicture")
-      .populate("createdBy", "name profilePicture");
+      .populate("createdBy", "name profilePicture")
+      .populate("responsibleManager", "name profilePicture");
 
     const total = tasks.length;
 
@@ -871,14 +957,37 @@ const deleteTask = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Проверить права доступа (только админы, супер админы и менеджеры могут удалять задачи)
-    if (!["admin", "super_admin", "manager"].includes(req.user.role)) {
-      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут удалять задачи." });
+    // Проверить права доступа:
+    // - Админы, супер админы, главные менеджеры и менеджеры могут удалять любые задачи
+    // - Создатель задачи может удалить её в течение 24 часов после создания
+    const isAdminOrManager = ["admin", "super_admin", "chief_manager", "manager"].includes(req.user.role);
+    const isCreator = task.createdBy && task.createdBy.toString() === req.user._id.toString();
+
+    // Вычислить время с момента создания (в часах)
+    const hoursSinceCreation = (Date.now() - new Date(task.createdAt).getTime()) / (1000 * 60 * 60);
+    const canCreatorDelete = isCreator && hoursSinceCreation <= 24;
+
+    if (!isAdminOrManager && !canCreatorDelete) {
+      if (isCreator && hoursSinceCreation > 24) {
+        const hoursAgo = Math.floor(hoursSinceCreation);
+        return res.status(403).json({
+          message: `Время для удаления задачи истекло. Задача была создана ${hoursAgo} часов назад. Создатель может удалить задачу только в течение 24 часов. Обратитесь к администратору.`,
+          code: "DELETE_TIME_EXPIRED",
+          hoursSinceCreation: hoursAgo,
+        });
+      }
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, менеджеры или создатель задачи (в течение 24 часов) могут удалять задачи." });
     }
+
+    // Record activity
+    await recordActivity(req.user._id, "deleted_task", "Task", taskId, {
+      description: `удалил задачу "${task.title}"`,
+      taskTitle: task.title,
+    });
 
     await task.deleteOne();
 
-    res.status(200).json({ message: "Task deleted successfully" });
+    res.status(200).json({ message: "Задача успешно удалена" });
   } catch (error) {
     console.error("Error deleting task:", error);
     res.status(500).json({ message: "Server error" });
@@ -1367,59 +1476,45 @@ const createMultipleTasks = async (req, res) => {
       });
     }
 
-    // Уведомить участников (один раз для всех задач)
+    // Уведомить участников (один раз для всех задач) с Email + SMS
     if (assignees && assignees.length > 0) {
       for (const userId of assignees) {
         if (userId.toString() !== req.user._id.toString()) {
-          await createNotification(
-            userId,
-            "task_assigned",
-            "Вам назначены новые задачи",
-            `${req.user.name} назначил вам ${tasks.length} задач: ${title}`,
-            {
-              taskId: createdTasks[0]._id,
-              actorId: req.user._id,
-            }
-          );
-          
-          const assignee = await User.findById(userId);
-          if (assignee && assignee.email) {
-            await sendEmail(
-              assignee.email,
-              "Вам назначены новые задачи",
-              assignee.name,
-              `${req.user.name} назначил вам ${tasks.length} задач с названием "${title}". Список задач:\n${tasks.map((t, idx) => `${idx + 1}. ${t.description}`).join('\n')}`,
-              "Открыть задачи",
-              `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/all-tasks`
-            );
+          try {
+            await sendNotification({
+              recipientId: userId,
+              type: "task_assigned",
+              title: "Вам назначены новые задачи",
+              message: `${req.user.name} назначил вам ${tasks.length} задач: ${title}`,
+              relatedData: {
+                taskId: createdTasks[0]._id,
+                actorId: req.user._id,
+              },
+            });
+            console.log(`✅ Multi-task notification sent to assignee: ${userId}`);
+          } catch (error) {
+            console.error(`❌ Failed to notify assignee ${userId}:`, error.message);
           }
         }
       }
     }
 
-    // Уведомить ответственного менеджера
+    // Уведомить ответственного менеджера с Email + SMS
     if (responsibleManager && responsibleManager.toString() !== req.user._id.toString()) {
-      await createNotification(
-        responsibleManager,
-        "task_assigned_as_manager",
-        "Вы назначены ответственным менеджером",
-        `${req.user.name} назначил вас ответственным менеджером ${tasks.length} задач: ${title}`,
-        {
-          taskId: createdTasks[0]._id,
-          actorId: req.user._id,
-        }
-      );
-      
-      const manager = await User.findById(responsibleManager);
-      if (manager && manager.email) {
-        await sendEmail(
-          manager.email,
-          "Вы назначены ответственным менеджером",
-          manager.name,
-          `${req.user.name} назначил вас ответственным менеджером ${tasks.length} задач: "${title}". Список задач:\n${tasks.map((t, idx) => `${idx + 1}. ${t.description}`).join('\n')}`,
-          "Открыть задачи",
-          `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/all-tasks`
-        );
+      try {
+        await sendNotification({
+          recipientId: responsibleManager,
+          type: "task_assigned_as_manager",
+          title: "Вы назначены ответственным менеджером",
+          message: `${req.user.name} назначил вас ответственным менеджером ${tasks.length} задач: ${title}`,
+          relatedData: {
+            taskId: createdTasks[0]._id,
+            actorId: req.user._id,
+          },
+        });
+        console.log(`✅ Multi-task notification sent to responsible manager: ${responsibleManager}`);
+      } catch (error) {
+        console.error(`❌ Failed to notify responsible manager ${responsibleManager}:`, error.message);
       }
     }
 
@@ -1452,6 +1547,7 @@ export {
   updateTaskAssignees,
   updateTaskDescription,
   updateTaskPriority,
+  updateTaskDueDate,
   updateTaskStatus,
   updateTaskTitle,
   toggleCommentReaction,

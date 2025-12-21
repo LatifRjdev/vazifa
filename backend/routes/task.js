@@ -13,6 +13,7 @@ import {
   getTaskById,
   archiveTask,
   updateTaskPriority,
+  updateTaskDueDate,
   updateTaskTitle,
   updateTaskDescription,
   updateTaskAssignees,
@@ -42,6 +43,55 @@ import {
 import { authenticateUser } from "../middleware/auth-middleware.js";
 
 const router = express.Router();
+
+// ============================================================================
+// ВАЖНО: Специфичные маршруты БЕЗ параметров ДОЛЖНЫ быть ПЕРВЫМИ!
+// Иначе маршруты с параметрами (например /:taskId/...) перехватят их
+// ============================================================================
+
+// Маршрут для создания нескольких задач
+router.post(
+  "/create-multiple",
+  authenticateUser,
+  validateRequest({
+    body: z.object({
+      title: z.string().min(1),
+      tasks: z.array(z.object({
+        description: z.string().min(1),
+        dueDate: z.string().optional()
+      })).min(2),
+      status: z.enum(["To Do", "In Progress", "Done"]).optional(),
+      priority: z.enum(["High", "Medium", "Low"]).optional(),
+      assignees: z.array(z.string()).optional(),
+      responsibleManager: z.string().optional()
+    })
+  }),
+  createMultipleTasks
+);
+
+// Маршрут для создания одной задачи (альтернативный путь)
+router.post(
+  "/create",
+  authenticateUser,
+  validateRequest({
+    body: taskSchema,
+  }),
+  createTask
+);
+
+// Маршрут для создания одной задачи (основной путь)
+router.post(
+  "/",
+  authenticateUser,
+  validateRequest({
+    body: taskSchema,
+  }),
+  createTask
+);
+
+// ============================================================================
+// МАРШРУТЫ С ПАРАМЕТРАМИ - идут ПОСЛЕ специфичных маршрутов
+// ============================================================================
 
 router.post(
   "/:taskId/comments",
@@ -75,43 +125,6 @@ router.post(
     body: taskAttachmentSchema,
   }),
   taskAttachments
-);
-
-router.post(
-  "/create-multiple",
-  authenticateUser,
-  validateRequest({
-    body: z.object({
-      title: z.string().min(1),
-      tasks: z.array(z.object({
-        description: z.string().min(1),
-        dueDate: z.string().optional()
-      })).min(2),
-      status: z.enum(["To Do", "In Progress", "Done"]).optional(),
-      priority: z.enum(["High", "Medium", "Low"]).optional(),
-      assignees: z.array(z.string()).optional(),
-      responsibleManager: z.string().optional()
-    })
-  }),
-  createMultipleTasks
-);
-
-router.post(
-  "/",
-  authenticateUser,
-  validateRequest({
-    body: taskSchema,
-  }),
-  createTask
-);
-
-router.post(
-  "/create",
-  authenticateUser,
-  validateRequest({
-    body: taskSchema,
-  }),
-  createTask
 );
 
 router.post(
@@ -159,6 +172,17 @@ router.put(
     body: z.object({ priority: z.enum(["High", "Medium", "Low"]) }),
   }),
   updateTaskPriority
+);
+
+// Изменение срока выполнения (только для админов и менеджеров)
+router.put(
+  "/:taskId/due-date",
+  authenticateUser,
+  validateRequest({
+    params: z.object({ taskId: z.string() }),
+    body: z.object({ dueDate: z.string() }),
+  }),
+  updateTaskDueDate
 );
 
 router.put(
