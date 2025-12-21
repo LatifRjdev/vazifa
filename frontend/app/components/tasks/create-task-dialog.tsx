@@ -410,11 +410,13 @@ export const CreateTaskDialog = ({
                   return (
                     <FormItem>
                       <FormLabel>{t('tasks.assign_to')}</FormLabel>
-                      <Popover open={assigneesOpen} onOpenChange={setAssigneesOpen}>
+                      <Popover open={assigneesOpen} onOpenChange={setAssigneesOpen} modal={false}>
                         <PopoverTrigger asChild>
                           <Button
                             type="button"
                             variant="outline"
+                            role="combobox"
+                            aria-expanded={assigneesOpen}
                             className="w-full justify-start text-left font-normal min-h-11"
                           >
                             {selectedMembers.length === 0 ? (
@@ -429,7 +431,12 @@ export const CreateTaskDialog = ({
                             )}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-80 max-h-80 p-2" align="start">
+                        <PopoverContent 
+                          className="w-80 max-h-80 p-2" 
+                          align="start"
+                          onOpenAutoFocus={(e) => e.preventDefault()}
+                          onInteractOutside={(e) => e.preventDefault()}
+                        >
                           <div className="mb-2 sticky top-0 bg-background">
                             <Input
                               placeholder="Поиск по имени..."
