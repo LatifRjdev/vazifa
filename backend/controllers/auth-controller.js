@@ -280,7 +280,7 @@ const resetPasswordRequest = async (req, res) => {
       
       // Send short SMS (max 70 chars for Cyrillic)
       try {
-        const smsMessage = `Vazifa: Код сброса пароля: ${resetCode}`;
+        const smsMessage = `Протокол: Код сброса: ${resetCode}`;
         await sendSMS(emailOrPhone, smsMessage);
         console.log("✅ Reset code SMS sent to:", emailOrPhone);
         res.status(200).json({

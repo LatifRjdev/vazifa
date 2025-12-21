@@ -197,64 +197,64 @@ function formatSMSMessage(type, message, relatedData) {
   switch (type) {
     case "task_assigned":
       smsText = taskTitle
-        ? `Vazifa: Вам назначена задача "${taskTitle}"`
-        : `Vazifa: Вам назначена новая задача`;
+        ? `Протокол: Новая задача "${taskTitle}"`
+        : `Протокол: Вам назначена задача`;
       break;
 
     case "task_assigned_as_manager":
       smsText = taskTitle
-        ? `Vazifa: Вы менеджер задачи "${taskTitle}"`
-        : `Vazifa: Вы назначены менеджером`;
+        ? `Протокол: Вы менеджер "${taskTitle}"`
+        : `Протокол: Вы назначены менеджером`;
       break;
 
     case "task_completed":
       smsText = taskTitle
-        ? `Vazifa: Задача "${taskTitle}" завершена`
-        : `Vazifa: Задача завершена`;
+        ? `Протокол: Задача "${taskTitle}" завершена`
+        : `Протокол: Задача завершена`;
       break;
 
     case "task_marked_important":
       smsText = taskTitle
-        ? `Vazifa: Важная задача "${taskTitle}"`
-        : `Vazifa: Задача отмечена важной`;
+        ? `Протокол: Важная задача "${taskTitle}"`
+        : `Протокол: Задача отмечена важной`;
       break;
 
     case "comment_added":
-      smsText = `Vazifa: Новый комментарий к задаче`;
+      smsText = `Протокол: Новый комментарий к задаче`;
       break;
 
     case "mentioned":
-      smsText = `Vazifa: Вас упомянули в комментарии`;
+      smsText = `Протокол: Вас упомянули в комментарии`;
       break;
 
     case "response_added":
-      smsText = `Vazifa: Новый ответ на задачу`;
+      smsText = `Протокол: Новый ответ на задачу`;
       break;
 
     case "comment_reply":
-      smsText = `Vazifa: Ответ на ваш комментарий`;
+      smsText = `Протокол: Ответ на ваш комментарий`;
       break;
 
     case "due_date_approaching":
       smsText = taskTitle
-        ? `Vazifa: Срок задачи "${taskTitle}" скоро`
-        : `Vazifa: Срок задачи приближается`;
+        ? `Протокол: Срок "${taskTitle}" скоро`
+        : `Протокол: Срок задачи приближается`;
       break;
 
     case "workspace_invite":
-      smsText = `Vazifa: Приглашение в workspace`;
+      smsText = `Протокол: Приглашение в workspace`;
       break;
 
     case "workspace_ownership_transferred":
-      smsText = `Vazifa: Передача прав workspace`;
+      smsText = `Протокол: Передача прав workspace`;
       break;
 
     case "task_message":
-      smsText = `Vazifa: Новое сообщение по задаче`;
+      smsText = `Протокол: Новое сообщение по задаче`;
       break;
 
     default:
-      smsText = `Vazifa: Новое уведомление`;
+      smsText = `Протокол: Новое уведомление`;
   }
 
   // Ensure max 70 characters for reliable delivery

@@ -56,7 +56,7 @@ const loginWithPhone = async (req, res) => {
       try {
         await sendSMS(
           phoneNumber,
-          `Vazifa: Код входа: ${otp}`,
+          `Протокол: Код входа: ${otp}`,
           "high"
         );
       } catch (error) {
