@@ -448,17 +448,20 @@ export const CreateTaskDialog = ({
                                   return (
                                     <div
                                       key={user._id}
-                                      className="flex items-center gap-2 p-2 border rounded hover:bg-muted cursor-pointer"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (isSelected) {
-                                          field.onChange(selectedMembers.filter(m => m !== user._id));
-                                        } else {
-                                          field.onChange([...selectedMembers, user._id]);
+                                      className="flex items-center gap-2 p-2 border rounded hover:bg-muted cursor-pointer select-none"
+                                      onClick={() => {
+                                        if (user._id) {
+                                          if (isSelected) {
+                                            field.onChange(selectedMembers.filter(m => m !== user._id));
+                                          } else {
+                                            field.onChange([...selectedMembers, user._id]);
+                                          }
                                         }
                                       }}
                                     >
-                                      <Checkbox checked={isSelected} />
+                                      <div className={`w-4 h-4 border rounded flex items-center justify-center ${isSelected ? 'bg-primary border-primary' : 'border-input'}`}>
+                                        {isSelected && <span className="text-primary-foreground text-xs">✓</span>}
+                                      </div>
                                       <span className="truncate flex-1">{user.name}</span>
                                       <span className="text-xs text-muted-foreground">
                                         {user.role === "admin" ? t('tasks.admin') :
