@@ -23,8 +23,9 @@ import {
 } from "@/components/ui/form";
 import { AlertCircle, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useRequestResetPasswordMutation } from "@/hooks/use-auth";
+import { postData } from "@/lib/fetch-utils";
 
 import type { Route } from "../../+types/root";
 
@@ -48,17 +49,39 @@ const forgotPasswordSchema = z.object({
     }),
 });
 
+const resetPasswordWithCodeSchema = z.object({
+  code: z.string().length(6, { message: "Код должен содержать 6 цифр" }),
+  newPassword: z.string().min(8, { message: "Пароль должен содержать минимум 8 символов" }),
+  confirmPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Пароли не совпадают",
+  path: ["confirmPassword"],
+});
+
 type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
+type ResetPasswordWithCodeValues = z.infer<typeof resetPasswordWithCodeSchema>;
 
 export default function ForgotPasswordPage() {
+  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [step, setStep] = useState<'request' | 'code' | 'success'>('request');
   const [resetMethod, setResetMethod] = useState<'email' | 'phone'>('email');
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
+  const [isResetting, setIsResetting] = useState(false);
 
   const form = useForm<ForgotPasswordValues>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
       emailOrPhone: "",
+    },
+  });
+
+  const codeForm = useForm<ResetPasswordWithCodeValues>({
+    resolver: zodResolver(resetPasswordWithCodeSchema),
+    defaultValues: {
+      code: "",
+      newPassword: "",
+      confirmPassword: "",
     },
   });
 
@@ -70,19 +93,28 @@ export default function ForgotPasswordPage() {
     // Determine if it's email or phone
     const isPhone = values.emailOrPhone.startsWith('+992');
     setResetMethod(isPhone ? 'phone' : 'email');
+    if (isPhone) {
+      setPhoneNumber(values.emailOrPhone);
+    }
 
     try {
       // Send to backend - it handles both email and phone
       mutate({ emailOrPhone: values.emailOrPhone }, {
         onSuccess: () => {
-          setIsSuccess(true);
+          if (isPhone) {
+            // For phone - show code input form
+            setStep('code');
+          } else {
+            // For email - show success message (link sent to email)
+            setStep('success');
+          }
           form.reset();
         },
         onError: (error: any) => {
           setError(
             error?.response?.data?.message ||
               error.message ||
-              "Не удалось отправить ссылку для сброса пароля"
+              "Не удалось отправить код для сброса пароля"
           );
           console.log(error);
         },
@@ -96,44 +128,182 @@ export default function ForgotPasswordPage() {
     }
   };
 
+  const onCodeSubmit = async (values: ResetPasswordWithCodeValues) => {
+    setError(null);
+    setIsResetting(true);
+
+    try {
+      await postData('/auth/verify-reset-code', {
+        phoneNumber: phoneNumber,
+        code: values.code,
+        newPassword: values.newPassword,
+        confirmPassword: values.confirmPassword,
+      });
+
+      setStep('success');
+      codeForm.reset();
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "Не удалось сбросить пароль. Проверьте код."
+      );
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
           <h1 className="text-3xl font-bold">Забыли Пароль</h1>
           <p className="text-muted-foreground">
-            Введите свой email или номер телефона для сброса пароля
+            {step === 'request' && "Введите свой email или номер телефона для сброса пароля"}
+            {step === 'code' && "Введите код из SMS и новый пароль"}
+            {step === 'success' && "Пароль успешно сброшен"}
           </p>
         </div>
 
         <Card className="border-border/50">
           <CardHeader>
-            <Link
-              to="/"
-              className="flex items-center text-sm text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Вернуться к входу
-            </Link>
+            {step === 'code' ? (
+              <button
+                onClick={() => setStep('request')}
+                className="flex items-center text-sm text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Назад
+              </button>
+            ) : (
+              <Link
+                to="/"
+                className="flex items-center text-sm text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Вернуться к входу
+              </Link>
+            )}
           </CardHeader>
           <CardContent>
-            {isSuccess ? (
+            {step === 'success' ? (
               <div className="flex flex-col items-center space-y-4 py-6">
                 <div className="rounded-full bg-primary/10 p-3">
                   <CheckCircle2 className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold">
-                  {resetMethod === 'email' ? 'Проверьте почту' : 'Проверьте SMS'}
+                  {resetMethod === 'email' ? 'Проверьте почту' : 'Пароль сброшен'}
                 </h3>
                 <p className="text-center text-muted-foreground">
                   {resetMethod === 'email' 
                     ? 'Мы отправили ссылку для сброса пароля на ваш адрес электронной почты. Пожалуйста, проверьте ваш почтовый ящик.'
-                    : 'Мы отправили ссылку для сброса пароля на ваш номер телефона. Пожалуйста, проверьте SMS сообщения.'}
+                    : 'Ваш пароль успешно сброшен. Теперь вы можете войти с новым паролем.'}
                 </p>
                 <Button variant="outline" asChild className="mt-4">
-                  <Link to="/">Вернуться к входу</Link>
+                  <Link to="/">Перейти к входу</Link>
                 </Button>
               </div>
+            ) : step === 'code' ? (
+              <Form {...codeForm}>
+                <form
+                  onSubmit={codeForm.handleSubmit(onCodeSubmit)}
+                  className="space-y-4"
+                >
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="text-sm text-muted-foreground text-center mb-4">
+                    Код отправлен на номер <strong>{phoneNumber}</strong>
+                  </div>
+
+                  <FormField
+                    control={codeForm.control}
+                    name="code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>6-значный код из SMS</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            placeholder="123456"
+                            maxLength={6}
+                            className="text-center text-2xl tracking-widest"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={codeForm.control}
+                    name="newPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Новый пароль</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={codeForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Подтвердите пароль</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full"
+                    disabled={isResetting}
+                  >
+                    {isResetting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Сброс пароля...
+                      </>
+                    ) : (
+                      "Сбросить пароль"
+                    )}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => onSubmit({ emailOrPhone: phoneNumber })}
+                    disabled={isPending}
+                  >
+                    {isPending ? "Отправка..." : "Отправить код повторно"}
+                  </Button>
+                </form>
+              </Form>
             ) : (
               <Form {...form}>
                 <form
@@ -177,7 +347,7 @@ export default function ForgotPasswordPage() {
                         Отправка...
                       </>
                     ) : (
-                      "Отправить ссылку для сброса"
+                      "Отправить код для сброса"
                     )}
                   </Button>
                 </form>

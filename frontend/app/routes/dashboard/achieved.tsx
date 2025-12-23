@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar as CalendarIcon, Search, Filter, Eye, Archive, CheckCircle, CalendarDays } from "lucide-react";
+import { Calendar as CalendarIcon, Search, Filter, Eye, Archive, CheckCircle, CalendarDays, ChevronDown, ChevronUp } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useGetCompletedTasksQuery } from "@/hooks/use-task";
@@ -31,6 +31,44 @@ export function meta() {
     { name: "description", content: "Просмотр выполненных задач в Vazifa!" },
   ];
 }
+
+// Компонент для сворачиваемого описания
+const ExpandableDescription = ({ description, maxLength = 100 }: { description: string; maxLength?: number }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  if (!description) return null;
+  
+  const isLong = description.length > maxLength;
+  const displayText = isExpanded || !isLong 
+    ? description 
+    : description.slice(0, maxLength) + "...";
+  
+  return (
+    <div className="space-y-1">
+      <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+        {displayText}
+      </p>
+      {isLong && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-xs text-primary hover:underline flex items-center gap-1"
+        >
+          {isExpanded ? (
+            <>
+              <ChevronUp className="h-3 w-3" />
+              Скрыть
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-3 w-3" />
+              Подробнее
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+};
 
 const AchievedPage = () => {
   const [search, setSearch] = useState("");
@@ -342,7 +380,7 @@ const AchievedPage = () => {
                     <TableCell className="font-medium">
                       {index + 1}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="max-w-xs">
                       <div className="space-y-1">
                         <Link
                           to={`/dashboard/task/${task._id}`}
@@ -351,9 +389,7 @@ const AchievedPage = () => {
                           {task.title}
                         </Link>
                         {task.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {task.description}
-                          </p>
+                          <ExpandableDescription description={task.description} maxLength={80} />
                         )}
                       </div>
                     </TableCell>
