@@ -318,7 +318,7 @@ export const CreateTaskDialog = ({
                           </Popover>
                         </div>
                         <div className="relative">
-                          <label className="text-sm font-medium">{t('tasks.assign_to')}</label>
+                          <label className="text-sm font-medium">{t('tasks.assign_participant')}</label>
                           <Button
                             type="button"
                             variant="outline"
@@ -326,14 +326,14 @@ export const CreateTaskDialog = ({
                             className="w-full justify-start text-left font-normal mt-1"
                           >
                             {task.assignees.length === 0 ? (
-                              <span className="text-muted-foreground">{t('tasks.select_members')}</span>
+                              <span className="text-muted-foreground">{t('tasks.select_participant')}</span>
                             ) : task.assignees.length <= 2 ? (
                               task.assignees.map((m) => {
                                 const user = allUsers.find((u) => u && u._id === m);
                                 return user?.name || "Неизвестный";
                               }).join(", ")
                             ) : (
-                              t('tasks.selected_count').replace('{count}', task.assignees.length.toString())
+                              t('tasks.selected_participants_count').replace('{count}', task.assignees.length.toString())
                             )}
                           </Button>
                           {multiTaskAssigneesOpen === index && (

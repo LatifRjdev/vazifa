@@ -1471,26 +1471,28 @@ const createMultipleTasks = async (req, res) => {
     }
 
     const createdTasks = [];
-    const allAssignees = new Set(); // Собрать всех уникальных исполнителей
+    const allNotifiedAssignees = new Set(); // Собрать всех уникальных исполнителей для уведомлений
+    const mainAssignees = assignees || []; // "Ответственный исполнитель" - получает ВСЕ задачи
 
     // Создать каждую задачу
     for (let i = 0; i < tasks.length; i++) {
       const taskItem = tasks[i];
 
-      // Использовать индивидуальных исполнителей задачи или общих (для обратной совместимости)
-      const taskAssignees = (taskItem.assignees && taskItem.assignees.length > 0)
-        ? taskItem.assignees
-        : (assignees || []);
+      // Индивидуальные участники задачи (только для этой задачи)
+      const individualParticipants = taskItem.assignees || [];
 
-      // Добавить исполнителей в общий набор для уведомлений
-      taskAssignees.forEach(a => allAssignees.add(a.toString()));
+      // Объединяем: индивидуальные участники + основные исполнители (без дубликатов)
+      const combinedAssignees = [...new Set([...individualParticipants, ...mainAssignees])];
+
+      // Добавить всех исполнителей в набор для уведомлений
+      combinedAssignees.forEach(a => allNotifiedAssignees.add(a.toString()));
 
       const newTask = await Task.create({
         title: title,
         description: `${i + 1}. ${taskItem.description}`,
         status: status || "To Do",
         priority: priority || "Medium",
-        assignees: taskAssignees,
+        assignees: combinedAssignees,
         dueDate: taskItem.dueDate,
         responsibleManager,
         createdBy: req.user._id,
@@ -1513,7 +1515,7 @@ const createMultipleTasks = async (req, res) => {
     }
 
     // Уведомить всех уникальных исполнителей (один раз для всех задач) с Email + SMS
-    for (const userId of allAssignees) {
+    for (const userId of allNotifiedAssignees) {
       if (userId !== req.user._id.toString()) {
         try {
           await sendNotification({
