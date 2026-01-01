@@ -1057,18 +1057,28 @@ const createResponse = async (req, res) => {
     task.responses.push(newResponse._id);
     await task.save();
 
-    // Уведомить только менеджеров (не создателя задачи)
+    // Уведомить только участников задачи и ответственного менеджера
     const uniqueRecipients = new Set();
 
-    // Добавить всех админов, супер админов и менеджеров
-    const adminsAndManagers = await User.find({ role: { $in: ["admin", "super_admin", "manager"] } });
-    adminsAndManagers.forEach(user => {
-      if (user._id.toString() !== req.user._id.toString()) {
-        uniqueRecipients.add(user._id.toString());
+    // Добавить участников задачи (assignees)
+    task.assignees.forEach(assignee => {
+      const assigneeId = assignee._id ? assignee._id.toString() : assignee.toString();
+      if (assigneeId !== req.user._id.toString()) {
+        uniqueRecipients.add(assigneeId);
       }
     });
 
-    // Создать уведомления и отправить email
+    // Добавить ответственного менеджера задачи
+    if (task.responsibleManager) {
+      const managerId = task.responsibleManager._id
+        ? task.responsibleManager._id.toString()
+        : task.responsibleManager.toString();
+      if (managerId !== req.user._id.toString()) {
+        uniqueRecipients.add(managerId);
+      }
+    }
+
+    // Создать уведомления и отправить email + SMS только участникам и менеджеру
     for (const userId of uniqueRecipients) {
       await createNotification(
         userId,
@@ -1081,19 +1091,6 @@ const createResponse = async (req, res) => {
           actorId: req.user._id,
         }
       );
-      
-      // Отправить email уведомление менеджеру
-      const recipient = await User.findById(userId);
-      if (recipient && recipient.email) {
-        await sendEmail(
-          recipient.email,
-          "Новый ответ на задачу",
-          recipient.name,
-          `${req.user.name} ответил на задачу "${task.title}": ${text ? text.substring(0, 100) + (text.length > 100 ? '...' : '') : 'Добавил файлы'}`,
-          "Открыть задачу",
-          `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/task/${taskId}`
-        );
-      }
     }
 
     // Записать активность

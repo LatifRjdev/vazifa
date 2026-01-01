@@ -86,11 +86,11 @@ export function meta() {
 
 const AllTasksPage = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Проверка прав доступа
-  const canViewAllTasks = user?.role && ["admin", "super_admin", "manager"].includes(user.role);
+  // Проверка прав доступа (ждем загрузки данных пользователя)
+  const canViewAllTasks = !authLoading && user?.role && ["admin", "super_admin", "manager"].includes(user.role);
 
   // Состояние фильтров
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
@@ -145,6 +145,11 @@ const AllTasksPage = () => {
 
     setSearchParams(params, { replace: true });
   }, [searchQuery, statusFilter, priorityFilter, assigneeFilter, sortBy, sortOrder, groupByTitle, setSearchParams]);
+
+  // Показываем загрузку пока проверяем авторизацию
+  if (authLoading) {
+    return <Loader message={t('all_tasks.loading')} />;
+  }
 
   if (!canViewAllTasks) {
     return (

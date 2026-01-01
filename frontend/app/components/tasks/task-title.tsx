@@ -33,31 +33,35 @@ export const TaskTitle = ({
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 min-w-0 overflow-hidden">
       {isEditing ? (
         <Input
-          className="text-xl font-semibold w-full min-w-3xl"
+          className="text-xl font-semibold flex-1 min-w-0"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
           disabled={isPending}
         />
       ) : (
-        <h2 className="text-xl flex-1 font-semibold">{title}</h2>
+        <h2 className="text-xl flex-1 font-semibold truncate min-w-0">{title}</h2>
       )}
       {isEditing ? (
         <Button
-          className="py-0"
+          className="shrink-0"
           size={"sm"}
           disabled={isPending}
           onClick={updateTaskTitle}
         >
-          {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+          {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Сохранить"}
         </Button>
       ) : (
-        <Edit
-          className="w-3 h-3 cursor-pointer"
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 h-8 w-8"
           onClick={() => setIsEditing(true)}
-        />
+        >
+          <Edit className="w-4 h-4" />
+        </Button>
       )}
     </div>
   );
