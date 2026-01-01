@@ -5,8 +5,13 @@ import {
   Filter,
   SortAsc,
   SortDesc,
+  Layers,
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  MessageSquare,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { Loader } from "@/components/loader";
@@ -31,6 +36,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useGetMyTasksQuery } from "@/hooks/use-task";
 import { getProjectDueDateColor } from "@/lib";
 import { formatDateDetailedRussian, formatDueDateRussian } from "@/lib/date-utils";
@@ -62,6 +70,10 @@ const MyTasksPage = () => {
   );
   const [searchQuery, setSearchQuery] = useState(initialSearch);
 
+  // Группировка по названию
+  const [groupByTitle, setGroupByTitle] = useState(searchParams.get("grouped") === "true");
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
   // Keep state and URL in sync
   useEffect(() => {
     const params: Record<string, string> = {};
@@ -72,9 +84,14 @@ const MyTasksPage = () => {
     params.filter = filter;
     params.sort = sortDirection;
     params.search = searchQuery;
+    if (groupByTitle) {
+      params.grouped = "true";
+    } else {
+      delete params.grouped;
+    }
     setSearchParams(params, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, sortDirection, searchQuery]);
+  }, [filter, sortDirection, searchQuery, groupByTitle]);
 
   // If the URL changes externally, update state
   useEffect(() => {
@@ -124,6 +141,56 @@ const MyTasksPage = () => {
     }
     return 0;
   });
+
+  // Группировка задач по названию
+  const groupedTasks = useMemo(() => {
+    if (!groupByTitle) return null;
+
+    const groups = new Map<string, Task[]>();
+    sortedTasks.forEach(task => {
+      const title = task.title.trim();
+      if (!groups.has(title)) {
+        groups.set(title, []);
+      }
+      groups.get(title)!.push(task);
+    });
+
+    // Преобразуем в массив и сортируем группы по количеству задач
+    return Array.from(groups.entries())
+      .map(([title, tasks]) => ({
+        title,
+        tasks,
+        count: tasks.length,
+        todoCount: tasks.filter(t => t.status === "To Do").length,
+        inProgressCount: tasks.filter(t => t.status === "In Progress").length,
+        doneCount: tasks.filter(t => t.status === "Done").length,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [sortedTasks, groupByTitle]);
+
+  // Функция для переключения состояния группы
+  const toggleGroup = (title: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(title)) {
+        next.delete(title);
+      } else {
+        next.add(title);
+      }
+      return next;
+    });
+  };
+
+  // Развернуть/свернуть все группы
+  const toggleAllGroups = () => {
+    if (groupedTasks) {
+      if (expandedGroups.size === groupedTasks.length) {
+        setExpandedGroups(new Set());
+      } else {
+        setExpandedGroups(new Set(groupedTasks.map(g => g.title)));
+      }
+    }
+  };
 
   // Group tasks by status for board view
   const todoTasks = sortedTasks.filter((task) => task.status === "To Do");
@@ -189,12 +256,26 @@ const MyTasksPage = () => {
         </div>
       </div>
 
-      <Input
-        placeholder={t('search.find_tasks')}
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+        <Input
+          placeholder={t('search.find_tasks')}
         value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="max-w-md"
-      />
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="max-w-md"
+        />
+
+        <div className="flex items-center gap-2">
+          <Switch
+            id="group-by-title-my"
+            checked={groupByTitle}
+            onCheckedChange={setGroupByTitle}
+          />
+          <Label htmlFor="group-by-title-my" className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
+            <Layers className="h-4 w-4" />
+            {t('all_tasks.group_by_title')}
+          </Label>
+        </div>
+      </div>
 
       <Tabs defaultValue="list">
         <TabsList>
@@ -204,82 +285,216 @@ const MyTasksPage = () => {
 
         <TabsContent value="list" className="space-y-4">
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle>{t('nav.my_tasks')}</CardTitle>
-              <CardDescription>
-                {sortedTasks.length} {t('tasks.assigned_to_you')}
-              </CardDescription>
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>
+                  {groupByTitle && groupedTasks
+                    ? t('all_tasks.groups_count').replace('{groups}', groupedTasks.length.toString()).replace('{tasks}', sortedTasks.length.toString())
+                    : t('nav.my_tasks')}
+                </CardTitle>
+                <CardDescription>
+                  {sortedTasks.length} {t('tasks.assigned_to_you')}
+                </CardDescription>
+              </div>
+              {groupByTitle && groupedTasks && groupedTasks.length > 0 && (
+                <Button variant="outline" size="sm" onClick={toggleAllGroups}>
+                  {expandedGroups.size === groupedTasks.length ? t('all_tasks.collapse_all') : t('all_tasks.expand_all')}
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y">
-                {sortedTasks.map((task) => (
-                  <div key={task._id} className="p-4 hover:bg-muted/50">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-2 gap-3">
-                      <div className="flex">
-                        <div
-                          className={`mr-3 rounded-full p-1 ${
-                            task.status === "Done"
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                              : task.priority === "High"
-                              ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-                              : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                          }`}
-                        >
-                          {task.status === "Done" ? (
-                            <CheckCircle2 className="h-4 w-4" />
-                          ) : (
-                            <Clock className="h-4 w-4" />
-                          )}
-                        </div>
-                        <div>
-                          <Link 
-                            to={`/dashboard/task/${task._id}`}
-                            className="font-medium hover:text-primary hover:underline transition-colors flex items-center"
-                          >
-                            {task.title}
-                            <ArrowUpRight className="h-3 w-3 ml-1" />
-                          </Link>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge variant={task.status.toLowerCase() as any}>
-                              {getTaskStatusRussian(task.status)}
-                            </Badge>
-                            {task.priority && (
-                              <Badge
-                                variant={
-                                  task.priority === "High"
-                                    ? "destructive"
-                                    : "secondary"
-                                }
-                              >
-                                {getPriorityRussian(task.priority)}
+              {/* Групповой вид */}
+              {groupByTitle && groupedTasks ? (
+                <div className="divide-y">
+                  {groupedTasks.map((group) => (
+                    <Collapsible
+                      key={group.title}
+                      open={expandedGroups.has(group.title)}
+                      onOpenChange={() => toggleGroup(group.title)}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center gap-3">
+                            {expandedGroups.has(group.title) ? (
+                              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            )}
+                            <div>
+                              <div className="font-medium">{group.title}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {t('all_tasks.tasks_in_group').replace('{count}', group.count.toString())}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {group.todoCount > 0 && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
+                                {t('status.todo')}: {group.todoCount}
                               </Badge>
                             )}
-                            {task.isArchived && (
-                              <Badge variant="outline">{t('filter.archived')}</Badge>
+                            {group.inProgressCount > 0 && (
+                              <Badge variant="outline" className="bg-yellow-50 text-yellow-600 border-yellow-200">
+                                {t('status.in_progress')}: {group.inProgressCount}
+                              </Badge>
+                            )}
+                            {group.doneCount > 0 && (
+                              <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
+                                {t('status.done')}: {group.doneCount}
+                              </Badge>
                             )}
                           </div>
                         </div>
-                      </div>
-
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        {task.dueDate && (
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="border-t bg-muted/20">
+                          {group.tasks.map((task) => (
+                            <div key={task._id} className="p-4 hover:bg-muted/50 border-b last:border-b-0 ml-8">
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div className="flex">
+                                  <div
+                                    className={`mr-3 rounded-full p-1 ${
+                                      task.status === "Done"
+                                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                                        : task.priority === "High"
+                                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                                        : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                                    }`}
+                                  >
+                                    {task.status === "Done" ? (
+                                      <CheckCircle2 className="h-4 w-4" />
+                                    ) : (
+                                      <Clock className="h-4 w-4" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center space-x-2">
+                                      <Badge variant={task.status.toLowerCase() as any}>
+                                        {getTaskStatusRussian(task.status)}
+                                      </Badge>
+                                      {task.priority && (
+                                        <Badge
+                                          variant={
+                                            task.priority === "High"
+                                              ? "destructive"
+                                              : "secondary"
+                                          }
+                                        >
+                                          {getPriorityRussian(task.priority)}
+                                        </Badge>
+                                      )}
+                                      {task.isArchived && (
+                                        <Badge variant="outline">{t('filter.archived')}</Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <div className="text-sm text-muted-foreground">
+                                    {task.dueDate && (
+                                      <span className={cn(getProjectDueDateColor(task.dueDate))}>
+                                        {formatDueDateRussian(task.dueDate)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Link to={`/dashboard/task/${task._id}`}>
+                                      <Button variant="ghost" size="sm" title={t('all_tasks.view_task')}>
+                                        <Eye className="h-4 w-4" />
+                                      </Button>
+                                    </Link>
+                                    <Link to={`/dashboard/task/${task._id}#responses`}>
+                                      <Button variant="ghost" size="sm" title={t('all_tasks.view_responses')}>
+                                        <MessageSquare className="h-4 w-4" />
+                                      </Button>
+                                    </Link>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
+                  {groupedTasks.length === 0 && (
+                    <div className="p-8 text-center text-muted-foreground">
+                      {t('tasks.no_matching_tasks')}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Обычный вид */
+                <div className="divide-y">
+                  {sortedTasks.map((task) => (
+                    <div key={task._id} className="p-4 hover:bg-muted/50">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between mb-2 gap-3">
+                        <div className="flex">
                           <div
-                            className={cn(getProjectDueDateColor(task.dueDate))}
+                            className={`mr-3 rounded-full p-1 ${
+                              task.status === "Done"
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                                : task.priority === "High"
+                                ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                                : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                            }`}
                           >
-                            {t('tasks.due_date_short')}: {formatDueDateRussian(task.dueDate)}
+                            {task.status === "Done" ? (
+                              <CheckCircle2 className="h-4 w-4" />
+                            ) : (
+                              <Clock className="h-4 w-4" />
+                            )}
                           </div>
-                        )}
-                        <div>{t('tasks.modified')}: {formatDateDetailedRussian(task.updatedAt)}</div>
+                          <div>
+                            <Link
+                              to={`/dashboard/task/${task._id}`}
+                              className="font-medium hover:text-primary hover:underline transition-colors flex items-center"
+                            >
+                              {task.title}
+                              <ArrowUpRight className="h-3 w-3 ml-1" />
+                            </Link>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <Badge variant={task.status.toLowerCase() as any}>
+                                {getTaskStatusRussian(task.status)}
+                              </Badge>
+                              {task.priority && (
+                                <Badge
+                                  variant={
+                                    task.priority === "High"
+                                      ? "destructive"
+                                      : "secondary"
+                                  }
+                                >
+                                  {getPriorityRussian(task.priority)}
+                                </Badge>
+                              )}
+                              {task.isArchived && (
+                                <Badge variant="outline">{t('filter.archived')}</Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          {task.dueDate && (
+                            <div
+                              className={cn(getProjectDueDateColor(task.dueDate))}
+                            >
+                              {t('tasks.due_date_short')}: {formatDueDateRussian(task.dueDate)}
+                            </div>
+                          )}
+                          <div>{t('tasks.modified')}: {formatDateDetailedRussian(task.updatedAt)}</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-                {sortedTasks.length === 0 && (
-                  <div className="p-8 text-center text-muted-foreground">
-                    {t('tasks.no_matching_tasks')}
-                  </div>
-                )}
-              </div>
+                  ))}
+                  {sortedTasks.length === 0 && (
+                    <div className="p-8 text-center text-muted-foreground">
+                      {t('tasks.no_matching_tasks')}
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

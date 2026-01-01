@@ -1,19 +1,19 @@
 // React Router generated types for route:
-// routes/auth/verify-email.tsx
+// routes/dashboard/user.$userId.tsx
 
 import type * as T from "react-router/route-module"
 
 import type { Info as Parent0 } from "../../../+types/root.js"
-import type { Info as Parent1 } from "./auth-layout.js"
+import type { Info as Parent1 } from "./dashboard-layout.js"
 
-type Module = typeof import("../verify-email.js")
+type Module = typeof import("../user.$userId.js")
 
 export type Info = {
   parents: [Parent0, Parent1],
-  id: "routes/auth/verify-email"
-  file: "routes/auth/verify-email.tsx"
-  path: "verify-email"
-  params: {} & { [key: string]: string | undefined }
+  id: "routes/dashboard/user.$userId"
+  file: "routes/dashboard/user.$userId.tsx"
+  path: "dashboard/user/:userId"
+  params: {"userId": string} & { [key: string]: string | undefined }
   module: Module
   loaderData: T.CreateLoaderData<Module>
   actionData: T.CreateActionData<Module>

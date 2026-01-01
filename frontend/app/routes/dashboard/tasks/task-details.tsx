@@ -14,7 +14,9 @@ import {
   Upload,
   UserMinus,
   UserPlus,
+  AlertTriangle,
 } from "lucide-react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 
@@ -49,6 +51,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 import type { Route } from "../../../+types/root";
 
@@ -85,6 +97,10 @@ const TaskDetailsPage = () => {
     useArchiveTaskMutation();
   const { mutate: deleteTask, isPending: isDeletingTask } =
     useDeleteTaskMutation();
+
+  // Состояние для диалога удаления с причиной
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
 
   if (isLoading) return <Loader message="Загрузка сведений о задаче..." />;
 
@@ -146,28 +162,32 @@ const TaskDetailsPage = () => {
   };
 
   const handleDeleteTask = () => {
-    confirm({
-      title: "Delete Task",
-      message:
-        "This action cannot be undone. This will permanently delete your task and remove all associated data.",
-      onConfirm: async () => {
-        deleteTask(
-          { taskId: taskId! },
-          {
-            onSuccess: () => {
-              toast.success("Task deleted successfully");
-              navigate(`/workspaces/${workspaceId}/projects/${projectId}`);
-            },
-            onError: (error: any) => {
-              toast.error(
-                error?.response?.data?.message || "Failed to delete task"
-              );
-              console.log(error);
-            },
-          }
-        );
-      },
-    });
+    setDeleteReason("");
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteTask = () => {
+    if (!deleteReason.trim()) {
+      toast.error("Пожалуйста, укажите причину удаления");
+      return;
+    }
+
+    deleteTask(
+      { taskId: taskId!, reason: deleteReason.trim() },
+      {
+        onSuccess: () => {
+          toast.success("Задача успешно удалена");
+          setIsDeleteDialogOpen(false);
+          navigate(-1);
+        },
+        onError: (error: any) => {
+          toast.error(
+            error?.response?.data?.message || "Ошибка удаления задачи"
+          );
+          console.log(error);
+        },
+      }
+    );
   };
 
   const members = task.assignees || [];
@@ -331,6 +351,62 @@ const TaskDetailsPage = () => {
         title={confirmationOptions?.title || ""}
         message={confirmationOptions?.message || ""}
       />
+
+      {/* Диалог удаления с причиной */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Удаление задачи
+            </DialogTitle>
+            <DialogDescription>
+              Это действие нельзя отменить. Задача будет безвозвратно удалена вместе со всеми связанными данными.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="bg-muted p-3 rounded-lg">
+              <p className="text-sm font-medium">Задача: {task.title}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Исполнители: {task.assignees?.map(a => a.name).join(', ') || 'Не назначены'}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="delete-reason" className="text-sm font-medium">
+                Причина удаления *
+              </Label>
+              <Textarea
+                id="delete-reason"
+                placeholder="Укажите причину удаления задачи..."
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                className="min-h-[80px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                Причина будет сохранена в журнале аудита
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Отмена
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteTask}
+              disabled={isDeletingTask || !deleteReason.trim()}
+            >
+              {isDeletingTask ? "Удаление..." : "Удалить задачу"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

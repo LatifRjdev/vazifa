@@ -83,12 +83,13 @@ export const CreateTaskDialog = ({
   });
 
   const [isMultiTask, setIsMultiTask] = useState(false);
-  const [multipleTasks, setMultipleTasks] = useState<Array<{ description: string; dueDate: string }>>([
-    { description: "", dueDate: "" },
-    { description: "", dueDate: "" }
+  const [multipleTasks, setMultipleTasks] = useState<Array<{ description: string; dueDate: string; assignees: string[] }>>([
+    { description: "", dueDate: "", assignees: [] },
+    { description: "", dueDate: "", assignees: [] }
   ]);
   const [participantSearch, setParticipantSearch] = useState("");
   const [assigneesOpen, setAssigneesOpen] = useState(false);
+  const [multiTaskAssigneesOpen, setMultiTaskAssigneesOpen] = useState<number | null>(null);
 
   const { data: usersData } = useQuery({
     queryKey: ["all-users"],
@@ -141,8 +142,8 @@ export const CreateTaskDialog = ({
           form.reset();
           setIsMultiTask(false);
           setMultipleTasks([
-            { description: '', dueDate: '' },
-            { description: '', dueDate: '' }
+            { description: '', dueDate: '', assignees: [] },
+            { description: '', dueDate: '', assignees: [] }
           ]);
         } else if (!response.ok) {
           throw new Error(result.message || 'Ошибка создания мультизадач');
@@ -200,8 +201,8 @@ export const CreateTaskDialog = ({
                     setIsMultiTask(!!checked);
                     if (checked && multipleTasks.length < 2) {
                       setMultipleTasks([
-                        { description: "", dueDate: "" },
-                        { description: "", dueDate: "" }
+                        { description: "", dueDate: "", assignees: [] },
+                        { description: "", dueDate: "", assignees: [] }
                       ]);
                     }
                   }}
@@ -316,10 +317,68 @@ export const CreateTaskDialog = ({
                             </PopoverContent>
                           </Popover>
                         </div>
+                        <div className="relative">
+                          <label className="text-sm font-medium">{t('tasks.assign_to')}</label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setMultiTaskAssigneesOpen(multiTaskAssigneesOpen === index ? null : index)}
+                            className="w-full justify-start text-left font-normal mt-1"
+                          >
+                            {task.assignees.length === 0 ? (
+                              <span className="text-muted-foreground">{t('tasks.select_members')}</span>
+                            ) : task.assignees.length <= 2 ? (
+                              task.assignees.map((m) => {
+                                const user = allUsers.find((u) => u && u._id === m);
+                                return user?.name || "Неизвестный";
+                              }).join(", ")
+                            ) : (
+                              t('tasks.selected_count').replace('{count}', task.assignees.length.toString())
+                            )}
+                          </Button>
+                          {multiTaskAssigneesOpen === index && (
+                            <div className="absolute z-[100] top-full left-0 mt-1 w-full bg-background border rounded-md shadow-lg p-2">
+                              <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                                {allUsers
+                                  .filter(user => user && user._id)
+                                  .map((user) => {
+                                    const isSelected = user._id ? task.assignees.includes(user._id) : false;
+                                    return (
+                                      <div
+                                        key={user._id}
+                                        className="flex items-center gap-2 p-2 border rounded hover:bg-muted cursor-pointer select-none"
+                                        onClick={() => {
+                                          if (user._id) {
+                                            const newTasks = [...multipleTasks];
+                                            if (isSelected) {
+                                              newTasks[index].assignees = task.assignees.filter(m => m !== user._id);
+                                            } else {
+                                              newTasks[index].assignees = [...task.assignees, user._id];
+                                            }
+                                            setMultipleTasks(newTasks);
+                                          }
+                                        }}
+                                      >
+                                        <div className={`w-4 h-4 border rounded flex items-center justify-center ${isSelected ? 'bg-primary border-primary' : 'border-input'}`}>
+                                          {isSelected && <span className="text-primary-foreground text-xs">✓</span>}
+                                        </div>
+                                        <span className="truncate flex-1 text-sm">{user.name}</span>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                              <div className="mt-2 pt-2 border-t">
+                                <Button type="button" size="sm" onClick={() => setMultiTaskAssigneesOpen(null)} className="w-full">
+                                  Готово ({task.assignees.length})
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </Card>
                   ))}
-                  <Button type="button" variant="outline" onClick={() => setMultipleTasks([...multipleTasks, { description: '', dueDate: '' }])} className="w-full">
+                  <Button type="button" variant="outline" onClick={() => setMultipleTasks([...multipleTasks, { description: '', dueDate: '', assignees: [] }])} className="w-full">
                     + {t('tasks.add_task')}
                   </Button>
                 </div>
@@ -473,7 +532,7 @@ export const CreateTaskDialog = ({
                                 })}
                               {allUsers.filter(user => user && user._id && (!participantSearch || user.name?.toLowerCase().includes(participantSearch.toLowerCase()))).length === 0 && (
                                 <div className="text-center text-muted-foreground py-4 text-sm">
-                                  Участники не найдены
+                                  Исполнители не найдены
                                 </div>
                               )}
                             </div>

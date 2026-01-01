@@ -13,22 +13,24 @@ declare module "react-router" {
 type Params = {
   "/": {};
   "/sign-up": {};
-  "/sign-in": {};
   "/forgot-password": {};
-  "/verify-email": {};
   "/auth/callback": {};
   "/dashboard": {};
-  "/my-tasks": {};
-  "/achieved": {};
-  "/all-tasks": {};
-  "/manager-tasks": {};
-  "/important-tasks": {};
-  "/analytics": {};
-  "/members": {};
-  "/settings": {};
+  "/dashboard/my-tasks": {};
+  "/dashboard/achieved": {};
+  "/dashboard/all-tasks": {};
+  "/dashboard/manager-tasks": {};
+  "/dashboard/important-tasks": {};
+  "/dashboard/analytics": {};
+  "/dashboard/members": {};
+  "/dashboard/settings": {};
   "/dashboard/task/:taskId": {
     "taskId": string;
   };
+  "/dashboard/user/:userId": {
+    "userId": string;
+  };
+  "/dashboard/tech-admin": {};
   "/user/notifications": {};
   "/user/profile": {};
   "/reset-password": {};

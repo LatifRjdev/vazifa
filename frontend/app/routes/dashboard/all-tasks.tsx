@@ -8,14 +8,21 @@ import {
   AlertCircle,
   Eye,
   CalendarDays,
+  Layers,
+  ChevronDown,
+  ChevronRight,
+  MessageSquare,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useSearchParams, Link } from "react-router";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { useQuery } from "@tanstack/react-query";
 
 import { Loader } from "@/components/loader";
 import { useLanguage } from "@/providers/language-context";
+import { fetchData } from "@/lib/fetch-utils";
+import type { User as UserType } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +58,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -86,11 +96,16 @@ const AllTasksPage = () => {
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
   const [priorityFilter, setPriorityFilter] = useState(searchParams.get("priority") || "all");
+  const [assigneeFilter, setAssigneeFilter] = useState(searchParams.get("assignee") || "all");
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
     (searchParams.get("sortOrder") as "asc" | "desc") || "desc"
   );
-  
+
+  // Группировка по названию
+  const [groupByTitle, setGroupByTitle] = useState(searchParams.get("grouped") === "true");
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
   // Фильтры по времени создания
   const [dateFilter, setDateFilter] = useState<DateFilterPeriod | "all">(
     (searchParams.get("dateFilter") as DateFilterPeriod) || "all"
@@ -105,17 +120,31 @@ const AllTasksPage = () => {
   // Загрузка данных
   const { data: allTasks, isPending: tasksLoading } = useGetAllTasksQuery(canViewAllTasks);
 
+  // Загрузка пользователей для фильтра по исполнителям
+  const { data: usersData } = useQuery({
+    queryKey: ["all-users"],
+    queryFn: () => fetchData("/users/all"),
+    enabled: canViewAllTasks,
+  });
+
+  const users: UserType[] = useMemo(() => {
+    const allUsers = (usersData as any)?.users || [];
+    return allUsers.filter((u: UserType) => u.role !== "super_admin");
+  }, [usersData]);
+
   // Синхронизация с URL
   useEffect(() => {
     const params: Record<string, string> = {};
     if (searchQuery) params.search = searchQuery;
     if (statusFilter !== "all") params.status = statusFilter;
     if (priorityFilter !== "all") params.priority = priorityFilter;
+    if (assigneeFilter !== "all") params.assignee = assigneeFilter;
     if (sortBy !== "createdAt") params.sortBy = sortBy;
     if (sortOrder !== "desc") params.sortOrder = sortOrder;
-    
+    if (groupByTitle) params.grouped = "true";
+
     setSearchParams(params, { replace: true });
-  }, [searchQuery, statusFilter, priorityFilter, sortBy, sortOrder, setSearchParams]);
+  }, [searchQuery, statusFilter, priorityFilter, assigneeFilter, sortBy, sortOrder, groupByTitle, setSearchParams]);
 
   if (!canViewAllTasks) {
     return (
@@ -139,14 +168,23 @@ const AllTasksPage = () => {
 
   // Фильтрация задач
   let filteredTasks = tasks.filter((task) => {
-    const matchesSearch = 
+    const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesStatus = statusFilter === "all" || task.status === statusFilter;
     const matchesPriority = priorityFilter === "all" || task.priority === priorityFilter;
 
-    return matchesSearch && matchesStatus && matchesPriority;
+    // Фильтр по исполнителю (по ID или имени)
+    let matchesAssignee = true;
+    if (assigneeFilter !== "all") {
+      matchesAssignee = task.assignees?.some(a =>
+        a._id === assigneeFilter ||
+        a.name?.toLowerCase().includes(assigneeFilter.toLowerCase())
+      ) || false;
+    }
+
+    return matchesSearch && matchesStatus && matchesPriority && matchesAssignee;
   });
 
   // Применяем фильтр по времени создания
@@ -200,6 +238,56 @@ const AllTasksPage = () => {
       return aValue < bValue ? 1 : -1;
     }
   });
+
+  // Группировка задач по названию
+  const groupedTasks = useMemo(() => {
+    if (!groupByTitle) return null;
+
+    const groups = new Map<string, Task[]>();
+    sortedTasks.forEach(task => {
+      const title = task.title.trim();
+      if (!groups.has(title)) {
+        groups.set(title, []);
+      }
+      groups.get(title)!.push(task);
+    });
+
+    // Преобразуем в массив и сортируем группы по количеству задач
+    return Array.from(groups.entries())
+      .map(([title, tasks]) => ({
+        title,
+        tasks,
+        count: tasks.length,
+        todoCount: tasks.filter(t => t.status === "To Do").length,
+        inProgressCount: tasks.filter(t => t.status === "In Progress").length,
+        doneCount: tasks.filter(t => t.status === "Done").length,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [sortedTasks, groupByTitle]);
+
+  // Функция для переключения состояния группы
+  const toggleGroup = (title: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(title)) {
+        next.delete(title);
+      } else {
+        next.add(title);
+      }
+      return next;
+    });
+  };
+
+  // Развернуть/свернуть все группы
+  const toggleAllGroups = () => {
+    if (groupedTasks) {
+      if (expandedGroups.size === groupedTasks.length) {
+        setExpandedGroups(new Set());
+      } else {
+        setExpandedGroups(new Set(groupedTasks.map(g => g.title)));
+      }
+    }
+  };
 
   // Статистика
   const stats = {
@@ -358,6 +446,21 @@ const AllTasksPage = () => {
               </SelectContent>
             </Select>
 
+            <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+              <SelectTrigger className="w-full md:w-56">
+                <Users className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Исполнитель" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все исполнители</SelectItem>
+                {users.map((u) => (
+                  <SelectItem key={u._id} value={u._id}>
+                    {u.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
           </div>
 
           {/* Фильтры по времени создания */}
@@ -474,132 +577,310 @@ const AllTasksPage = () => {
                 <SortDesc className="h-4 w-4" />
               )}
             </Button>
+
+            <div className="flex items-center gap-2 ml-4 border-l pl-4">
+              <Switch
+                id="group-by-title"
+                checked={groupByTitle}
+                onCheckedChange={setGroupByTitle}
+              />
+              <Label htmlFor="group-by-title" className="flex items-center gap-2 cursor-pointer">
+                <Layers className="h-4 w-4" />
+                {t('all_tasks.group_by_title')}
+              </Label>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Таблица задач */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>
-            {t('all_tasks.tasks_count').replace('{filtered}', sortedTasks.length.toString()).replace('{total}', tasks.length.toString())}
+            {groupByTitle && groupedTasks
+              ? t('all_tasks.groups_count').replace('{groups}', groupedTasks.length.toString()).replace('{tasks}', sortedTasks.length.toString())
+              : t('all_tasks.tasks_count').replace('{filtered}', sortedTasks.length.toString()).replace('{total}', tasks.length.toString())}
           </CardTitle>
+          {groupByTitle && groupedTasks && groupedTasks.length > 0 && (
+            <Button variant="outline" size="sm" onClick={toggleAllGroups}>
+              {expandedGroups.size === groupedTasks.length ? t('all_tasks.collapse_all') : t('all_tasks.expand_all')}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16">{t('all_tasks.table_number')}</TableHead>
-                  <TableHead>{t('all_tasks.table_title')}</TableHead>
-                  <TableHead>{t('all_tasks.table_status')}</TableHead>
-                  <TableHead>{t('all_tasks.table_priority')}</TableHead>
-                  <TableHead>{t('all_tasks.table_assigned')}</TableHead>
-                  <TableHead>{t('all_tasks.table_due_date')}</TableHead>
-                  <TableHead>{t('all_tasks.table_created')}</TableHead>
-                  {(user?.role === 'admin' || user?.role === 'manager') && (
-                    <TableHead className="w-20">{t('all_tasks.table_actions')}</TableHead>
-                  )}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedTasks.map((task, index) => (
-                  <TableRow key={task._id}>
-                    <TableCell className="font-mono text-sm text-muted-foreground">
-                      {index + 1}
-                    </TableCell>
-                    <TableCell>
-                      <Link to={`/dashboard/task/${task._id}`} className="block hover:text-primary transition-colors">
-                        <div className="font-medium hover:underline">{task.title}</div>
-                        {task.description && (
-                          <div className="text-sm text-muted-foreground truncate max-w-xs">
-                            {task.description}
+          {/* Групповой вид */}
+          {groupByTitle && groupedTasks ? (
+            <div className="space-y-3">
+              {groupedTasks.map((group) => (
+                <Collapsible
+                  key={group.title}
+                  open={expandedGroups.has(group.title)}
+                  onOpenChange={() => toggleGroup(group.title)}
+                >
+                  <div className="rounded-lg border">
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          {expandedGroups.has(group.title) ? (
+                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                          )}
+                          <div>
+                            <div className="font-medium">{group.title}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {t('all_tasks.tasks_in_group').replace('{count}', group.count.toString())}
+                            </div>
                           </div>
-                        )}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={task.status.toLowerCase() as any}>
-                        {getTaskStatusRussian(task.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          task.priority === "High"
-                            ? "destructive"
-                            : task.priority === "Medium"
-                            ? "default"
-                            : "secondary"
-                        }
-                      >
-                        {getPriorityRussian(task.priority)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex -space-x-2">
-                        {task.assignees?.slice(0, 3).map((assignee, index) => (
-                          assignee ? (
-                            <Avatar key={assignee._id} className="h-8 w-8 border-2 border-background">
-                              <AvatarImage src={assignee.profilePicture || undefined} />
-                              <AvatarFallback className="text-xs">
-                                {assignee.name?.charAt(0) || '?'}
-                              </AvatarFallback>
-                            </Avatar>
-                          ) : null
-                        ))}
-                        {task.assignees && task.assignees.length > 3 && (
-                          <div className="h-8 w-8 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                            <span className="text-xs">+{task.assignees.length - 3}</span>
-                          </div>
-                        )}
-                        {(!task.assignees || task.assignees.length === 0) && (
-                          <span className="text-sm text-muted-foreground">{t('all_tasks.not_assigned')}</span>
-                        )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {group.todoCount > 0 && (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
+                              {t('status.todo')}: {group.todoCount}
+                            </Badge>
+                          )}
+                          {group.inProgressCount > 0 && (
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-600 border-yellow-200">
+                              {t('status.in_progress')}: {group.inProgressCount}
+                            </Badge>
+                          )}
+                          {group.doneCount > 0 && (
+                            <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
+                              {t('status.done')}: {group.doneCount}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {task.dueDate ? (
-                        <span className={cn(
-                          "text-sm",
-                          new Date(task.dueDate) < new Date() && task.status !== "Done"
-                            ? "text-red-600 font-medium"
-                            : "text-muted-foreground"
-                        )}>
-                          {formatDueDateRussian(task.dueDate)}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">{t('all_tasks.not_specified')}</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {formatDateDetailedRussian(task.createdAt)}
-                      </span>
-                    </TableCell>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="border-t">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-16">#</TableHead>
+                              <TableHead>{t('all_tasks.table_status')}</TableHead>
+                              <TableHead>{t('all_tasks.table_priority')}</TableHead>
+                              <TableHead>{t('all_tasks.table_assigned')}</TableHead>
+                              <TableHead>{t('all_tasks.table_due_date')}</TableHead>
+                              <TableHead>{t('all_tasks.table_created')}</TableHead>
+                              {(user?.role === 'admin' || user?.role === 'manager') && (
+                                <TableHead className="w-20">{t('all_tasks.table_actions')}</TableHead>
+                              )}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {group.tasks.map((task, index) => (
+                              <TableRow key={task._id}>
+                                <TableCell className="font-mono text-sm text-muted-foreground">
+                                  {index + 1}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={task.status.toLowerCase() as any}>
+                                    {getTaskStatusRussian(task.status)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={
+                                      task.priority === "High"
+                                        ? "destructive"
+                                        : task.priority === "Medium"
+                                        ? "default"
+                                        : "secondary"
+                                    }
+                                  >
+                                    {getPriorityRussian(task.priority)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex -space-x-2">
+                                    {task.assignees?.slice(0, 3).map((assignee) => (
+                                      assignee ? (
+                                        <Avatar key={assignee._id} className="h-8 w-8 border-2 border-background">
+                                          <AvatarImage src={assignee.profilePicture || undefined} />
+                                          <AvatarFallback className="text-xs">
+                                            {assignee.name?.charAt(0) || '?'}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                      ) : null
+                                    ))}
+                                    {task.assignees && task.assignees.length > 3 && (
+                                      <div className="h-8 w-8 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                                        <span className="text-xs">+{task.assignees.length - 3}</span>
+                                      </div>
+                                    )}
+                                    {(!task.assignees || task.assignees.length === 0) && (
+                                      <span className="text-sm text-muted-foreground">{t('all_tasks.not_assigned')}</span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {task.dueDate ? (
+                                    <span className={cn(
+                                      "text-sm",
+                                      new Date(task.dueDate) < new Date() && task.status !== "Done"
+                                        ? "text-red-600 font-medium"
+                                        : "text-muted-foreground"
+                                    )}>
+                                      {formatDueDateRussian(task.dueDate)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">{t('all_tasks.not_specified')}</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-sm text-muted-foreground">
+                                    {formatDateDetailedRussian(task.createdAt)}
+                                  </span>
+                                </TableCell>
+                                {(user?.role === 'admin' || user?.role === 'manager') && (
+                                  <TableCell>
+                                    <div className="flex items-center gap-1">
+                                      <Link to={`/dashboard/task/${task._id}`}>
+                                        <Button variant="ghost" size="sm" title={t('all_tasks.view_task')}>
+                                          <Eye className="h-4 w-4" />
+                                        </Button>
+                                      </Link>
+                                      <Link to={`/dashboard/task/${task._id}#responses`}>
+                                        <Button variant="ghost" size="sm" title={t('all_tasks.view_responses')}>
+                                          <MessageSquare className="h-4 w-4" />
+                                        </Button>
+                                      </Link>
+                                    </div>
+                                  </TableCell>
+                                )}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </CollapsibleContent>
+                  </div>
+                </Collapsible>
+              ))}
+              {groupedTasks.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  {t('all_tasks.no_tasks_found')}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Обычный табличный вид */
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-16">{t('all_tasks.table_number')}</TableHead>
+                    <TableHead>{t('all_tasks.table_title')}</TableHead>
+                    <TableHead>{t('all_tasks.table_status')}</TableHead>
+                    <TableHead>{t('all_tasks.table_priority')}</TableHead>
+                    <TableHead>{t('all_tasks.table_assigned')}</TableHead>
+                    <TableHead>{t('all_tasks.table_due_date')}</TableHead>
+                    <TableHead>{t('all_tasks.table_created')}</TableHead>
                     {(user?.role === 'admin' || user?.role === 'manager') && (
-                      <TableCell>
-                        <Link to={`/dashboard/task/${task._id}`}>
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                      </TableCell>
+                      <TableHead className="w-20">{t('all_tasks.table_actions')}</TableHead>
                     )}
                   </TableRow>
-                ))}
-                {sortedTasks.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={(user?.role === 'admin' || user?.role === 'manager') ? 8 : 7} className="text-center py-8">
-                      <div className="text-muted-foreground">
-                        {t('all_tasks.no_tasks_found')}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedTasks.map((task, index) => (
+                    <TableRow key={task._id}>
+                      <TableCell className="font-mono text-sm text-muted-foreground">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell>
+                        <Link to={`/dashboard/task/${task._id}`} className="block hover:text-primary transition-colors">
+                          <div className="font-medium hover:underline">{task.title}</div>
+                          {task.description && (
+                            <div className="text-sm text-muted-foreground truncate max-w-xs">
+                              {task.description}
+                            </div>
+                          )}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={task.status.toLowerCase() as any}>
+                          {getTaskStatusRussian(task.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            task.priority === "High"
+                              ? "destructive"
+                              : task.priority === "Medium"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {getPriorityRussian(task.priority)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex -space-x-2">
+                          {task.assignees?.slice(0, 3).map((assignee) => (
+                            assignee ? (
+                              <Avatar key={assignee._id} className="h-8 w-8 border-2 border-background">
+                                <AvatarImage src={assignee.profilePicture || undefined} />
+                                <AvatarFallback className="text-xs">
+                                  {assignee.name?.charAt(0) || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                            ) : null
+                          ))}
+                          {task.assignees && task.assignees.length > 3 && (
+                            <div className="h-8 w-8 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                              <span className="text-xs">+{task.assignees.length - 3}</span>
+                            </div>
+                          )}
+                          {(!task.assignees || task.assignees.length === 0) && (
+                            <span className="text-sm text-muted-foreground">{t('all_tasks.not_assigned')}</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {task.dueDate ? (
+                          <span className={cn(
+                            "text-sm",
+                            new Date(task.dueDate) < new Date() && task.status !== "Done"
+                              ? "text-red-600 font-medium"
+                              : "text-muted-foreground"
+                          )}>
+                            {formatDueDateRussian(task.dueDate)}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">{t('all_tasks.not_specified')}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {formatDateDetailedRussian(task.createdAt)}
+                        </span>
+                      </TableCell>
+                      {(user?.role === 'admin' || user?.role === 'manager') && (
+                        <TableCell>
+                          <Link to={`/dashboard/task/${task._id}`}>
+                            <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                  {sortedTasks.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={(user?.role === 'admin' || user?.role === 'manager') ? 8 : 7} className="text-center py-8">
+                        <div className="text-muted-foreground">
+                          {t('all_tasks.no_tasks_found')}
+                        </div>
+                      </TableCell>
+                    </TableRow>
                 )}
               </TableBody>
             </Table>
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

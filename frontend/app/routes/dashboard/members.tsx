@@ -10,7 +10,6 @@ import {
   MoreHorizontal,
   CheckCircle,
   Clock,
-  Eye,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
@@ -24,7 +23,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -64,7 +62,8 @@ import { formatDateDetailedRussian } from "@/lib/date-utils";
 import type { User as UserType, Task } from "@/types";
 import { useAuth } from "@/providers/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchData, updateData, deleteData } from "@/lib/fetch-utils";
+import { fetchData, updateData, deleteData, postData } from "@/lib/fetch-utils";
+import { Label } from "@/components/ui/label";
 
 import type { Route } from "../../+types/root";
 
@@ -85,6 +84,14 @@ const MembersPage = () => {
   const [newRole, setNewRole] = useState<"admin" | "chief_manager" | "manager" | "member">("member");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserType | null>(null);
+  const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false);
+  const [newUserData, setNewUserData] = useState({
+    name: "",
+    email: "",
+    phoneNumber: "",
+    password: "",
+    role: "member" as "admin" | "chief_manager" | "manager" | "member",
+  });
 
   // Проверка прав доступа
   const canManageMembers = user?.role && ["admin", "super_admin", "chief_manager", "manager"].includes(user.role);
@@ -130,6 +137,26 @@ const MembersPage = () => {
     },
     onError: (error: any) => {
       toast.error(error.message || "Ошибка удаления пользователя");
+    },
+  });
+
+  // Мутация для регистрации пользователя
+  const registerUserMutation = useMutation({
+    mutationFn: (data: typeof newUserData) => postData("/admin/register-user", data),
+    onSuccess: () => {
+      toast.success("Пользователь успешно создан");
+      queryClient.invalidateQueries({ queryKey: ["all-users"] });
+      setIsRegisterDialogOpen(false);
+      setNewUserData({
+        name: "",
+        email: "",
+        phoneNumber: "",
+        password: "",
+        role: "member",
+      });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Ошибка создания пользователя");
     },
   });
 
@@ -280,6 +307,12 @@ const MembersPage = () => {
             Управление участниками и их ролями
           </p>
         </div>
+        {canChangeRoles && (
+          <Button onClick={() => setIsRegisterDialogOpen(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Добавить участника
+          </Button>
+        )}
       </div>
 
       {/* Статистика */}
@@ -578,6 +611,117 @@ const MembersPage = () => {
               disabled={deleteUserMutation.isPending}
             >
               {deleteUserMutation.isPending ? "Удаление..." : "Удалить"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Диалог регистрации нового пользователя */}
+      <Dialog open={isRegisterDialogOpen} onOpenChange={setIsRegisterDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Добавить нового участника</DialogTitle>
+            <DialogDescription>
+              Создайте нового пользователя. Он сможет войти с указанным email/телефоном и паролем.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">ФИО *</Label>
+              <Input
+                id="name"
+                placeholder="Иванов Иван Иванович"
+                value={newUserData.name}
+                onChange={(e) => setNewUserData({ ...newUserData, name: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="user@example.com"
+                value={newUserData.email}
+                onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Телефон</Label>
+              <Input
+                id="phone"
+                placeholder="+992XXXXXXXXX"
+                value={newUserData.phoneNumber}
+                onChange={(e) => setNewUserData({ ...newUserData, phoneNumber: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Пароль *</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Минимум 6 символов"
+                value={newUserData.password}
+                onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Роль</Label>
+              <Select
+                value={newUserData.role}
+                onValueChange={(value: any) => setNewUserData({ ...newUserData, role: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper" sideOffset={4}>
+                  {user?.role === "super_admin" && (
+                    <SelectItem value="admin">
+                      <div className="flex items-center gap-2">
+                        <Crown className="h-4 w-4 text-yellow-600" />
+                        Администратор
+                      </div>
+                    </SelectItem>
+                  )}
+                  <SelectItem value="chief_manager">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-purple-600" />
+                      Главный Менеджер
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="manager">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-blue-600" />
+                      Менеджер
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="member">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-gray-600" />
+                      Участник
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsRegisterDialogOpen(false)}
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={() => registerUserMutation.mutate(newUserData)}
+              disabled={registerUserMutation.isPending || !newUserData.name || !newUserData.password || (!newUserData.email && !newUserData.phoneNumber)}
+            >
+              {registerUserMutation.isPending ? "Создание..." : "Создать"}
             </Button>
           </DialogFooter>
         </DialogContent>

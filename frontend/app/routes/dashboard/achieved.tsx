@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar as CalendarIcon, Search, Filter, Eye, Archive, CheckCircle, CalendarDays, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar as CalendarIcon, Search, Filter, Eye, CheckCircle, CalendarDays, ChevronDown, ChevronUp, Clock, AlertTriangle, TrendingUp, Download, LayoutGrid, List, Users } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useGetCompletedTasksQuery } from "@/hooks/use-task";
@@ -15,15 +16,21 @@ import { getPriorityRussian } from "@/lib/translations";
 import { Loader } from "@/components/loader";
 import { NoDataFound } from "@/components/shared/no-data";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, differenceInDays, startOfWeek, endOfWeek, subWeeks } from "date-fns";
 import { ru } from "date-fns/locale";
-import type { Task } from "@/types";
-import { 
-  type DateFilterPeriod, 
-  getDateRangeForPeriod, 
-  getPeriodLabel, 
-  filterTasksByDateRange 
+import type { Task, User as UserType } from "@/types";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { fetchData } from "@/lib/fetch-utils";
+import {
+  type DateFilterPeriod,
+  getDateRangeForPeriod,
+  filterTasksByDateRange
 } from "@/lib/date-filters";
+
+type OnTimeFilter = "all" | "onTime" | "overdue";
+type GroupBy = "none" | "assignee" | "priority" | "month";
+type ViewMode = "table" | "cards";
 
 export function meta() {
   return [
@@ -31,6 +38,44 @@ export function meta() {
     { name: "description", content: "Просмотр выполненных задач в Vazifa!" },
   ];
 }
+
+// Компонент карточки задачи
+const TaskCard = ({ task }: { task: Task & { completedOnTime?: boolean } }) => (
+  <Card className="hover:shadow-md transition-shadow">
+    <CardContent className="p-4">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <Link to={`/dashboard/task/${task._id}`} className="font-medium hover:underline line-clamp-2">
+          {task.title}
+        </Link>
+        {task.completedOnTime !== null && (
+          <Badge variant={task.completedOnTime ? "default" : "destructive"} className="shrink-0">
+            {task.completedOnTime ? "В срок" : "Просрочено"}
+          </Badge>
+        )}
+      </div>
+
+      {task.description && (
+        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{task.description}</p>
+      )}
+
+      <div className="flex flex-wrap gap-2 mb-3">
+        <Badge variant={task.priority === "High" ? "destructive" : task.priority === "Medium" ? "default" : "secondary"}>
+          {getPriorityRussian(task.priority)}
+        </Badge>
+        {task.assignees?.map(a => (
+          <Badge key={a._id} variant="outline" className="text-xs">{a.name}</Badge>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>{task.completedAt ? formatDateDetailedRussian(task.completedAt) : "—"}</span>
+        <Link to={`/dashboard/task/${task._id}`}>
+          <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
+        </Link>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 // Компонент для сворачиваемого описания
 const ExpandableDescription = ({ description, maxLength = 100 }: { description: string; maxLength?: number }) => {
@@ -76,11 +121,31 @@ const AchievedPage = () => {
   const [priority, setPriority] = useState("");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  
+
   // Фильтры по времени создания
   const [dateFilter, setDateFilter] = useState<DateFilterPeriod | "all">("all");
   const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>(undefined);
   const [customDateTo, setCustomDateTo] = useState<Date | undefined>(undefined);
+
+  // Быстрый фильтр по срокам
+  const [onTimeFilter, setOnTimeFilter] = useState<OnTimeFilter>("all");
+
+  // Группировка
+  const [groupBy, setGroupBy] = useState<GroupBy>("none");
+
+  // Режим отображения
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+
+  // Загрузка пользователей для фильтра
+  const { data: usersData } = useQuery({
+    queryKey: ["all-users"],
+    queryFn: () => fetchData("/users/all"),
+  });
+
+  const users: UserType[] = useMemo(() => {
+    const allUsers = (usersData as any)?.users || [];
+    return allUsers.filter((u: UserType) => u.role !== "super_admin");
+  }, [usersData]);
 
   const { data, isLoading, error } = useGetCompletedTasksQuery({
     search: search || undefined,
@@ -112,6 +177,147 @@ const AchievedPage = () => {
     }
   }
 
+  // Применяем быстрый фильтр по срокам
+  if (onTimeFilter !== "all") {
+    completedTasks = completedTasks.filter(task => {
+      if (onTimeFilter === "onTime") return task.completedOnTime === true;
+      if (onTimeFilter === "overdue") return task.completedOnTime === false;
+      return true;
+    });
+  }
+
+  // Расчёт статистики
+  const statistics = useMemo(() => {
+    const allTasks = data?.completedTasks || [];
+    const tasksWithDeadline = allTasks.filter(t => t.completedOnTime !== null);
+    const onTimeCount = tasksWithDeadline.filter(t => t.completedOnTime === true).length;
+    const overdueCount = tasksWithDeadline.filter(t => t.completedOnTime === false).length;
+    const onTimePercent = tasksWithDeadline.length > 0
+      ? Math.round((onTimeCount / tasksWithDeadline.length) * 100)
+      : 0;
+
+    // Среднее время выполнения (от создания до завершения)
+    let avgCompletionTime = 0;
+    const tasksWithTime = allTasks.filter(t => t.createdAt && t.completedAt);
+    if (tasksWithTime.length > 0) {
+      const totalDays = tasksWithTime.reduce((sum, t) => {
+        const days = differenceInDays(new Date(t.completedAt!), new Date(t.createdAt));
+        return sum + Math.max(0, days);
+      }, 0);
+      avgCompletionTime = Math.round(totalDays / tasksWithTime.length);
+    }
+
+    return {
+      total: allTasks.length,
+      onTimeCount,
+      overdueCount,
+      onTimePercent,
+      avgCompletionTime,
+    };
+  }, [data?.completedTasks]);
+
+  // Группировка задач
+  const groupedTasks = useMemo(() => {
+    if (groupBy === "none") return null;
+
+    const groups: Record<string, (Task & { completedOnTime?: boolean })[]> = {};
+
+    completedTasks.forEach(task => {
+      let keys: string[] = [];
+
+      if (groupBy === "assignee") {
+        if (task.assignees && task.assignees.length > 0) {
+          keys = task.assignees.map(a => a.name);
+        } else {
+          keys = ["Без исполнителя"];
+        }
+      } else if (groupBy === "priority") {
+        keys = [task.priority || "Без приоритета"];
+      } else if (groupBy === "month") {
+        const date = task.completedAt ? new Date(task.completedAt) : new Date(task.updatedAt);
+        keys = [format(date, "LLLL yyyy", { locale: ru })];
+      }
+
+      keys.forEach(key => {
+        if (!groups[key]) {
+          groups[key] = [];
+        }
+        if (!groups[key].some(t => t._id === task._id)) {
+          groups[key].push(task);
+        }
+      });
+    });
+
+    // Сортировка групп
+    const sortedEntries = Object.entries(groups).sort((a, b) => {
+      if (groupBy === "priority") {
+        const priorityOrder = { High: 0, Medium: 1, Low: 2, "Без приоритета": 3 };
+        return (priorityOrder[a[0] as keyof typeof priorityOrder] ?? 99) -
+               (priorityOrder[b[0] as keyof typeof priorityOrder] ?? 99);
+      }
+      return b[1].length - a[1].length; // По количеству задач
+    });
+
+    return sortedEntries;
+  }, [completedTasks, groupBy]);
+
+  // Данные для графика выполнения по неделям (последние 8 недель)
+  const chartData = useMemo(() => {
+    const allTasks = data?.completedTasks || [];
+    const now = new Date();
+    const weeks: { week: string; onTime: number; overdue: number; total: number }[] = [];
+
+    // Генерируем последние 8 недель
+    for (let i = 7; i >= 0; i--) {
+      const weekStart = startOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
+
+      const weekTasks = allTasks.filter(task => {
+        const completedDate = task.completedAt ? new Date(task.completedAt) : null;
+        return completedDate && completedDate >= weekStart && completedDate <= weekEnd;
+      });
+
+      weeks.push({
+        week: format(weekStart, "dd.MM", { locale: ru }),
+        onTime: weekTasks.filter(t => t.completedOnTime === true).length,
+        overdue: weekTasks.filter(t => t.completedOnTime === false).length,
+        total: weekTasks.length,
+      });
+    }
+
+    return weeks;
+  }, [data?.completedTasks]);
+
+  // Экспорт в CSV
+  const exportToCSV = () => {
+    const headers = ["№", "Название", "Описание", "Исполнители", "Приоритет", "Дата выполнения", "В срок"];
+    const rows = completedTasks.map((task, index) => [
+      index + 1,
+      `"${(task.title || "").replace(/"/g, '""')}"`,
+      `"${(task.description || "").replace(/"/g, '""').replace(/\n/g, " ")}"`,
+      `"${task.assignees?.map(a => a.name).join(", ") || ""}"`,
+      getPriorityRussian(task.priority),
+      task.completedAt ? format(new Date(task.completedAt), "dd.MM.yyyy HH:mm") : "",
+      task.completedOnTime === true ? "Да" : task.completedOnTime === false ? "Нет" : "—"
+    ]);
+
+    const csvContent = [
+      headers.join(";"),
+      ...rows.map(row => row.join(";"))
+    ].join("\n");
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `completed_tasks_${format(new Date(), "yyyy-MM-dd")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   if (isLoading) {
     return <Loader message="Загрузка выполненных задач..." />;
   }
@@ -141,6 +347,161 @@ const AchievedPage = () => {
             <CheckCircle className="h-4 w-4 mr-1" />
             {completedTasks.length} выполнено
           </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportToCSV}
+            disabled={completedTasks.length === 0}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Экспорт
+          </Button>
+        </div>
+      </div>
+
+      {/* Статистика */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Всего выполнено</p>
+                <p className="text-2xl font-bold">{statistics.total}</p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">В срок</p>
+                <p className="text-2xl font-bold text-green-600">{statistics.onTimeCount}</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Просрочено</p>
+                <p className="text-2xl font-bold text-red-600">{statistics.overdueCount}</p>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-red-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Среднее время</p>
+                <p className="text-2xl font-bold">{statistics.avgCompletionTime} дн.</p>
+              </div>
+              <Clock className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* График выполнения по неделям */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Выполнение задач по неделям</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer
+            className="h-[200px] w-full"
+            config={{
+              onTime: { label: "В срок", color: "#22c55e" },
+              overdue: { label: "Просрочено", color: "#ef4444" },
+            }}
+          >
+            <BarChart data={chartData} barGap={2}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="week" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis fontSize={12} tickLine={false} axisLine={false} />
+              <ChartTooltip
+                content={<ChartTooltipContent />}
+                cursor={{ fill: "rgba(0,0,0,0.05)" }}
+              />
+              <Bar dataKey="onTime" name="В срок" fill="#22c55e" radius={[4, 4, 0, 0]} stackId="a" />
+              <Bar dataKey="overdue" name="Просрочено" fill="#ef4444" radius={[4, 4, 0, 0]} stackId="a" />
+            </BarChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
+
+      {/* Быстрые фильтры и группировка */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={onTimeFilter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setOnTimeFilter("all")}
+          >
+            Все ({statistics.total})
+          </Button>
+          <Button
+            variant={onTimeFilter === "onTime" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setOnTimeFilter("onTime")}
+            className={onTimeFilter === "onTime" ? "bg-green-600 hover:bg-green-700" : ""}
+          >
+            <CheckCircle className="h-4 w-4 mr-1" />
+            В срок ({statistics.onTimeCount})
+          </Button>
+          <Button
+            variant={onTimeFilter === "overdue" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setOnTimeFilter("overdue")}
+            className={onTimeFilter === "overdue" ? "bg-red-600 hover:bg-red-700" : ""}
+          >
+            <AlertTriangle className="h-4 w-4 mr-1" />
+            Просрочено ({statistics.overdueCount})
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-4 ml-auto">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Группировка:</span>
+            <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupBy)}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Без группировки" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Без группировки</SelectItem>
+                <SelectItem value="assignee">По исполнителям</SelectItem>
+                <SelectItem value="priority">По приоритету</SelectItem>
+                <SelectItem value="month">По месяцам</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center border rounded-md">
+            <Button
+              variant={viewMode === "table" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("table")}
+              className="rounded-r-none"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "cards" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("cards")}
+              className="rounded-l-none"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -184,11 +545,20 @@ const AchievedPage = () => {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Исполнитель</label>
-              <Input
-                placeholder="ID исполнителя"
-                value={assignee}
-                onChange={(e) => setAssignee(e.target.value)}
-              />
+              <Select value={assignee || "all"} onValueChange={(v) => setAssignee(v === "all" ? "" : v)}>
+                <SelectTrigger>
+                  <Users className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Все исполнители" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все исполнители</SelectItem>
+                  {users.map((u) => (
+                    <SelectItem key={u._id} value={u._id}>
+                      {u.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -257,6 +627,7 @@ const AchievedPage = () => {
                   setDateFilter("all");
                   setCustomDateFrom(undefined);
                   setCustomDateTo(undefined);
+                  setOnTimeFilter("all");
                 }}
               >
                 Сбросить фильтры
@@ -356,97 +727,175 @@ const AchievedPage = () => {
       </Card>
 
       {/* Таблица задач */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Список выполненных задач</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {completedTasks.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>№</TableHead>
-                  <TableHead>Название задачи</TableHead>
-                  <TableHead>Исполнители</TableHead>
-                  <TableHead>Приоритет</TableHead>
-                  <TableHead>Дата выполнения</TableHead>
-                  <TableHead>В срок</TableHead>
-                  <TableHead>Действия</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {completedTasks.map((task, index) => (
-                  <TableRow key={task._id}>
-                    <TableCell className="font-medium">
-                      {index + 1}
-                    </TableCell>
-                    <TableCell className="max-w-xs">
-                      <div className="space-y-1">
-                        <Link
-                          to={`/dashboard/task/${task._id}`}
-                          className="font-medium hover:underline"
-                        >
-                          {task.title}
-                        </Link>
-                        {task.description && (
-                          <ExpandableDescription description={task.description} maxLength={80} />
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {task.assignees?.map((assignee) => (
-                          <Badge key={assignee._id} variant="secondary" className="text-xs">
-                            {assignee.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          task.priority === "High" ? "destructive" :
-                          task.priority === "Medium" ? "default" : "secondary"
-                        }
-                      >
-                        {getPriorityRussian(task.priority)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {task.completedAt ? formatDateDetailedRussian(task.completedAt) : "—"}
-                    </TableCell>
-                    <TableCell>
-                      {task.completedOnTime !== null ? (
-                        <Badge variant={task.completedOnTime ? "default" : "destructive"}>
-                          {task.completedOnTime ? "В срок" : "Просрочено"}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Link to={`/dashboard/task/${task._id}`}>
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                      </div>
-                    </TableCell>
+      {groupedTasks ? (
+        // Сгруппированный вид
+        <div className="space-y-4">
+          {groupedTasks.map(([groupName, tasks]) => (
+            <Card key={groupName}>
+              <CardHeader className="py-3">
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <span>
+                    {groupBy === "priority" ? getPriorityRussian(groupName as any) : groupName}
+                  </span>
+                  <Badge variant="secondary">{tasks.length} задач</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {viewMode === "cards" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {tasks.map(task => <TaskCard key={task._id} task={task} />)}
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>№</TableHead>
+                        <TableHead>Название задачи</TableHead>
+                        {groupBy !== "assignee" && <TableHead>Исполнители</TableHead>}
+                        {groupBy !== "priority" && <TableHead>Приоритет</TableHead>}
+                        <TableHead>Дата выполнения</TableHead>
+                        <TableHead>В срок</TableHead>
+                        <TableHead>Действия</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tasks.map((task, index) => (
+                        <TableRow key={task._id}>
+                          <TableCell className="font-medium">{index + 1}</TableCell>
+                          <TableCell className="max-w-xs">
+                            <div className="space-y-1">
+                              <Link to={`/dashboard/task/${task._id}`} className="font-medium hover:underline">
+                                {task.title}
+                              </Link>
+                              {task.description && (
+                                <ExpandableDescription description={task.description} maxLength={80} />
+                              )}
+                            </div>
+                          </TableCell>
+                          {groupBy !== "assignee" && (
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {task.assignees?.map((a) => (
+                                  <Badge key={a._id} variant="secondary" className="text-xs">{a.name}</Badge>
+                                ))}
+                              </div>
+                            </TableCell>
+                          )}
+                          {groupBy !== "priority" && (
+                            <TableCell>
+                              <Badge variant={task.priority === "High" ? "destructive" : task.priority === "Medium" ? "default" : "secondary"}>
+                                {getPriorityRussian(task.priority)}
+                              </Badge>
+                            </TableCell>
+                          )}
+                          <TableCell>{task.completedAt ? formatDateDetailedRussian(task.completedAt) : "—"}</TableCell>
+                          <TableCell>
+                            {task.completedOnTime !== null ? (
+                              <Badge variant={task.completedOnTime ? "default" : "destructive"}>
+                                {task.completedOnTime ? "В срок" : "Просрочено"}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Link to={`/dashboard/task/${task._id}`}>
+                              <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : completedTasks.length > 0 ? (
+        // Обычный вид
+        viewMode === "cards" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {completedTasks.map(task => <TaskCard key={task._id} task={task} />)}
+          </div>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Список выполненных задач</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>№</TableHead>
+                    <TableHead>Название задачи</TableHead>
+                    <TableHead>Исполнители</TableHead>
+                    <TableHead>Приоритет</TableHead>
+                    <TableHead>Дата выполнения</TableHead>
+                    <TableHead>В срок</TableHead>
+                    <TableHead>Действия</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
+                </TableHeader>
+                <TableBody>
+                  {completedTasks.map((task, index) => (
+                    <TableRow key={task._id}>
+                      <TableCell className="font-medium">{index + 1}</TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="space-y-1">
+                          <Link to={`/dashboard/task/${task._id}`} className="font-medium hover:underline">
+                            {task.title}
+                          </Link>
+                          {task.description && (
+                            <ExpandableDescription description={task.description} maxLength={80} />
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {task.assignees?.map((assignee) => (
+                            <Badge key={assignee._id} variant="secondary" className="text-xs">{assignee.name}</Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={task.priority === "High" ? "destructive" : task.priority === "Medium" ? "default" : "secondary"}>
+                          {getPriorityRussian(task.priority)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{task.completedAt ? formatDateDetailedRussian(task.completedAt) : "—"}</TableCell>
+                      <TableCell>
+                        {task.completedOnTime !== null ? (
+                          <Badge variant={task.completedOnTime ? "default" : "destructive"}>
+                            {task.completedOnTime ? "В срок" : "Просрочено"}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Link to={`/dashboard/task/${task._id}`}>
+                          <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )
+      ) : (
+        <Card>
+          <CardContent className="pt-6">
             <NoDataFound
               title="Нет выполненных задач"
               description="Выполненные задачи будут отображаться здесь"
               buttonText="Назад"
               buttonOnClick={() => window.history.back()}
             />
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

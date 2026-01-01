@@ -211,8 +211,8 @@ export const useDeleteTaskMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { taskId: string }) =>
-      deleteData(`/tasks/${data.taskId}`),
+    mutationFn: (data: { taskId: string; reason: string }) =>
+      deleteData(`/tasks/${data.taskId}`, { reason: data.reason }),
   });
 };
 

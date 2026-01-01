@@ -5,7 +5,8 @@ import {
   getAllUsers,
   updateUserRole,
   deleteUser,
-  getUserStats
+  getUserStats,
+  registerUserByAdmin
 } from "../controllers/admin-controller.js";
 
 const router = express.Router();
@@ -24,5 +25,8 @@ router.put("/users/:userId/role", requireAdmin, updateUserRole);
 
 // Delete user (super admin only)
 router.delete("/users/:userId", requireSuperAdmin, deleteUser);
+
+// Register new user by admin (admin and super admin)
+router.post("/register-user", requireAdmin, registerUserByAdmin);
 
 export default router;

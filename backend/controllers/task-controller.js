@@ -952,14 +952,27 @@ const getArchivedTasks = async (req, res) => {
 const deleteTask = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const task = await Task.findById(taskId);
+    const { reason } = req.body;
+
+    // Причина удаления обязательна
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        message: "Причина удаления обязательна",
+        code: "REASON_REQUIRED"
+      });
+    }
+
+    const task = await Task.findById(taskId)
+      .populate('assignees', 'name email')
+      .populate('createdBy', 'name email');
+
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
 
     // Проверить права доступа:
     // - Только создатель задачи может удалить её в течение 24 часов после создания
-    const isCreator = task.createdBy && task.createdBy.toString() === req.user._id.toString();
+    const isCreator = task.createdBy && task.createdBy._id.toString() === req.user._id.toString();
 
     if (!isCreator) {
       return res.status(403).json({
@@ -979,13 +992,27 @@ const deleteTask = async (req, res) => {
       });
     }
 
-    // Record activity
+    // Собрать информацию о задаче для аудита
+    const assigneeNames = task.assignees?.map(a => a.name).join(', ') || 'Не назначены';
+    const creatorName = task.createdBy?.name || 'Неизвестно';
+
+    // Record detailed activity with reason and full task info
     await recordActivity(req.user._id, "deleted_task", "Task", taskId, {
       description: `удалил задачу "${task.title}"`,
       taskTitle: task.title,
+      taskDescription: task.description,
+      taskStatus: task.status,
+      taskPriority: task.priority,
+      assignees: assigneeNames,
+      creator: creatorName,
+      dueDate: task.dueDate,
+      deletionReason: reason.trim(),
+      deletedAt: new Date().toISOString(),
     });
 
     await task.deleteOne();
+
+    console.log(`🗑️ Task deleted: "${task.title}" by ${req.user.name}. Reason: ${reason}`);
 
     res.status(200).json({ message: "Задача успешно удалена" });
   } catch (error) {
@@ -1444,17 +1471,26 @@ const createMultipleTasks = async (req, res) => {
     }
 
     const createdTasks = [];
+    const allAssignees = new Set(); // Собрать всех уникальных исполнителей
 
     // Создать каждую задачу
     for (let i = 0; i < tasks.length; i++) {
       const taskItem = tasks[i];
-      
+
+      // Использовать индивидуальных исполнителей задачи или общих (для обратной совместимости)
+      const taskAssignees = (taskItem.assignees && taskItem.assignees.length > 0)
+        ? taskItem.assignees
+        : (assignees || []);
+
+      // Добавить исполнителей в общий набор для уведомлений
+      taskAssignees.forEach(a => allAssignees.add(a.toString()));
+
       const newTask = await Task.create({
         title: title,
         description: `${i + 1}. ${taskItem.description}`,
         status: status || "To Do",
         priority: priority || "Medium",
-        assignees: assignees || [],
+        assignees: taskAssignees,
         dueDate: taskItem.dueDate,
         responsibleManager,
         createdBy: req.user._id,
@@ -1476,25 +1512,23 @@ const createMultipleTasks = async (req, res) => {
       });
     }
 
-    // Уведомить участников (один раз для всех задач) с Email + SMS
-    if (assignees && assignees.length > 0) {
-      for (const userId of assignees) {
-        if (userId.toString() !== req.user._id.toString()) {
-          try {
-            await sendNotification({
-              recipientId: userId,
-              type: "task_assigned",
-              title: "Вам назначены новые задачи",
-              message: `${req.user.name} назначил вам ${tasks.length} задач: ${title}`,
-              relatedData: {
-                taskId: createdTasks[0]._id,
-                actorId: req.user._id,
-              },
-            });
-            console.log(`✅ Multi-task notification sent to assignee: ${userId}`);
-          } catch (error) {
-            console.error(`❌ Failed to notify assignee ${userId}:`, error.message);
-          }
+    // Уведомить всех уникальных исполнителей (один раз для всех задач) с Email + SMS
+    for (const userId of allAssignees) {
+      if (userId !== req.user._id.toString()) {
+        try {
+          await sendNotification({
+            recipientId: userId,
+            type: "task_assigned",
+            title: "Вам назначены новые задачи",
+            message: `${req.user.name} назначил вам задачи: ${title}`,
+            relatedData: {
+              taskId: createdTasks[0]._id,
+              actorId: req.user._id,
+            },
+          });
+          console.log(`✅ Multi-task notification sent to assignee: ${userId}`);
+        } catch (error) {
+          console.error(`❌ Failed to notify assignee ${userId}:`, error.message);
         }
       }
     }

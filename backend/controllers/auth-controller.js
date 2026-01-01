@@ -28,85 +28,10 @@ const recordLoginActivity = async (userId, details = {}) => {
 };
 
 const registerUser = async (req, res) => {
-  try {
-    const { email, password, name } = req.body;
-
-    // Check if email is valid
-    const decision = await aj.protect(req, {
-      email,
-    });
-
-    console.log("Arcjet decision", decision.isDenied());
-
-    if (decision.isDenied()) {
-      res.writeHead(403, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ message: "Forbidden" }));
-      return;
-    }
-
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
-
-    if (existingUser) {
-      return res.status(400).json({ message: "Email address already in use." });
-    }
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create new user (no verification needed)
-    const newUser = await User.create({
-      email,
-      password: hashedPassword,
-      name,
-    });
-
-    // Add user to default workspace
-    try {
-      const defaultWorkspace = await Workspace.findOne({
-        name: 'Рабочее пространство'
-      });
-
-      if (defaultWorkspace) {
-        const isMember = defaultWorkspace.members.some(
-          member => member.user.toString() === newUser._id.toString()
-        );
-
-        if (!isMember) {
-          defaultWorkspace.members.push({
-            user: newUser._id,
-            role: 'member',
-            joinedAt: new Date(),
-          });
-          await defaultWorkspace.save();
-          console.log(`✅ Added ${newUser.name} to default workspace`);
-        }
-      }
-    } catch (error) {
-      console.error('Error adding user to default workspace:', error);
-    }
-
-    // Generate JWT token for immediate login
-    const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-
-    // Return user data
-    const userData = newUser.toObject();
-    delete userData.password;
-
-    console.log("✅ User registered successfully:", email);
-
-    res.status(201).json({
-      message: "Регистрация успешна!",
-      user: userData,
-      token,
-    });
-  } catch (error) {
-    console.error("Registration error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
+  // Public registration is disabled - only admins can register users
+  return res.status(403).json({
+    message: "Публичная регистрация отключена. Обратитесь к администратору для создания аккаунта."
+  });
 };
 
 const loginUser = async (req, res) => {
@@ -589,101 +514,12 @@ const appleCallback = async (req, res) => {
   }
 };
 
-// NEW: Register user with phone (SMS verification)
+// NEW: Register user with phone (SMS verification) - DISABLED
 const registerUserWithPhone = async (req, res) => {
-  try {
-    const { name, phoneNumber, email, password } = req.body;
-
-    console.log("📱 Phone registration attempt:", { name, phoneNumber, email });
-
-    // Validate name format (Имя Фамилия)
-    const words = name.trim().split(/\s+/);
-    if (words.length < 2) {
-      return res.status(400).json({ 
-        message: "Полное имя должно содержать минимум Имя и Фамилию через пробел" 
-      });
-    }
-
-    // Validate phone format +992XXXXXXXXX
-    if (!phoneNumber || !/^\+992\d{9}$/.test(phoneNumber)) {
-      return res.status(400).json({ 
-        message: "Номер телефона должен быть в формате +992XXXXXXXXX" 
-      });
-    }
-
-    // Check if phone already exists
-    const existingPhone = await User.findOne({ phoneNumber });
-    if (existingPhone) {
-      return res.status(400).json({ message: "Этот номер телефона уже зарегистрирован" });
-    }
-
-    // Check if email already exists (if provided)
-    if (email) {
-      const existingEmail = await User.findOne({ email });
-      if (existingEmail) {
-        return res.status(400).json({ message: "Этот email уже зарегистрирован" });
-      }
-    }
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create user (no verification required)
-    const newUser = await User.create({
-      name,
-      phoneNumber,
-      email,
-      password: hashedPassword,
-      preferredAuthMethod: 'phone',
-    });
-
-    console.log("✅ User created and auto-verified:", phoneNumber);
-
-    // Add to default workspace
-    try {
-      const defaultWorkspace = await Workspace.findOne({ 
-        name: 'Рабочее пространство' 
-      });
-
-      if (defaultWorkspace) {
-        const isMember = defaultWorkspace.members.some(
-          member => member.user.toString() === newUser._id.toString()
-        );
-
-        if (!isMember) {
-          defaultWorkspace.members.push({
-            user: newUser._id,
-            role: 'member',
-            joinedAt: new Date(),
-          });
-          await defaultWorkspace.save();
-          console.log(`✅ Added ${newUser.name} to default workspace`);
-        }
-      }
-    } catch (error) {
-      console.error('Error adding user to workspace:', error);
-    }
-
-    // Generate JWT token
-    const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-
-    // Return user data
-    const userData = newUser.toObject();
-    delete userData.password;
-
-    res.status(201).json({
-      message: "Регистрация завершена успешно!",
-      user: userData,
-      token,
-      requiresVerification: false, // No verification needed
-    });
-  } catch (error) {
-    console.error("Phone registration error:", error);
-    res.status(500).json({ message: error.message || "Ошибка сервера" });
-  }
+  // Public registration is disabled - only admins can register users
+  return res.status(403).json({
+    message: "Публичная регистрация отключена. Обратитесь к администратору для создания аккаунта."
+  });
 };
 
 // Login with email OR phone
