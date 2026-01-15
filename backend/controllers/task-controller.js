@@ -870,17 +870,11 @@ const toggleCommentReaction = async (req, res) => {
 
 const getMyTasks = async (req, res) => {
   try {
-    // Главный менеджер видит все задачи организации
-    const isChiefManager = req.user.role === "chief_manager";
-
     const filter = {
       isArchived: false,
+      // Все пользователи (включая chief_manager) видят только задачи где они assignee
+      assignees: { $in: [req.user._id] },
     };
-
-    // Обычные пользователи видят только свои задачи
-    if (!isChiefManager) {
-      filter.assignees = { $in: [req.user._id] };
-    }
 
     const tasks = await Task.find(filter)
       .sort({ dueDate: -1 })
@@ -1526,15 +1520,22 @@ const getManagerTasks = async (req, res) => {
 // Получить задачи текущего пользователя как ответственного менеджера
 const getMyManagerTasks = async (req, res) => {
   try {
-    // Проверить, что пользователь является менеджером, админом или супер админом
-    if (!["manager", "admin", "super_admin"].includes(req.user.role)) {
-      return res.status(403).json({ message: "Доступ запрещен. Только менеджеры, админы и супер админы могут просматривать свои задачи как ответственного менеджера." });
+    // Проверить, что пользователь является менеджером, админом, супер админом или главным менеджером
+    if (!["manager", "admin", "super_admin", "chief_manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только менеджеры, админы, супер админы и главные менеджеры могут просматривать задачи менеджера." });
     }
 
-    const myManagerTasks = await Task.find({ 
-      responsibleManager: req.user._id,
-      isArchived: false 
-    })
+    // chief_manager видит ВСЕ задачи организации (как админ)
+    const filter = {
+      isArchived: false
+    };
+
+    // Обычные менеджеры видят только свои задачи
+    if (req.user.role !== "chief_manager") {
+      filter.responsibleManager = req.user._id;
+    }
+
+    const myManagerTasks = await Task.find(filter)
       .sort({ createdAt: -1 })
       .populate("assignees", "name profilePicture")
       .populate("createdBy", "name profilePicture")

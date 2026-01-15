@@ -1008,12 +1008,10 @@ export const resendSMS = async (req, res) => {
     const smppService = getSMPPService();
 
     // Resend the SMS
-    await smppService.addToQueue(
+    await smppService.queueMessage(
       smsLog.phoneNumber,
       smsLog.message,
-      smsLog.type || 'general_notification',
-      smsLog.recipient?._id,
-      { resendFromLogId: id }
+      'normal'
     );
 
     // Log the action
@@ -1080,11 +1078,10 @@ export const resetUserPassword = async (req, res) => {
       try {
         const { getSMPPService } = await import('../libs/send-sms-bullmq.js');
         const smppService = getSMPPService();
-        await smppService.addToQueue(
+        await smppService.queueMessage(
           user.phoneNumber,
           `Ваш пароль был сброшен администратором. Новый пароль: ${newPassword}`,
-          'password_reset',
-          user._id
+          'normal'
         );
       } catch (smsErr) {
         console.error("Failed to send password reset SMS:", smsErr);
@@ -1382,7 +1379,7 @@ export const getQueueStats = async (req, res) => {
   try {
     // Get queue reference from the SMS service
     const smppService = getSMPPService();
-    const queue = smsQueue;
+    const queue = smsQueue();
 
     if (!queue) {
       return res.json({
@@ -1433,7 +1430,7 @@ export const getQueueJobs = async (req, res) => {
       limit = 20,
     } = req.query;
 
-    const queue = smsQueue;
+    const queue = smsQueue();
 
     if (!queue) {
       return res.json({
@@ -1531,7 +1528,7 @@ export const getQueueJobs = async (req, res) => {
 
 export const pauseQueue = async (req, res) => {
   try {
-    const queue = smsQueue;
+    const queue = smsQueue();
 
     if (!queue) {
       return res.status(400).json({ message: "Queue not available" });
@@ -1560,7 +1557,7 @@ export const pauseQueue = async (req, res) => {
 
 export const resumeQueue = async (req, res) => {
   try {
-    const queue = smsQueue;
+    const queue = smsQueue();
 
     if (!queue) {
       return res.status(400).json({ message: "Queue not available" });
@@ -1590,7 +1587,7 @@ export const resumeQueue = async (req, res) => {
 export const retryJob = async (req, res) => {
   try {
     const { jobId } = req.params;
-    const queue = smsQueue;
+    const queue = smsQueue();
 
     if (!queue) {
       return res.status(400).json({ message: "Queue not available" });
@@ -1625,7 +1622,7 @@ export const retryJob = async (req, res) => {
 export const removeJob = async (req, res) => {
   try {
     const { jobId } = req.params;
-    const queue = smsQueue;
+    const queue = smsQueue();
 
     if (!queue) {
       return res.status(400).json({ message: "Queue not available" });
@@ -1660,7 +1657,7 @@ export const removeJob = async (req, res) => {
 export const cleanQueue = async (req, res) => {
   try {
     const { status = 'completed', olderThan = 3600000 } = req.body; // Default: older than 1 hour
-    const queue = smsQueue;
+    const queue = smsQueue();
 
     if (!queue) {
       return res.status(400).json({ message: "Queue not available" });

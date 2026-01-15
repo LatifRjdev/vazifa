@@ -21,10 +21,10 @@ export default function ManagerTasksPage() {
       const data = await fetchData<{ myManagerTasks: Task[] }>("/tasks/my-manager-tasks/");
       return data.myManagerTasks;
     },
-    enabled: !!user && ["admin", "manager", "super_admin"].includes(user.role || ""),
+    enabled: !!user && ["admin", "manager", "super_admin", "chief_manager"].includes(user.role || ""),
   });
 
-  if (!user || !["admin", "manager", "super_admin"].includes(user.role || "")) {
+  if (!user || !["admin", "manager", "super_admin", "chief_manager"].includes(user.role || "")) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-muted-foreground">

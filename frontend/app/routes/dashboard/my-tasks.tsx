@@ -40,7 +40,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useGetMyTasksQuery } from "@/hooks/use-task";
+import { useGetMyTasksQuery, useRequestStatusChangeMutation } from "@/hooks/use-task";
+import { toast } from "sonner";
 import { getProjectDueDateColor } from "@/lib";
 import { formatDateDetailedRussian, formatDueDateRussian } from "@/lib/date-utils";
 import { getTaskStatusRussian, getPriorityRussian } from "@/lib/translations";
@@ -133,6 +134,9 @@ const MyTasksPage = () => {
     data: Task[];
     isPending: boolean;
   };
+
+  // Хук для запроса изменения статуса
+  const { mutate: requestStatusChange, isPending: isRequestingStatusChange } = useRequestStatusChangeMutation();
 
   // Filter tasks
   const filteredTasks =
@@ -442,6 +446,25 @@ const MyTasksPage = () => {
                                     )}
                                   </div>
                                   <div className="flex items-center gap-1">
+                                    {/* Кнопка "Жду изменения статуса" */}
+                                    <Button
+                                      variant={task.awaitingStatusChange ? "default" : "outline"}
+                                      size="sm"
+                                      className={task.awaitingStatusChange ? "bg-green-500 hover:bg-green-600 text-white" : ""}
+                                      onClick={() => requestStatusChange({ taskId: task._id }, {
+                                        onSuccess: () => {
+                                          toast.success("Запрос на изменение статуса отправлен менеджеру");
+                                        },
+                                        onError: (error: any) => {
+                                          toast.error(error.message || "Ошибка отправки запроса");
+                                        }
+                                      })}
+                                      disabled={isRequestingStatusChange || task.awaitingStatusChange}
+                                    >
+                                      {task.awaitingStatusChange
+                                        ? "Ожидает"
+                                        : "Жду статуса"}
+                                    </Button>
                                     <Link to={`/dashboard/task/${task._id}`}>
                                       <Button variant="ghost" size="sm" title={t('all_tasks.view_task')}>
                                         <Eye className="h-4 w-4" />
@@ -531,15 +554,36 @@ const MyTasksPage = () => {
                           </div>
                         </div>
 
-                        <div className="text-sm text-muted-foreground space-y-1">
-                          {task.dueDate && (
-                            <div
-                              className={cn(getProjectDueDateColor(task.dueDate))}
-                            >
-                              {t('tasks.due_date_short')}: {formatDueDateRussian(task.dueDate)}
-                            </div>
-                          )}
-                          <div>{t('tasks.modified')}: {formatDateDetailedRussian(task.updatedAt)}</div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            {task.dueDate && (
+                              <div
+                                className={cn(getProjectDueDateColor(task.dueDate))}
+                              >
+                                {t('tasks.due_date_short')}: {formatDueDateRussian(task.dueDate)}
+                              </div>
+                            )}
+                            <div>{t('tasks.modified')}: {formatDateDetailedRussian(task.updatedAt)}</div>
+                          </div>
+                          {/* Кнопка "Жду изменения статуса" */}
+                          <Button
+                            variant={task.awaitingStatusChange ? "default" : "outline"}
+                            size="sm"
+                            className={task.awaitingStatusChange ? "bg-green-500 hover:bg-green-600 text-white" : ""}
+                            onClick={() => requestStatusChange({ taskId: task._id }, {
+                              onSuccess: () => {
+                                toast.success("Запрос на изменение статуса отправлен менеджеру");
+                              },
+                              onError: (error: any) => {
+                                toast.error(error.message || "Ошибка отправки запроса");
+                              }
+                            })}
+                            disabled={isRequestingStatusChange || task.awaitingStatusChange}
+                          >
+                            {task.awaitingStatusChange
+                              ? "Ожидает"
+                              : "Жду статуса"}
+                          </Button>
                         </div>
                       </div>
                     </div>

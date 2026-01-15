@@ -13,7 +13,7 @@ import { FileViewer } from "../shared/file-viewer";
 import { toast } from "sonner";
 import { getUserAvatar } from "@/lib";
 import { useAuth } from "@/providers/auth-context";
-import { useGetTaskResponsesByIdQuery, useCreateResponseMutation } from "@/hooks/use-task";
+import { useGetTaskResponsesByIdQuery, useCreateResponseMutation, useRequestStatusChangeMutation } from "@/hooks/use-task";
 
 interface ResponseSectionProps {
   taskId: string;
@@ -35,16 +35,19 @@ export const ResponseSection = ({
   // Используем реальные хуки
   const { data: responses = [], isLoading } = useGetTaskResponsesByIdQuery(taskId);
   const createResponseMutation = useCreateResponseMutation();
-  
+  const { mutate: requestStatusChange, isPending: isRequestingStatusChange } = useRequestStatusChangeMutation();
+
   // Приводим responses к правильному типу
   const typedResponses = responses as Response[];
 
-  // Проверяем, может ли пользователь создавать ответы (назначенные участники + админы и менеджеры)
-  const canCreateResponse = task?.assignees?.some((assignee: any) => {
-    // Проверяем как объект с _id, так и просто строку ID
+  // Проверяем, является ли пользователь исполнителем задачи
+  const isAssignee = task?.assignees?.some((assignee: any) => {
     const assigneeId = typeof assignee === 'string' ? assignee : assignee._id;
     return assigneeId === user?._id;
-  }) || user?.role === 'admin' || user?.role === 'manager';
+  });
+
+  // Проверяем, может ли пользователь создавать ответы (назначенные участники + админы и менеджеры)
+  const canCreateResponse = isAssignee || user?.role === 'admin' || user?.role === 'manager';
 
   const handleAddResponse = async () => {
     if (!newResponse.trim() && attachments.length === 0) {
@@ -385,12 +388,34 @@ export const ResponseSection = ({
                 )}
               </div>
 
-              <Button
-                onClick={handleAddResponse}
-                disabled={createResponseMutation.isPending || (!newResponse.trim() && attachments.length === 0)}
-              >
-                {createResponseMutation.isPending ? "Отправляется..." : "Отправить ответ"}
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* Кнопка "Жду изменения статуса" для исполнителей */}
+                {isAssignee && (
+                  <Button
+                    variant={task?.awaitingStatusChange ? "default" : "outline"}
+                    className={task?.awaitingStatusChange ? "bg-green-500 hover:bg-green-600" : ""}
+                    onClick={() => requestStatusChange({ taskId }, {
+                      onSuccess: () => {
+                        toast.success("Запрос на изменение статуса отправлен менеджеру");
+                      },
+                      onError: (error: any) => {
+                        toast.error(error.message || "Ошибка отправки запроса");
+                      }
+                    })}
+                    disabled={isRequestingStatusChange || task?.awaitingStatusChange}
+                  >
+                    {task?.awaitingStatusChange
+                      ? "Ожидает проверки"
+                      : "Жду изменения статуса"}
+                  </Button>
+                )}
+                <Button
+                  onClick={handleAddResponse}
+                  disabled={createResponseMutation.isPending || (!newResponse.trim() && attachments.length === 0)}
+                >
+                  {createResponseMutation.isPending ? "Отправляется..." : "Отправить ответ"}
+                </Button>
+              </div>
             </div>
           </div>
         </>

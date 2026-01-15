@@ -90,7 +90,7 @@ const AllTasksPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Проверка прав доступа (ждем загрузки данных пользователя)
-  const canViewAllTasks = !authLoading && user?.role && ["admin", "super_admin", "manager"].includes(user.role);
+  const canViewAllTasks = !authLoading && user?.role && ["admin", "super_admin", "manager", "chief_manager"].includes(user.role);
 
   // Состояние фильтров
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
@@ -668,14 +668,16 @@ const AllTasksPage = () => {
                               <TableHead>{t('all_tasks.table_assigned')}</TableHead>
                               <TableHead>{t('all_tasks.table_due_date')}</TableHead>
                               <TableHead>{t('all_tasks.table_created')}</TableHead>
-                              {(user?.role === 'admin' || user?.role === 'manager') && (
+                              {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'chief_manager') && (
                                 <TableHead className="w-20">{t('all_tasks.table_actions')}</TableHead>
                               )}
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {group.tasks.map((task, index) => (
-                              <TableRow key={task._id}>
+                              <TableRow key={task._id} className={cn(
+                                task.awaitingStatusChange && "bg-green-50 dark:bg-green-900/20"
+                              )}>
                                 <TableCell className="font-mono text-sm text-muted-foreground">
                                   {index + 1}
                                 </TableCell>
@@ -738,7 +740,7 @@ const AllTasksPage = () => {
                                     {formatDateDetailedRussian(task.createdAt)}
                                   </span>
                                 </TableCell>
-                                {(user?.role === 'admin' || user?.role === 'manager') && (
+                                {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'chief_manager') && (
                                   <TableCell>
                                     <div className="flex items-center gap-1">
                                       <Link to={`/dashboard/task/${task._id}`}>
@@ -782,14 +784,16 @@ const AllTasksPage = () => {
                     <TableHead>{t('all_tasks.table_assigned')}</TableHead>
                     <TableHead>{t('all_tasks.table_due_date')}</TableHead>
                     <TableHead>{t('all_tasks.table_created')}</TableHead>
-                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                    {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'chief_manager') && (
                       <TableHead className="w-20">{t('all_tasks.table_actions')}</TableHead>
                     )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {sortedTasks.map((task, index) => (
-                    <TableRow key={task._id}>
+                    <TableRow key={task._id} className={cn(
+                      task.awaitingStatusChange && "bg-green-50 dark:bg-green-900/20"
+                    )}>
                       <TableCell className="font-mono text-sm text-muted-foreground">
                         {index + 1}
                       </TableCell>
@@ -862,7 +866,7 @@ const AllTasksPage = () => {
                           {formatDateDetailedRussian(task.createdAt)}
                         </span>
                       </TableCell>
-                      {(user?.role === 'admin' || user?.role === 'manager') && (
+                      {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'chief_manager') && (
                         <TableCell>
                           <Link to={`/dashboard/task/${task._id}`}>
                             <Button variant="ghost" size="sm">
@@ -875,7 +879,7 @@ const AllTasksPage = () => {
                   ))}
                   {sortedTasks.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={(user?.role === 'admin' || user?.role === 'manager') ? 8 : 7} className="text-center py-8">
+                      <TableCell colSpan={(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'chief_manager') ? 8 : 7} className="text-center py-8">
                         <div className="text-muted-foreground">
                           {t('all_tasks.no_tasks_found')}
                         </div>
