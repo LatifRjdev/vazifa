@@ -84,13 +84,13 @@ export const SidebarComponent = ({
         title: t('nav.all_tasks'),
         href: "/dashboard/all-tasks",
         icon: ClipboardList,
-        requiresRole: ["admin", "manager", "super_admin"],
+        requiresRole: ["admin", "manager", "super_admin", "chief_manager"],
       },
       {
         title: t('nav.manager_tasks'),
         href: "/dashboard/manager-tasks",
         icon: UserCheck,
-        requiresRole: ["admin", "manager", "super_admin"],
+        requiresRole: ["admin", "manager", "super_admin", "chief_manager"],
       },
       {
         title: t('nav.important_tasks'),
@@ -102,13 +102,13 @@ export const SidebarComponent = ({
         title: t('nav.analytics'),
         href: "/dashboard/analytics",
         icon: BarChart3,
-        requiresRole: ["admin", "manager", "super_admin"],
+        requiresRole: ["admin", "manager", "super_admin", "chief_manager"],
       },
       {
         title: t('nav.members'),
         href: "/dashboard/members",
         icon: Users,
-        requiresRole: ["admin", "manager", "super_admin"],
+        requiresRole: ["admin", "manager", "super_admin", "chief_manager"],
       },
       {
         title: t('nav.completed_tasks'),

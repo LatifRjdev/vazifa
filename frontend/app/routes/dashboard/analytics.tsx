@@ -71,7 +71,7 @@ const AnalyticsPage = () => {
   const [selectedMember, setSelectedMember] = useState("all");
 
   // Проверка прав доступа
-  const canViewAnalytics = user?.role && ["admin", "manager", "super_admin"].includes(user.role);
+  const canViewAnalytics = user?.role && ["admin", "manager", "super_admin", "chief_manager"].includes(user.role);
 
   // Загрузка данных
   const { data: allTasks, isPending: tasksLoading } = useQuery({

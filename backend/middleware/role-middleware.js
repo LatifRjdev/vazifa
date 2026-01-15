@@ -30,6 +30,7 @@ const hasPermission = (userRole, requiredRole) => {
   const roleHierarchy = {
     'super_admin': 4,
     'admin': 3,
+    'chief_manager': 3,
     'manager': 2,
     'member': 1
   };

@@ -283,7 +283,7 @@ const TaskDetailsPage = () => {
                     const assigneeId = typeof assignee === 'string' ? assignee : assignee?._id;
                     return assigneeId && user?._id && assigneeId.toString() === user._id.toString();
                   });
-                  const canShowButton = isAssignee && !["Done", "Cancelled"].includes(task.status);
+                  const canShowButton = isAssignee;
 
                   return canShowButton ? (
                     <Button
