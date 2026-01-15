@@ -4,6 +4,7 @@ import { Activity, Database, ListTodo, Mail, MessageSquare, Server, Settings, Sh
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth, isTechAdmin } from "@/providers/auth-context";
+import { useLanguage } from "@/providers/language-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -26,6 +27,7 @@ async function fetchDashboardStats() {
 
 export default function TechAdminDashboard() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   // Redirect if not tech admin
@@ -51,9 +53,9 @@ export default function TechAdminDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Tech Admin Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t('tech_admin.title')}</h1>
         <p className="text-muted-foreground">
-          System monitoring and technical operations
+          {t('tech_admin.subtitle')}
         </p>
       </div>
 
@@ -61,7 +63,7 @@ export default function TechAdminDashboard() {
       {error && (
         <Alert variant="destructive">
           <AlertDescription>
-            Failed to load dashboard data. Please try refreshing the page.
+            {t('tech_admin.load_error')}
           </AlertDescription>
         </Alert>
       )}
@@ -71,7 +73,7 @@ export default function TechAdminDashboard() {
         {/* Users Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('tech_admin.total_users')}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -81,10 +83,10 @@ export default function TechAdminDashboard() {
               <>
                 <div className="text-2xl font-bold">{stats?.users?.total || 0}</div>
                 <p className="text-xs text-muted-foreground">
-                  {stats?.users?.active || 0} active in last 30 days
+                  {stats?.users?.active || 0} {t('tech_admin.active_users')}
                 </p>
                 <p className="text-xs text-green-600">
-                  +{stats?.users?.newToday || 0} today
+                  +{stats?.users?.newToday || 0} {t('tech_admin.today')}
                 </p>
               </>
             )}
@@ -94,7 +96,7 @@ export default function TechAdminDashboard() {
         {/* Tasks Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tasks</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('tech_admin.tasks')}</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -104,10 +106,10 @@ export default function TechAdminDashboard() {
               <>
                 <div className="text-2xl font-bold">{stats?.tasks?.total || 0}</div>
                 <p className="text-xs text-muted-foreground">
-                  {stats?.tasks?.completed || 0} completed
+                  {stats?.tasks?.completed || 0} {t('tech_admin.completed')}
                 </p>
                 <p className="text-xs text-blue-600">
-                  {stats?.tasks?.completionRate || 0}% completion rate
+                  {stats?.tasks?.completionRate || 0}% {t('tech_admin.completion_rate')}
                 </p>
               </>
             )}
@@ -117,7 +119,7 @@ export default function TechAdminDashboard() {
         {/* SMS Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">SMS Delivery</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('tech_admin.sms_delivery')}</CardTitle>
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -127,10 +129,10 @@ export default function TechAdminDashboard() {
               <>
                 <div className="text-2xl font-bold">{stats?.sms?.total || 0}</div>
                 <p className="text-xs text-muted-foreground">
-                  {stats?.sms?.failed || 0} failed
+                  {stats?.sms?.failed || 0} {t('tech_admin.failed')}
                 </p>
                 <p className="text-xs text-green-600">
-                  {stats?.sms?.deliveryRate || 0}% delivery rate
+                  {stats?.sms?.deliveryRate || 0}% {t('tech_admin.delivery_rate')}
                 </p>
               </>
             )}
@@ -140,7 +142,7 @@ export default function TechAdminDashboard() {
         {/* System Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('tech_admin.system_status')}</CardTitle>
             <Server className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -150,16 +152,16 @@ export default function TechAdminDashboard() {
               <>
                 <div className="text-2xl font-bold">
                   {stats?.system?.smppConnected ? (
-                    <span className="text-green-600">Online</span>
+                    <span className="text-green-600">{t('tech_admin.online')}</span>
                   ) : (
-                    <span className="text-red-600">Offline</span>
+                    <span className="text-red-600">{t('tech_admin.offline')}</span>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Uptime: {formatUptime(stats?.system?.uptime || 0)}
+                  {t('tech_admin.uptime')}: {formatUptime(stats?.system?.uptime || 0)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Env: {stats?.system?.environment || "unknown"}
+                  {t('tech_admin.environment')}: {stats?.system?.environment || "unknown"}
                 </p>
               </>
             )}
@@ -172,8 +174,8 @@ export default function TechAdminDashboard() {
         {/* User Breakdown */}
         <Card>
           <CardHeader>
-            <CardTitle>Users by Role</CardTitle>
-            <CardDescription>Distribution of user roles</CardDescription>
+            <CardTitle>{t('tech_admin.users_by_role')}</CardTitle>
+            <CardDescription>{t('tech_admin.role_distribution')}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -198,8 +200,8 @@ export default function TechAdminDashboard() {
         {/* System Info */}
         <Card>
           <CardHeader>
-            <CardTitle>SMPP Status</CardTitle>
-            <CardDescription>SMS gateway connection</CardDescription>
+            <CardTitle>{t('tech_admin.smpp_status')}</CardTitle>
+            <CardDescription>{t('tech_admin.sms_gateway')}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -210,17 +212,17 @@ export default function TechAdminDashboard() {
             ) : (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Connection</span>
+                  <span className="text-sm">{t('tech_admin.connection')}</span>
                   <span className={`text-sm font-medium ${stats?.system?.smppConnected ? 'text-green-600' : 'text-red-600'}`}>
-                    {stats?.system?.smppConnected ? 'Connected' : 'Disconnected'}
+                    {stats?.system?.smppConnected ? t('tech_admin.connected') : t('tech_admin.disconnected')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Reconnect Attempts</span>
+                  <span className="text-sm">{t('tech_admin.reconnect_attempts')}</span>
                   <span className="text-sm font-medium">{stats?.system?.smppReconnectAttempts || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">SMS Today</span>
+                  <span className="text-sm">{t('tech_admin.sms_today')}</span>
                   <span className="text-sm font-medium">{stats?.sms?.today || 0}</span>
                 </div>
               </div>
@@ -235,9 +237,9 @@ export default function TechAdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              User Management
+              {t('tech_admin.user_management')}
             </CardTitle>
-            <CardDescription>View and manage all users</CardDescription>
+            <CardDescription>{t('tech_admin.user_management_desc')}</CardDescription>
           </CardHeader>
         </Card>
 
@@ -245,9 +247,9 @@ export default function TechAdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              SMS Logs
+              {t('tech_admin.sms_logs')}
             </CardTitle>
-            <CardDescription>Monitor SMS delivery and analytics</CardDescription>
+            <CardDescription>{t('tech_admin.sms_logs_desc')}</CardDescription>
           </CardHeader>
         </Card>
 
@@ -255,9 +257,9 @@ export default function TechAdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5" />
-              Email Logs
+              {t('tech_admin.email_logs')}
             </CardTitle>
-            <CardDescription>Monitor email delivery and analytics</CardDescription>
+            <CardDescription>{t('tech_admin.email_logs_desc')}</CardDescription>
           </CardHeader>
         </Card>
 
@@ -265,9 +267,9 @@ export default function TechAdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ListTodo className="h-5 w-5" />
-              Queue Management
+              {t('tech_admin.queue_management')}
             </CardTitle>
-            <CardDescription>Manage SMS job queue</CardDescription>
+            <CardDescription>{t('tech_admin.queue_management_desc')}</CardDescription>
           </CardHeader>
         </Card>
 
@@ -275,9 +277,9 @@ export default function TechAdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Audit Logs
+              {t('tech_admin.audit_logs')}
             </CardTitle>
-            <CardDescription>Track all admin actions</CardDescription>
+            <CardDescription>{t('tech_admin.audit_logs_desc')}</CardDescription>
           </CardHeader>
         </Card>
 
@@ -285,9 +287,9 @@ export default function TechAdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
-              Settings
+              {t('tech_admin.settings')}
             </CardTitle>
-            <CardDescription>Configure system settings</CardDescription>
+            <CardDescription>{t('tech_admin.settings_desc')}</CardDescription>
           </CardHeader>
         </Card>
 
@@ -295,9 +297,9 @@ export default function TechAdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Server className="h-5 w-5" />
-              System Health
+              {t('tech_admin.system_health')}
             </CardTitle>
-            <CardDescription>Server metrics and monitoring</CardDescription>
+            <CardDescription>{t('tech_admin.system_health_desc')}</CardDescription>
           </CardHeader>
         </Card>
       </div>

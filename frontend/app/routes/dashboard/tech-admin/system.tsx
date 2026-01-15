@@ -18,6 +18,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { useAuth, isTechAdmin } from "@/providers/auth-context";
+import { useLanguage } from "@/providers/language-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -151,6 +152,7 @@ function formatBytes(bytes: number): string {
 
 export default function SystemHealth() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -198,8 +200,8 @@ export default function SystemHealth() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">System Health</h1>
-            <p className="text-muted-foreground">Server metrics and monitoring</p>
+            <h1 className="text-3xl font-bold tracking-tight">{t('tech_admin.system.title')}</h1>
+            <p className="text-muted-foreground">{t('tech_admin.system.subtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -212,7 +214,7 @@ export default function SystemHealth() {
             }}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            {t('tech_admin.refresh')}
           </Button>
         </div>
       </div>

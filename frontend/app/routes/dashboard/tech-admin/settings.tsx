@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLanguage } from "@/providers/language-context";
 import {
   Settings,
   RefreshCw,
@@ -75,6 +76,7 @@ interface EnvironmentSettings {
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("sms");
 
@@ -418,15 +420,15 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">System Settings</h1>
-          <p className="text-muted-foreground">Configure system-wide settings</p>
+          <h1 className="text-2xl font-bold">{t('tech_admin.settings.title')}</h1>
+          <p className="text-muted-foreground">{t('tech_admin.settings.subtitle')}</p>
         </div>
         <Button
           variant="outline"
           onClick={() => queryClient.invalidateQueries({ queryKey: ["system-settings"] })}
         >
           <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
+          {t('tech_admin.refresh')}
         </Button>
       </div>
 

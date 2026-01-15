@@ -19,6 +19,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { useAuth, isTechAdmin } from "@/providers/auth-context";
+import { useLanguage } from "@/providers/language-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -207,6 +208,7 @@ async function resetPassword(id: string, newPassword: string, sendNotification: 
 
 export default function UserManagement() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -345,13 +347,13 @@ export default function UserManagement() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-            <p className="text-muted-foreground">Manage all system users</p>
+            <h1 className="text-3xl font-bold tracking-tight">{t('tech_admin.users.title')}</h1>
+            <p className="text-muted-foreground">{t('tech_admin.users.subtitle')}</p>
           </div>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Add User
+          {t('tech_admin.users.add_user')}
         </Button>
       </div>
 

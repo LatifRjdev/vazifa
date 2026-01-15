@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLanguage } from "@/providers/language-context";
 import {
   Shield,
   RefreshCw,
@@ -152,6 +153,7 @@ const formatAction = (action: string) => {
 };
 
 export default function AuditLogsPage() {
+  const { t } = useLanguage();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -197,12 +199,12 @@ export default function AuditLogsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Audit Logs</h1>
-          <p className="text-muted-foreground">Track all administrative actions</p>
+          <h1 className="text-2xl font-bold">{t('tech_admin.audit.title')}</h1>
+          <p className="text-muted-foreground">{t('tech_admin.audit.subtitle')}</p>
         </div>
         <Button variant="outline" onClick={() => refetch()}>
           <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
+          {t('tech_admin.refresh')}
         </Button>
       </div>
 

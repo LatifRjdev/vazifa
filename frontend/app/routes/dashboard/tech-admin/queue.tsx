@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLanguage } from "@/providers/language-context";
 import {
   ListTodo,
   RefreshCw,
@@ -122,6 +123,7 @@ const getStatusBadge = (status: string) => {
 
 export default function QueueManagementPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("waiting");
   const [page, setPage] = useState(1);
@@ -281,8 +283,8 @@ export default function QueueManagementPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Queue Management</h1>
-          <p className="text-muted-foreground">Monitor and manage the SMS queue</p>
+          <h1 className="text-2xl font-bold">{t('tech_admin.queue.title')}</h1>
+          <p className="text-muted-foreground">{t('tech_admin.queue.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -293,7 +295,7 @@ export default function QueueManagementPage() {
             }}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            {t('tech_admin.refresh')}
           </Button>
           {statsData?.paused ? (
             <Button

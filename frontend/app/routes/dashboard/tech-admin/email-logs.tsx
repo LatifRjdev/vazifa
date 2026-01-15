@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLanguage } from "@/providers/language-context";
 import {
   Mail,
   RefreshCw,
@@ -152,6 +153,7 @@ const getTypeBadge = (type: string) => {
 
 export default function EmailLogsPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -221,8 +223,8 @@ export default function EmailLogsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Email Logs</h1>
-          <p className="text-muted-foreground">Monitor and manage email communications</p>
+          <h1 className="text-2xl font-bold">{t('tech_admin.email.title')}</h1>
+          <p className="text-muted-foreground">{t('tech_admin.email.subtitle')}</p>
         </div>
         <Button
           variant="outline"
@@ -232,7 +234,7 @@ export default function EmailLogsPage() {
           }}
         >
           <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
+          {t('tech_admin.refresh')}
         </Button>
       </div>
 

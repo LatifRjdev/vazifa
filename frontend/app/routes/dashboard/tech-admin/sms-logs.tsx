@@ -20,6 +20,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { useAuth, isTechAdmin } from "@/providers/auth-context";
+import { useLanguage } from "@/providers/language-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,6 +145,7 @@ async function resendSMS(id: string) {
 
 export default function SMSLogs() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -229,8 +231,8 @@ export default function SMSLogs() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">SMS Logs</h1>
-          <p className="text-muted-foreground">Monitor SMS delivery and analytics</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('tech_admin.sms.title')}</h1>
+          <p className="text-muted-foreground">{t('tech_admin.sms.subtitle')}</p>
         </div>
       </div>
 
