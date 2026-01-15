@@ -49,7 +49,7 @@ import { useLanguage } from "@/providers/language-context";
 const createTaskSchema = z.object({
   title: z.string().min(1, "Название обязательно"),
   description: z.string().optional(),
-  status: z.enum(["To Do", "In Progress", "Done"]),
+  status: z.enum(["To Do", "In Progress", "Done", "Cancelled"]),
   priority: z.enum(["Low", "Medium", "High"]),
   dueDate: z.string().optional(),
   assignees: z.array(z.string()),
@@ -436,7 +436,7 @@ export const CreateTaskDialog = ({
                 control={form.control}
                 name="responsibleManager"
                 render={({ field }) => {
-                  const managers = allUsers.filter(user => user && ["admin", "manager", "super_admin"].includes(user.role));
+                  const managers = allUsers.filter(user => user && ["admin", "manager", "super_admin", "chief_manager"].includes(user.role));
                   return (
                     <FormItem>
                       <FormLabel>{t('tasks.task_manager')}</FormLabel>
@@ -449,7 +449,7 @@ export const CreateTaskDialog = ({
                             <SelectItem value="none">{t('tasks.not_assigned')}</SelectItem>
                             {managers.filter(m => m._id).map((manager) => (
                               <SelectItem key={manager._id} value={manager._id || ""}>
-                                {manager.name} ({manager.role === "admin" ? t('tasks.admin') : manager.role === "super_admin" ? "Супер админ" : t('tasks.manager')})
+                                {manager.name} ({manager.role === "admin" ? t('tasks.admin') : manager.role === "super_admin" ? "Супер админ" : manager.role === "chief_manager" ? "Гл. Менеджер" : t('tasks.manager')})
                               </SelectItem>
                             ))}
                           </SelectContent>

@@ -15,6 +15,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { Loader } from "@/components/loader";
+import { ResponseSection } from "@/components/tasks/response-section";
 import { useLanguage } from "@/providers/language-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,9 +71,32 @@ const MyTasksPage = () => {
   );
   const [searchQuery, setSearchQuery] = useState(initialSearch);
 
-  // Группировка по названию
-  const [groupByTitle, setGroupByTitle] = useState(searchParams.get("grouped") === "true");
+  // Группировка по названию (включена по умолчанию)
+  const [groupByTitle, setGroupByTitle] = useState(searchParams.get("grouped") !== "false");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [expandedResponses, setExpandedResponses] = useState<Set<string>>(new Set());
+
+  // Функция переключения панели ответов
+  const toggleResponsePanel = (taskId: string) => {
+    setExpandedResponses(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  };
+
+  // Открыть все ответы в группе
+  const expandAllResponses = (taskIds: string[]) => {
+    setExpandedResponses(prev => {
+      const next = new Set(prev);
+      taskIds.forEach(id => next.add(id));
+      return next;
+    });
+  };
 
   // Keep state and URL in sync
   useEffect(() => {
@@ -343,13 +367,27 @@ const MyTasksPage = () => {
                                 {t('status.done')}: {group.doneCount}
                               </Badge>
                             )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                expandAllResponses(group.tasks.map(t => t._id));
+                              }}
+                            >
+                              <MessageSquare className="h-4 w-4 mr-1" />
+                              Ответить на все ({group.count})
+                            </Button>
                           </div>
                         </div>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <div className="border-t bg-muted/20">
                           {group.tasks.map((task) => (
-                            <div key={task._id} className="p-4 hover:bg-muted/50 border-b last:border-b-0 ml-8">
+                            <div key={task._id} className={cn(
+                              "p-4 hover:bg-muted/50 border-b last:border-b-0 ml-8",
+                              task.awaitingStatusChange && "bg-green-50 border-l-4 border-green-500 dark:bg-green-900/20"
+                            )}>
                               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                                 <div className="flex">
                                   <div
@@ -403,14 +441,23 @@ const MyTasksPage = () => {
                                         <Eye className="h-4 w-4" />
                                       </Button>
                                     </Link>
-                                    <Link to={`/dashboard/task/${task._id}#responses`}>
-                                      <Button variant="ghost" size="sm" title={t('all_tasks.view_responses')}>
-                                        <MessageSquare className="h-4 w-4" />
-                                      </Button>
-                                    </Link>
+                                    <Button
+                                      variant={expandedResponses.has(task._id) ? "default" : "ghost"}
+                                      size="sm"
+                                      title={t('all_tasks.view_responses')}
+                                      onClick={() => toggleResponsePanel(task._id)}
+                                    >
+                                      <MessageSquare className="h-4 w-4" />
+                                    </Button>
                                   </div>
                                 </div>
                               </div>
+                              {/* Inline панель ответов */}
+                              {expandedResponses.has(task._id) && (
+                                <div className="mt-3 pt-3 border-t">
+                                  <ResponseSection taskId={task._id} task={task} />
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -427,7 +474,10 @@ const MyTasksPage = () => {
                 /* Обычный вид */
                 <div className="divide-y">
                   {sortedTasks.map((task) => (
-                    <div key={task._id} className="p-4 hover:bg-muted/50">
+                    <div key={task._id} className={cn(
+                      "p-4 hover:bg-muted/50",
+                      task.awaitingStatusChange && "bg-green-50 border-l-4 border-green-500 dark:bg-green-900/20"
+                    )}>
                       <div className="flex flex-col md:flex-row md:items-center justify-between mb-2 gap-3">
                         <div className="flex">
                           <div

@@ -1,4 +1,4 @@
-export type TaskStatus = "To Do" | "In Progress" | "Review" | "Done";
+export type TaskStatus = "To Do" | "In Progress" | "Review" | "Done" | "Cancelled";
 export type TaskPriority = "High" | "Medium" | "Low";
 
 export interface User {
@@ -94,6 +94,11 @@ export interface Task {
   watchers?: User[];
   attachments?: Attachment[];
   completedAt?: Date;
+  cancelledAt?: Date;
+  cancelledBy?: User | string;
+  awaitingStatusChange?: boolean;
+  awaitingStatusChangeAt?: Date;
+  awaitingStatusChangeBy?: User | string;
   responsibleManager?: User | string;
   isImportant?: boolean;
   markedImportantBy?: User | string;

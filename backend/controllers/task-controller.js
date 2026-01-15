@@ -220,15 +220,15 @@ const createTask = async (req, res) => {
     console.log('Создание задачи - пользователь:', req.user);
 
     // Проверить права доступа (только админы, супер админы и менеджеры могут создавать задачи)
-    if (!["admin", "super_admin", "manager"].includes(req.user.role)) {
-      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут создавать задачи." });
+    if (!["admin", "super_admin", "manager", "chief_manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы, главные менеджеры и менеджеры могут создавать задачи." });
     }
 
-    // Если указан ответственный менеджер, проверить что это действительно менеджер, админ или супер админ
+    // Если указан ответственный менеджер, проверить что это действительно менеджер, админ, супер админ или главный менеджер
     if (responsibleManager) {
       const manager = await User.findById(responsibleManager);
-      if (!manager || !["admin", "super_admin", "manager"].includes(manager.role)) {
-        return res.status(400).json({ message: "Ответственным может быть только менеджер, админ или супер админ." });
+      if (!manager || !["admin", "super_admin", "manager", "chief_manager"].includes(manager.role)) {
+        return res.status(400).json({ message: "Ответственным может быть только менеджер, главный менеджер, админ или супер админ." });
       }
     }
 
@@ -323,15 +323,42 @@ const updateTaskStatus = async (req, res) => {
 
     const oldStatus = task.status;
 
+    // Проверить права на установку статуса "Cancelled"
+    if (status === "Cancelled") {
+      const canCancel = isAdmin || isChiefManager || isResponsibleManager;
+      if (!canCancel) {
+        return res.status(403).json({
+          message: "Доступ запрещен. Только ответственный менеджер, главный менеджер или админ могут отменить задачу."
+        });
+      }
+    }
+
     task.status = status;
-    
+
     // Если статус изменился на "Done", установить completedAt
     if (status === "Done" && oldStatus !== "Done") {
       task.completedAt = new Date();
-    } else if (status !== "Done" && oldStatus === "Done") {
+      task.cancelledAt = null;
+      task.cancelledBy = null;
+    } else if (status === "Cancelled" && oldStatus !== "Cancelled") {
+      // Если статус изменился на "Cancelled", установить cancelledAt и completedAt (для показа в выполненных)
+      task.cancelledAt = new Date();
+      task.cancelledBy = req.user._id;
+      task.completedAt = new Date(); // Чтобы задача попала в выполненные
+    } else if (status !== "Done" && status !== "Cancelled" && (oldStatus === "Done" || oldStatus === "Cancelled")) {
+      // Если статус изменился с Done или Cancelled на другой, очистить даты
       task.completedAt = null;
+      task.cancelledAt = null;
+      task.cancelledBy = null;
     }
-    
+
+    // Сбросить флаг ожидания изменения статуса при любом изменении статуса
+    if (task.awaitingStatusChange) {
+      task.awaitingStatusChange = false;
+      task.awaitingStatusChangeAt = null;
+      task.awaitingStatusChangeBy = null;
+    }
+
     await task.save();
 
     // Record activity
@@ -343,6 +370,75 @@ const updateTaskStatus = async (req, res) => {
   } catch (error) {
     console.error("Error updating task status:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Запросить изменение статуса (для участников задачи)
+const requestStatusChange = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+
+    const task = await Task.findById(taskId)
+      .populate('responsibleManager', 'name phoneNumber email')
+      .populate('assignees', 'name');
+
+    if (!task) {
+      return res.status(404).json({ message: "Задача не найдена" });
+    }
+
+    // Проверить, что пользователь назначен на эту задачу
+    const isAssigned = task.assignees.some(
+      assignee => assignee._id.toString() === req.user._id.toString()
+    );
+
+    if (!isAssigned) {
+      return res.status(403).json({
+        message: "Доступ запрещен. Только назначенные исполнители могут запросить изменение статуса."
+      });
+    }
+
+    // Если уже ожидает изменения статуса
+    if (task.awaitingStatusChange) {
+      return res.status(400).json({
+        message: "Запрос на изменение статуса уже отправлен."
+      });
+    }
+
+    // Установить флаг ожидания
+    task.awaitingStatusChange = true;
+    task.awaitingStatusChangeAt = new Date();
+    task.awaitingStatusChangeBy = req.user._id;
+
+    await task.save();
+
+    // Отправить уведомление ответственному менеджеру (Email + SMS)
+    if (task.responsibleManager) {
+      await sendNotification({
+        recipientId: task.responsibleManager._id,
+        type: "awaiting_status_change",
+        title: "Запрос на изменение статуса",
+        message: `${req.user.name} запрашивает изменение статуса задачи: ${task.title}`,
+        relatedData: {
+          taskId: task._id,
+          actorId: req.user._id,
+        },
+        sendEmail: true,
+        sendSMS: true,
+      });
+    }
+
+    // Записать активность
+    await recordActivity(req.user._id, "updated_task", "Task", taskId, {
+      description: `запросил изменение статуса задачи`,
+    });
+
+    res.status(200).json({
+      message: "Запрос на изменение статуса отправлен",
+      task
+    });
+  } catch (error) {
+    console.error("Error requesting status change:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
   }
 };
 
@@ -392,9 +488,9 @@ const archiveTask = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Проверить права доступа (только админы, супер админы и менеджеры могут архивировать задачи)
-    if (!["admin", "super_admin", "manager"].includes(req.user.role)) {
-      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут архивировать задачи." });
+    // Проверить права доступа (только админы, супер админы, главные менеджеры и менеджеры могут архивировать задачи)
+    if (!["admin", "super_admin", "manager", "chief_manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы, главные менеджеры и менеджеры могут архивировать задачи." });
     }
 
     const oldStatus = task.isArchived;
@@ -518,9 +614,9 @@ const updateTaskDescription = async (req, res) => {
     const { taskId } = req.params;
     const { description } = req.body;
 
-    // Проверить права доступа (только админы, супер админы и менеджеры могут редактировать описание задачи)
-    if (!["admin", "super_admin", "manager"].includes(req.user.role)) {
-      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут редактировать описание задачи." });
+    // Проверить права доступа (только админы, супер админы, главные менеджеры и менеджеры могут редактировать описание задачи)
+    if (!["admin", "super_admin", "manager", "chief_manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы, главные менеджеры и менеджеры могут редактировать описание задачи." });
     }
 
     const task = await Task.findById(taskId);
@@ -567,9 +663,9 @@ const updateTaskAssignees = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Проверить права доступа (только админы, супер админы и менеджеры могут изменять исполнителей)
-    if (!["admin", "super_admin", "manager"].includes(req.user.role)) {
-      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут изменять исполнителей задач." });
+    // Проверить права доступа (только админы, супер админы, главные менеджеры и менеджеры могут изменять исполнителей)
+    if (!["admin", "super_admin", "manager", "chief_manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы, главные менеджеры и менеджеры могут изменять исполнителей задач." });
     }
 
     const oldAssignees = task.assignees;
@@ -933,8 +1029,8 @@ const getTasksAnalytics = async (req, res) => {
 const getArchivedTasks = async (req, res) => {
   try {
     // Проверить права доступа
-    if (!["admin", "super_admin", "manager"].includes(req.user.role)) {
-      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут просматривать архивированные задачи." });
+    if (!["admin", "super_admin", "manager", "chief_manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы, главные менеджеры и менеджеры могут просматривать архивированные задачи." });
     }
 
     const archivedTasks = await Task.find({ isArchived: true })
@@ -1037,12 +1133,12 @@ const createResponse = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Проверить, что пользователь назначен на эту задачу или является админом/супер админом/менеджером
+    // Проверить, что пользователь назначен на эту задачу или является админом/супер админом/главным менеджером/менеджером
     const isAssigned = task.assignees.some(assignee => assignee.toString() === req.user._id.toString());
-    const isAdminOrManager = ["admin", "super_admin", "manager"].includes(req.user.role);
-    
+    const isAdminOrManager = ["admin", "super_admin", "manager", "chief_manager"].includes(req.user.role);
+
     if (!isAssigned && !isAdminOrManager) {
-      return res.status(403).json({ message: "Доступ запрещен. Только участники, назначенные на задачу, или админы/супер админы/менеджеры могут отвечать." });
+      return res.status(403).json({ message: "Доступ запрещен. Только участники, назначенные на задачу, или админы/супер админы/главные менеджеры/менеджеры могут отвечать." });
     }
 
     // Создать ответ
@@ -1214,8 +1310,8 @@ const replyToComment = async (req, res) => {
 const getCompletedTasks = async (req, res) => {
   try {
     // Проверить права доступа
-    if (!["admin", "super_admin", "manager"].includes(req.user.role)) {
-      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут просматривать выполненные задачи." });
+    if (!["admin", "super_admin", "manager", "chief_manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы, главные менеджеры и менеджеры могут просматривать выполненные задачи." });
     }
 
     const { 
@@ -1396,8 +1492,8 @@ const getManagerTasks = async (req, res) => {
   try {
     const { managerId } = req.params;
 
-    // Проверить права доступа (только админы, супер админы, менеджеры и сам менеджер могут просматривать его задачи)
-    if (!["admin", "super_admin", "manager"].includes(req.user.role) && req.user._id.toString() !== managerId) {
+    // Проверить права доступа (только админы, супер админы, главные менеджеры, менеджеры и сам менеджер могут просматривать его задачи)
+    if (!["admin", "super_admin", "manager", "chief_manager"].includes(req.user.role) && req.user._id.toString() !== managerId) {
       return res.status(403).json({ message: "Доступ запрещен." });
     }
 
@@ -1450,8 +1546,8 @@ const createMultipleTasks = async (req, res) => {
     console.log('Количество задач:', tasks.length);
 
     // Проверить права доступа
-    if (!["admin", "super_admin", "manager"].includes(req.user.role)) {
-      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут создавать задачи." });
+    if (!["admin", "super_admin", "manager", "chief_manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы, главные менеджеры и менеджеры могут создавать задачи." });
     }
 
     // Проверить что tasks это массив и содержит минимум 2 элемента
@@ -1462,8 +1558,8 @@ const createMultipleTasks = async (req, res) => {
     // Если указан ответственный менеджер, проверить что это действительно менеджер
     if (responsibleManager) {
       const manager = await User.findById(responsibleManager);
-      if (!manager || !["admin", "super_admin", "manager"].includes(manager.role)) {
-        return res.status(400).json({ message: "Ответственным может быть только менеджер, админ или супер админ." });
+      if (!manager || !["admin", "super_admin", "manager", "chief_manager"].includes(manager.role)) {
+        return res.status(400).json({ message: "Ответственным может быть только менеджер, главный менеджер, админ или супер админ." });
       }
     }
 
@@ -1593,4 +1689,5 @@ export {
   getImportantTasks,
   getManagerTasks,
   getMyManagerTasks,
+  requestStatusChange,
 };

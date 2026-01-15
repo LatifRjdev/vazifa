@@ -9,7 +9,7 @@ const taskSchema = new Schema(
     description: { type: String, trim: true },
     status: {
       type: String,
-      enum: ["To Do", "In Progress", "Review", "Done"],
+      enum: ["To Do", "In Progress", "Review", "Done", "Cancelled"],
       default: "To Do",
     },
     priority: {
@@ -26,6 +26,11 @@ const taskSchema = new Schema(
     // startDate: { type: Date },
     dueDate: { type: Date },
     completedAt: { type: Date },
+    cancelledAt: { type: Date },
+    cancelledBy: { type: Schema.Types.ObjectId, ref: "User" },
+    awaitingStatusChange: { type: Boolean, default: false },
+    awaitingStatusChangeAt: { type: Date },
+    awaitingStatusChangeBy: { type: Schema.Types.ObjectId, ref: "User" },
     estimatedHours: { type: Number, min: 0 },
     actualHours: { type: Number, min: 0 },
     tags: [{ type: String }],

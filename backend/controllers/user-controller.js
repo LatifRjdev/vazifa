@@ -1,9 +1,22 @@
 import bcrypt from "bcrypt";
+import sharp from "sharp";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 
 import User from "../models/users.js";
 import Task from "../models/tasks.js";
 import ActivityLog from "../models/activity-logs.js";
 import { sendEmail } from "../libs/send-emails.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const avatarsDir = path.join(__dirname, "../uploads/avatars");
+
+// Создаем папку для аватаров если не существует
+if (!fs.existsSync(avatarsDir)) {
+  fs.mkdirSync(avatarsDir, { recursive: true });
+}
 
 const getUserProfile = async (req, res) => {
   try {
@@ -425,6 +438,82 @@ const getUserTaskViews = async (req, res) => {
   }
 };
 
+// Upload avatar
+const uploadAvatar = async (req, res) => {
+  try {
+    // Проверка наличия файла
+    if (!req.file) {
+      return res.status(400).json({ message: "Файл не загружен" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "Пользователь не найден" });
+    }
+
+    // Генерируем уникальное имя файла
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const filename = `avatar-${req.user._id}-${uniqueSuffix}.webp`;
+    const filepath = path.join(avatarsDir, filename);
+
+    // Обработка изображения с Sharp
+    // - Resize до 200x200
+    // - Конвертация в WebP для оптимизации размера
+    // - Качество 80%
+    await sharp(req.file.buffer)
+      .resize(200, 200, {
+        fit: 'cover',
+        position: 'center'
+      })
+      .webp({ quality: 80 })
+      .toFile(filepath);
+
+    // Удаление старого аватара если он был локальным
+    if (user.profilePicture) {
+      const oldAvatarUrl = user.profilePicture;
+      // Проверяем что это локальный файл (не Cloudinary URL)
+      if (oldAvatarUrl.includes('/uploads/avatars/')) {
+        const oldFilename = oldAvatarUrl.split('/').pop();
+        const oldFilepath = path.join(avatarsDir, oldFilename);
+
+        // Удаляем старый файл если существует
+        if (fs.existsSync(oldFilepath)) {
+          fs.unlinkSync(oldFilepath);
+        }
+      }
+    }
+
+    // Формируем URL для нового аватара
+    const backendUrl = process.env.NODE_ENV === 'production'
+      ? process.env.PRODUCTION_BACKEND_URL || process.env.BACKEND_URL
+      : process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5001}`;
+
+    const avatarUrl = `${backendUrl}/uploads/avatars/${filename}`;
+
+    // Обновляем профиль пользователя
+    user.profilePicture = avatarUrl;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Аватар успешно загружен",
+      data: {
+        profilePicture: avatarUrl,
+      },
+    });
+
+  } catch (error) {
+    console.error("Ошибка загрузки аватара:", error);
+
+    // Обработка ошибок Multer
+    if (error.message && error.message.includes('Разрешены только изображения')) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    res.status(500).json({ message: "Ошибка загрузки аватара" });
+  }
+};
+
 // Delete user (admin only)
 const deleteUser = async (req, res) => {
   try {
@@ -463,6 +552,7 @@ export {
   changePassword,
   getUserProfile,
   updateUserProfile,
+  uploadAvatar,
   get2FAStatus,
   enable2FA,
   verify2FA,

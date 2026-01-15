@@ -6,6 +6,7 @@ module.exports = {
     instances: 1,
     exec_mode: 'fork',
     interpreter: 'node',
+    node_args: '--max-old-space-size=1024',
     env: {
       NODE_ENV: 'production',
       PORT: 3000
@@ -16,7 +17,12 @@ module.exports = {
     merge_logs: true,
     autorestart: true,
     watch: false,
-    max_memory_restart: '500M',
-    exp_backoff_restart_delay: 100
+    max_memory_restart: '1G',
+    exp_backoff_restart_delay: 100,
+    min_uptime: '10s',
+    max_restarts: 10,
+    restart_delay: 4000,
+    listen_timeout: 10000,
+    kill_timeout: 5000
   }]
 };

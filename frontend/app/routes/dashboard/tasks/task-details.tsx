@@ -41,6 +41,7 @@ import {
   useDeleteTaskMutation,
   useGetTaskByIdQuery,
   useTaskWatcherMutation,
+  useRequestStatusChangeMutation,
 } from "@/hooks/use-task";
 import { useAuth } from "@/providers/auth-context";
 import type { ActionType, Project, Task } from "@/types";
@@ -97,6 +98,8 @@ const TaskDetailsPage = () => {
     useArchiveTaskMutation();
   const { mutate: deleteTask, isPending: isDeletingTask } =
     useDeleteTaskMutation();
+  const { mutate: requestStatusChange, isPending: isRequestingStatusChange } =
+    useRequestStatusChangeMutation();
 
   // Состояние для диалога удаления с причиной
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -269,9 +272,32 @@ const TaskDetailsPage = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 mt-4 md:mt-0">
+              <div className="flex items-center gap-2 mt-4 md:mt-0 flex-wrap">
                 {/* Task status dropdown */}
-                <TaskStatusSelector status={task.status} taskId={task._id} />
+                <TaskStatusSelector status={task.status} taskId={task._id} task={task} />
+
+                {/* Кнопка "В ожидании изменения статуса" для участников */}
+                {task.assignees?.some(a => (typeof a === 'string' ? a : a._id) === user?._id) &&
+                 !["Done", "Cancelled"].includes(task.status) && (
+                  <Button
+                    variant={task.awaitingStatusChange ? "default" : "outline"}
+                    size="sm"
+                    className={task.awaitingStatusChange ? "bg-green-500 hover:bg-green-600" : ""}
+                    onClick={() => requestStatusChange({ taskId: task._id }, {
+                      onSuccess: () => {
+                        toast.success("Запрос на изменение статуса отправлен менеджеру");
+                      },
+                      onError: (error: any) => {
+                        toast.error(error.message || "Ошибка отправки запроса");
+                      }
+                    })}
+                    disabled={isRequestingStatusChange || task.awaitingStatusChange}
+                  >
+                    {task.awaitingStatusChange
+                      ? "Ожидает проверки"
+                      : "В ожидании изменения статуса"}
+                  </Button>
+                )}
 
                 <Button
                   variant="destructive"

@@ -34,6 +34,7 @@ import {
   getImportantTasks,
   getManagerTasks,
   getMyManagerTasks,
+  requestStatusChange,
 } from "../controllers/task-controller.js";
 import {
   commentSchema,
@@ -159,9 +160,17 @@ router.put(
   authenticateUser,
   validateRequest({
     params: z.object({ taskId: z.string() }),
-    body: z.object({ status: z.enum(["To Do", "In Progress", "Done"]) }),
+    body: z.object({ status: z.enum(["To Do", "In Progress", "Done", "Cancelled"]) }),
   }),
   updateTaskStatus
+);
+
+// Запросить изменение статуса (для участников)
+router.post(
+  "/:taskId/request-status-change",
+  authenticateUser,
+  validateRequest({ params: z.object({ taskId: z.string() }) }),
+  requestStatusChange
 );
 
 router.put(

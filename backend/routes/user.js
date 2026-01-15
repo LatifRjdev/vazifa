@@ -1,4 +1,5 @@
 import express from "express";
+import multer from "multer";
 import { z } from "zod";
 import { validateRequest } from "zod-express-middleware";
 
@@ -6,6 +7,7 @@ import {
   changePassword,
   getUserProfile,
   updateUserProfile,
+  uploadAvatar,
   get2FAStatus,
   enable2FA,
   verify2FA,
@@ -27,6 +29,25 @@ import {
 
 const router = express.Router();
 
+// Конфигурация Multer для аватаров
+const avatarStorage = multer.memoryStorage();
+
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB максимум (до оптимизации)
+  },
+  fileFilter: (req, file, cb) => {
+    // Валидация только изображений
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Разрешены только изображения (JPEG, PNG, GIF, WebP)'), false);
+    }
+  },
+});
+
 router.get("/me", authenticateUser, getUserProfile);
 router.get("/profile", authenticateUser, getUserProfile);
 router.put(
@@ -39,6 +60,14 @@ router.put(
     }),
   }),
   updateUserProfile
+);
+
+// Загрузка аватара
+router.post(
+  "/avatar",
+  authenticateUser,
+  avatarUpload.single("avatar"),
+  uploadAvatar
 );
 
 router.put(

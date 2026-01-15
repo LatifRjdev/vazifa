@@ -184,9 +184,16 @@ export const useCreateCommentMutation = () => {
     mutationFn: (data: { taskId: string; text: string; attachments?: any[] }) =>
       postData(`/tasks/${data.taskId}/comments`, data),
     onSuccess: (data: any) => {
+      // Инвалидируем кэш
       queryClient.invalidateQueries({ queryKey: ["comments", data?.task] });
       queryClient.invalidateQueries({
         queryKey: ["activities", data?.task, 1],
+      });
+      
+      // Принудительно перезапрашиваем данные с сервера
+      queryClient.refetchQueries({ 
+        queryKey: ["comments", data?.task],
+        type: 'active'
       });
     },
   });
@@ -283,9 +290,16 @@ export const useCreateResponseMutation = () => {
     mutationFn: (data: { taskId: string; text?: string; attachments?: any[] }) =>
       postData(`/tasks/${data.taskId}/responses`, data),
     onSuccess: (data: any) => {
+      // Инвалидируем кэш
       queryClient.invalidateQueries({ queryKey: ["responses", data?.task] });
       queryClient.invalidateQueries({
         queryKey: ["activities", data?.task, 1],
+      });
+      
+      // Принудительно перезапрашиваем данные с сервера
+      queryClient.refetchQueries({ 
+        queryKey: ["responses", data?.task],
+        type: 'active'
       });
     },
   });
@@ -296,6 +310,22 @@ export const useGetTaskResponsesByIdQuery = (taskId: string) => {
     queryKey: ["responses", taskId],
     queryFn: () => fetchData(`/tasks/${taskId}/responses`),
     enabled: !!taskId,
+  });
+};
+
+// Хук для запроса изменения статуса (для участников)
+export const useRequestStatusChangeMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { taskId: string }) =>
+      postData(`/tasks/${data.taskId}/request-status-change`, {}),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["task", data?.task?._id] });
+      queryClient.invalidateQueries({ queryKey: ["my-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["all-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["manager-tasks"] });
+    },
   });
 };
 

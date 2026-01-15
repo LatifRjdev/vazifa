@@ -52,8 +52,9 @@ export function meta({}: Route.MetaArgs) {
 // Цвета для диаграмм
 const STATUS_COLORS = {
   "To Do": "#3b82f6",
-  "In Progress": "#f59e0b", 
+  "In Progress": "#f59e0b",
   "Done": "#10b981",
+  "Cancelled": "#6b7280",
 };
 
 const PRIORITY_COLORS = {
@@ -177,7 +178,7 @@ const AnalyticsPage = () => {
       color: STATUS_COLORS["To Do"],
     },
     {
-      name: t('status.in_progress'), 
+      name: t('status.in_progress'),
       value: filteredTasks.filter(t => t.status === "In Progress").length,
       color: STATUS_COLORS["In Progress"],
     },
@@ -185,6 +186,11 @@ const AnalyticsPage = () => {
       name: t('status.done'),
       value: filteredTasks.filter(t => t.status === "Done").length,
       color: STATUS_COLORS["Done"],
+    },
+    {
+      name: t('status.cancelled'),
+      value: filteredTasks.filter(t => t.status === "Cancelled").length,
+      color: STATUS_COLORS["Cancelled"],
     },
   ];
 
@@ -208,24 +214,27 @@ const AnalyticsPage = () => {
 
   // Подготовка данных для диаграмм по участникам
   const memberTasksData = users.map(member => {
-    const memberTasks = filteredTasks.filter(task => 
+    const memberTasks = filteredTasks.filter(task =>
       task.assignees?.some(assignee => assignee._id === member._id)
     );
-    
+
     const total = memberTasks.length;
     const todo = memberTasks.filter(t => t.status === "To Do").length;
     const inProgress = memberTasks.filter(t => t.status === "In Progress").length;
     const done = memberTasks.filter(t => t.status === "Done").length;
-    
+    const cancelled = memberTasks.filter(t => t.status === "Cancelled").length;
+
     return {
       name: member.name,
       total,
       todo,
       inProgress,
       done,
+      cancelled,
       todoPercent: total > 0 ? Math.round((todo / total) * 100) : 0,
       inProgressPercent: total > 0 ? Math.round((inProgress / total) * 100) : 0,
       donePercent: total > 0 ? Math.round((done / total) * 100) : 0,
+      cancelledPercent: total > 0 ? Math.round((cancelled / total) * 100) : 0,
     };
   }).filter(data => data.total > 0);
 
@@ -238,9 +247,10 @@ const AnalyticsPage = () => {
   const completedTasks = filteredTasks.filter(t => t.status === "Done").length;
   const inProgressTasks = filteredTasks.filter(t => t.status === "In Progress").length;
   const todoTasks = filteredTasks.filter(t => t.status === "To Do").length;
+  const cancelledTasks = filteredTasks.filter(t => t.status === "Cancelled").length;
   const highPriorityTasks = filteredTasks.filter(t => t.priority === "High").length;
-  const overdueTasks = filteredTasks.filter(t => 
-    t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "Done"
+  const overdueTasks = filteredTasks.filter(t =>
+    t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "Done" && t.status !== "Cancelled"
   ).length;
 
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -483,18 +493,20 @@ const AnalyticsPage = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={statusData}
+                      data={statusData.filter(d => d.value > 0)}
                       cx="50%"
                       cy="50%"
-                      labelLine={false}
-                      label={({ name, value, percent }) => 
-                        `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
+                      labelLine={true}
+                      label={({ name, value, percent }) =>
+                        value > 0 ? `${name}: ${value}` : ''
                       }
-                      outerRadius={80}
+                      outerRadius={70}
+                      innerRadius={30}
+                      paddingAngle={2}
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {statusData.map((entry, index) => (
+                      {statusData.filter(d => d.value > 0).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -528,18 +540,20 @@ const AnalyticsPage = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={priorityData}
+                      data={priorityData.filter(d => d.value > 0)}
                       cx="50%"
                       cy="50%"
-                      labelLine={false}
-                      label={({ name, value, percent }) => 
-                        `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
+                      labelLine={true}
+                      label={({ name, value }) =>
+                        value > 0 ? `${name}: ${value}` : ''
                       }
-                      outerRadius={80}
+                      outerRadius={70}
+                      innerRadius={30}
+                      paddingAngle={2}
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {priorityData.map((entry, index) => (
+                      {priorityData.filter(d => d.value > 0).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -580,14 +594,17 @@ const AnalyticsPage = () => {
                           { name: t('status.todo'), value: selectedMemberData.todo, color: STATUS_COLORS["To Do"] },
                           { name: t('status.in_progress'), value: selectedMemberData.inProgress, color: STATUS_COLORS["In Progress"] },
                           { name: t('status.done'), value: selectedMemberData.done, color: STATUS_COLORS["Done"] },
-                        ]}
+                          { name: t('status.cancelled'), value: selectedMemberData.cancelled, color: STATUS_COLORS["Cancelled"] },
+                        ].filter(d => d.value > 0)}
                         cx="50%"
                         cy="50%"
-                        labelLine={false}
-                        label={({ name, value, percent }) => 
-                          `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
+                        labelLine={true}
+                        label={({ name, value }) =>
+                          value > 0 ? `${name}: ${value}` : ''
                         }
-                        outerRadius={80}
+                        outerRadius={70}
+                        innerRadius={30}
+                        paddingAngle={2}
                         fill="#8884d8"
                         dataKey="value"
                       >
@@ -595,7 +612,8 @@ const AnalyticsPage = () => {
                           { name: t('status.todo'), value: selectedMemberData.todo, color: STATUS_COLORS["To Do"] },
                           { name: t('status.in_progress'), value: selectedMemberData.inProgress, color: STATUS_COLORS["In Progress"] },
                           { name: t('status.done'), value: selectedMemberData.done, color: STATUS_COLORS["Done"] },
-                        ].map((entry, index) => (
+                          { name: t('status.cancelled'), value: selectedMemberData.cancelled, color: STATUS_COLORS["Cancelled"] },
+                        ].filter(d => d.value > 0).map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
@@ -639,6 +657,14 @@ const AnalyticsPage = () => {
                   </div>
                   <Progress value={selectedMemberData.donePercent} className="h-2" />
                 </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">{t('status.cancelled')}</span>
+                    <span className="text-sm font-medium">{selectedMemberData.cancelled} ({selectedMemberData.cancelledPercent}%)</span>
+                  </div>
+                  <Progress value={selectedMemberData.cancelledPercent} className="h-2" />
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -674,6 +700,7 @@ const AnalyticsPage = () => {
                 <Bar dataKey="done" fill={STATUS_COLORS["Done"]} name={t('status.done')} />
                 <Bar dataKey="inProgress" fill={STATUS_COLORS["In Progress"]} name={t('status.in_progress')} />
                 <Bar dataKey="todo" fill={STATUS_COLORS["To Do"]} name={t('status.todo')} />
+                <Bar dataKey="cancelled" fill={STATUS_COLORS["Cancelled"]} name={t('status.cancelled')} />
               </BarChart>
             </ResponsiveContainer>
           </div>

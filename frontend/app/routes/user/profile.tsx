@@ -34,6 +34,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   useChangePassword,
   useUpdateUserProfile,
+  useUploadAvatar,
   useUserProfileQuery,
 } from "@/hooks/use-user";
 import { useAuth } from "@/providers/auth-context";
@@ -105,6 +106,8 @@ const ProfilePage = () => {
 
   const { mutate: updateUserProfile, isPending: isUpdatingProfile } =
     useUpdateUserProfile();
+  const { mutate: uploadAvatar, isPending: isUploadingAvatar } =
+    useUploadAvatar();
   const {
     mutate: changePassword,
     isPending: isChangingPassword,
@@ -142,40 +145,36 @@ const ProfilePage = () => {
     setAvatarFile(file);
 
     if (!file) return;
-    if (file.size > 1024 * 1024) {
-      toast.error("File size must be less than 1MB.");
+
+    // Валидация размера (5MB до оптимизации)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Размер файла не должен превышать 5MB");
       return;
     }
-    setUploading(true);
-    setUploadProgress(0);
-    try {
-      const cloudName = import.meta.env.VITE_APP_CLOUDINARY_CLOUD_NAME;
-      const uploadPreset = import.meta.env.VITE_APP_CLOUDINARY_UPLOAD_PRESET;
-      const url = `https://api.cloudinary.com/v1_1/${cloudName}/upload`;
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", uploadPreset);
-
-      const response = await axios.post(url, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            setUploadProgress(
-              Math.round((progressEvent.loaded * 100) / progressEvent.total)
-            );
-          }
-        },
-      });
-      const uploadedUrl = response.data.secure_url;
-      profileForm.setValue("profilePicture", uploadedUrl);
-      toast.success("Avatar uploaded!");
-    } catch (err) {
-      toast.error("Upload failed. Please try again.");
-    } finally {
-      setUploading(false);
-      setUploadProgress(0);
+    // Валидация типа файла
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Разрешены только изображения (JPEG, PNG, GIF, WebP)");
+      return;
     }
+
+    setUploading(true);
+    setUploadProgress(50);
+
+    uploadAvatar(file, {
+      onSuccess: (data) => {
+        profileForm.setValue("profilePicture", data.data.profilePicture);
+        toast.success("Аватар успешно загружен!");
+        setUploading(false);
+        setUploadProgress(100);
+      },
+      onError: (error: Error) => {
+        toast.error(error.message || "Ошибка загрузки. Попробуйте снова.");
+        setUploading(false);
+        setUploadProgress(0);
+      },
+    });
   };
 
   const handleProfileFormSubmit = (values: ProfileFormData) => {
@@ -249,7 +248,7 @@ const ProfilePage = () => {
                     type="file"
                     accept="image/*"
                     onChange={handleAvatarChange}
-                    disabled={uploading || isUpdatingProfile}
+                    disabled={uploading || isUploadingAvatar || isUpdatingProfile}
                     style={{ display: "none" }}
                   />
                   <Button
@@ -259,9 +258,9 @@ const ProfilePage = () => {
                     onClick={() =>
                       document.getElementById("avatar-upload")?.click()
                     }
-                    disabled={uploading || isUpdatingProfile}
+                    disabled={uploading || isUploadingAvatar || isUpdatingProfile}
                   >
-                    Изменить аватар
+                    {isUploadingAvatar ? "Загрузка..." : "Изменить аватар"}
                   </Button>
                   {avatarFile && (
                     <div className="text-xs text-muted-foreground mt-1">
@@ -338,7 +337,7 @@ const ProfilePage = () => {
               <Button
                 type="submit"
                 className="w-fit"
-                disabled={isUpdatingProfile || isPending || uploading}
+                disabled={isUpdatingProfile || isPending || uploading || isUploadingAvatar}
               >
                 {isUpdatingProfile ? (
                   <>
