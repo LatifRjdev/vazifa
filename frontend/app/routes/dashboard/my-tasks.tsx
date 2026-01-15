@@ -425,6 +425,12 @@ const MyTasksPage = () => {
                                         <Badge variant="outline">{t('filter.archived')}</Badge>
                                       )}
                                     </div>
+                                    {/* Описание задачи */}
+                                    {task.description && (
+                                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                                        {task.description}
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-4">

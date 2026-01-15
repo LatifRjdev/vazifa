@@ -870,13 +870,23 @@ const toggleCommentReaction = async (req, res) => {
 
 const getMyTasks = async (req, res) => {
   try {
-    const tasks = await Task.find({
-      assignees: { $in: [req.user._id] },
+    // Главный менеджер видит все задачи организации
+    const isChiefManager = req.user.role === "chief_manager";
+
+    const filter = {
       isArchived: false,
-    })
+    };
+
+    // Обычные пользователи видят только свои задачи
+    if (!isChiefManager) {
+      filter.assignees = { $in: [req.user._id] };
+    }
+
+    const tasks = await Task.find(filter)
       .sort({ dueDate: -1 })
       .populate("assignees", "name profilePicture")
-      .populate("createdBy", "name profilePicture");
+      .populate("createdBy", "name profilePicture")
+      .populate("responsibleManager", "name");
 
     res.status(200).json(tasks);
   } catch (error) {
@@ -885,12 +895,12 @@ const getMyTasks = async (req, res) => {
   }
 };
 
-// Получить все задачи (только для админов, супер админов и менеджеров)
+// Получить все задачи (для админов, супер админов, менеджеров и главного менеджера)
 const getAllTasks = async (req, res) => {
   try {
     // Проверить права доступа
-    if (!["admin", "manager", "super_admin"].includes(req.user.role)) {
-      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут просматривать все задачи." });
+    if (!["admin", "manager", "super_admin", "chief_manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы, менеджеры и главный менеджер могут просматривать все задачи." });
     }
 
     const { search, status, priority, assignee } = req.query;

@@ -277,27 +277,35 @@ const TaskDetailsPage = () => {
                 <TaskStatusSelector status={task.status} taskId={task._id} task={task} />
 
                 {/* Кнопка "В ожидании изменения статуса" для участников */}
-                {task.assignees?.some(a => (typeof a === 'string' ? a : a._id) === user?._id) &&
-                 !["Done", "Cancelled"].includes(task.status) && (
-                  <Button
-                    variant={task.awaitingStatusChange ? "default" : "outline"}
-                    size="sm"
-                    className={task.awaitingStatusChange ? "bg-green-500 hover:bg-green-600" : ""}
-                    onClick={() => requestStatusChange({ taskId: task._id }, {
-                      onSuccess: () => {
-                        toast.success("Запрос на изменение статуса отправлен менеджеру");
-                      },
-                      onError: (error: any) => {
-                        toast.error(error.message || "Ошибка отправки запроса");
-                      }
-                    })}
-                    disabled={isRequestingStatusChange || task.awaitingStatusChange}
-                  >
-                    {task.awaitingStatusChange
-                      ? "Ожидает проверки"
-                      : "В ожидании изменения статуса"}
-                  </Button>
-                )}
+                {(() => {
+                  // Проверяем, является ли текущий пользователь исполнителем задачи
+                  const isAssignee = task.assignees?.some(assignee => {
+                    const assigneeId = typeof assignee === 'string' ? assignee : assignee?._id;
+                    return assigneeId && user?._id && assigneeId.toString() === user._id.toString();
+                  });
+                  const canShowButton = isAssignee && !["Done", "Cancelled"].includes(task.status);
+
+                  return canShowButton ? (
+                    <Button
+                      variant={task.awaitingStatusChange ? "default" : "outline"}
+                      size="sm"
+                      className={task.awaitingStatusChange ? "bg-green-500 hover:bg-green-600" : ""}
+                      onClick={() => requestStatusChange({ taskId: task._id }, {
+                        onSuccess: () => {
+                          toast.success("Запрос на изменение статуса отправлен менеджеру");
+                        },
+                        onError: (error: any) => {
+                          toast.error(error.message || "Ошибка отправки запроса");
+                        }
+                      })}
+                      disabled={isRequestingStatusChange || task.awaitingStatusChange}
+                    >
+                      {task.awaitingStatusChange
+                        ? "Ожидает проверки"
+                        : "Жду изменения статуса"}
+                    </Button>
+                  ) : null;
+                })()}
 
                 <Button
                   variant="destructive"
