@@ -1,6 +1,9 @@
 import type { ProjectStatus, TaskStatus } from "@/types";
 import { differenceInDays } from "date-fns";
 
+// Re-export api and utilities from fetch-utils
+export { api, postData, fetchData, fetchDataFresh, updateData, deleteData } from "./fetch-utils";
+
 export const getUserAvatar = (name: string) =>
   `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`;
 

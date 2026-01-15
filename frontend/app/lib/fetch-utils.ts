@@ -69,4 +69,4 @@ const deleteData = async <T>(url: string, data?: unknown): Promise<T> => {
   return response.data;
 };
 
-export { postData, fetchData, fetchDataFresh, updateData, deleteData };
+export { api, postData, fetchData, fetchDataFresh, updateData, deleteData };
