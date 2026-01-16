@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Star, Calendar, User, Clock } from "lucide-react";
+import { Star, Calendar, User, Clock, AlertCircle } from "lucide-react";
 import { Link } from "react-router";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import type { Task } from "@/types";
 import { useAuth } from "@/providers/auth-context";
 import { useLanguage } from "@/providers/language-context";
 import { formatDueDateRussian, formatDateDetailedRussian } from "@/lib/date-utils";
+import { cn } from "@/lib/utils";
 
 export default function ManagerTasksPage() {
   const { t } = useLanguage();
@@ -96,7 +97,13 @@ export default function ManagerTasksPage() {
       ) : (
         <div className="grid gap-4">
           {managerTasks.map((task) => (
-            <Card key={task._id} className="hover:shadow-md transition-shadow">
+            <Card
+              key={task._id}
+              className={cn(
+                "hover:shadow-md transition-shadow",
+                task.awaitingStatusChange && "border-l-4 border-l-green-500 bg-green-50 dark:bg-green-900/20"
+              )}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1 flex-1">
@@ -117,7 +124,13 @@ export default function ManagerTasksPage() {
                       </p>
                     )}
                   </div>
-                  <div className="flex gap-2 ml-4">
+                  <div className="flex gap-2 ml-4 flex-wrap">
+                    {task.awaitingStatusChange && (
+                      <Badge className="bg-green-500 text-white hover:bg-green-600">
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        Ожидает изменения
+                      </Badge>
+                    )}
                     <Badge
                       variant="outline"
                       className={getPriorityColor(task.priority)}

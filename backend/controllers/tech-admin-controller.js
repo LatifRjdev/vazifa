@@ -8,6 +8,7 @@ import Workspace from "../models/workspace.js";
 import mongoose from "mongoose";
 import os from 'os';
 import process from 'process';
+import bcrypt from "bcrypt";
 import { getSMPPService, smsQueue } from "../libs/send-sms-bullmq.js";
 
 // Helper to log audit events
@@ -232,8 +233,7 @@ export const createUser = async (req, res) => {
     // Hash password if provided
     let hashedPassword;
     if (password) {
-      const bcrypt = await import('bcryptjs');
-      hashedPassword = await bcrypt.default.hash(password, 10);
+      hashedPassword = await bcrypt.hash(password, 10);
     }
 
     const newUser = new User({
@@ -1052,66 +1052,104 @@ export const resetUserPassword = async (req, res) => {
     const { newPassword, sendNotification = true } = req.body;
 
     if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ message: "Password must be at least 8 characters" });
+      return res.status(400).json({ message: "Пароль должен содержать минимум 8 символов" });
     }
 
     const user = await User.findById(id);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Пользователь не найден" });
     }
 
     // Cannot reset password for tech_admin/super_admin unless you're tech_admin
     if (['tech_admin', 'super_admin'].includes(user.role) && req.user.role !== 'tech_admin') {
       return res.status(403).json({
-        message: "Cannot reset password for administrator accounts"
+        message: "Невозможно сбросить пароль для учетных записей администраторов"
       });
     }
 
-    // Hash the new password
-    const bcrypt = await import('bcryptjs');
-    const hashedPassword = await bcrypt.default.hash(newPassword, 10);
+    // Hash the new password using the imported bcrypt
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await User.findByIdAndUpdate(id, { password: hashedPassword });
 
-    // Send notification if requested
+    // Track if SMS was sent successfully
+    let smsSent = false;
+    let smsError = null;
+
+    // Send SMS notification if requested and user has phone number
     if (sendNotification && user.phoneNumber) {
       try {
-        const { getSMPPService } = await import('../libs/send-sms-bullmq.js');
         const smppService = getSMPPService();
+        const smsMessage = `Ваш пароль был сброшен администратором. Новый пароль: ${newPassword}`;
+
         await smppService.queueMessage(
           user.phoneNumber,
-          `Ваш пароль был сброшен администратором. Новый пароль: ${newPassword}`,
-          'normal'
+          smsMessage,
+          'high' // High priority for password reset
         );
+
+        // Log SMS to database
+        await SMSLog.create({
+          recipient: user._id,
+          phoneNumber: user.phoneNumber,
+          message: smsMessage,
+          type: 'password_reset',
+          priority: 'high',
+          status: 'queued',
+          relatedEntity: {
+            userId: user._id,
+          },
+        });
+
+        smsSent = true;
       } catch (smsErr) {
         console.error("Failed to send password reset SMS:", smsErr);
+        smsError = smsErr.message;
+
+        // Log failed SMS attempt
+        try {
+          await SMSLog.create({
+            recipient: user._id,
+            phoneNumber: user.phoneNumber,
+            message: `Ваш пароль был сброшен администратором. Новый пароль: [скрыт]`,
+            type: 'password_reset',
+            priority: 'high',
+            status: 'failed',
+            errorMessage: smsErr.message,
+            relatedEntity: {
+              userId: user._id,
+            },
+          });
+        } catch (logErr) {
+          console.error("Failed to log SMS error:", logErr);
+        }
       }
     }
 
-    // Log the action
-    try {
-      await ActivityLog.create({
-        user: req.user._id,
-        action: 'reset_user_password',
-        resourceType: 'User',
-        resourceId: id,
-        metadata: {
-          userName: user.name,
-          userEmail: user.email,
-          notificationSent: sendNotification,
-        },
-      });
-    } catch (err) {
-      console.log("ActivityLog model not available for logging");
-    }
+    // Log the action using AuditLog (more appropriate for admin actions)
+    await logAudit(req, 'user.password_reset', {
+      targetType: 'User',
+      targetId: user._id,
+      targetName: user.name,
+      description: `Пароль пользователя ${user.name} был сброшен`,
+      details: {
+        userEmail: user.email,
+        userPhone: user.phoneNumber,
+        notificationRequested: sendNotification,
+        smsSent: smsSent,
+        smsError: smsError,
+      },
+      status: 'success',
+    });
 
     res.json({
-      message: "Password reset successfully",
-      notificationSent: sendNotification && !!user.phoneNumber,
+      message: "Пароль успешно сброшен",
+      notificationSent: smsSent,
+      notificationRequested: sendNotification && !!user.phoneNumber,
     });
   } catch (error) {
     console.error("Error resetting user password:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ message: "Ошибка сервера", error: error.message });
   }
 };
 

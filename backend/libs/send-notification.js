@@ -165,6 +165,7 @@ function mapNotificationTypeToSMS(notificationType) {
     response_added: "task_notification",
     comment_reply: "task_notification",
     due_date_approaching: "task_notification",
+    awaiting_status_change: "task_notification",
     workspace_invite: "workspace_invite",
     workspace_ownership_transferred: "workspace_invite",
     task_message: "general_notification",
@@ -251,6 +252,12 @@ function formatSMSMessage(type, message, relatedData) {
 
     case "task_message":
       smsText = `Протокол: Новое сообщение по задаче`;
+      break;
+
+    case "awaiting_status_change":
+      smsText = taskTitle
+        ? `Протокол: Запрос статуса "${taskTitle}"`
+        : `Протокол: Запрос на изменение статуса`;
       break;
 
     default:

@@ -61,6 +61,16 @@ const commentOnTask = async (req, res) => {
     task.comments.push(newComment._id);
     await task.save();
 
+    // Populate author details for response
+    const populatedComment = await Comment.findById(newComment._id).populate(
+      "author",
+      "name profilePicture"
+    );
+
+    // Отправить ответ СРАЗУ, уведомления выполняем в фоне
+    res.status(201).json(populatedComment);
+
+    // === ФОНОВЫЕ ОПЕРАЦИИ (не блокируют ответ) ===
     // Notify task assignees, responsible manager, and mentioned users
     const uniqueRecipients = new Set();
 
@@ -83,6 +93,9 @@ const commentOnTask = async (req, res) => {
       }
     });
 
+    // Собираем уведомления
+    const notificationPromises = [];
+
     // Create notifications and send emails + SMS
     for (const userId of uniqueRecipients) {
       const notificationType = mentions.some(
@@ -102,35 +115,36 @@ const commentOnTask = async (req, res) => {
           : `добавил комментарий к задаче "${task.title}"`
       }`;
 
-      await sendNotification({
-        recipientId: userId,
-        type: notificationType,
-        title: notificationTitle,
-        message: notificationMessage,
-        relatedData: {
-          taskId,
-          commentId: newComment._id,
-          actorId: req.user._id,
-        },
-      });
+      notificationPromises.push(
+        sendNotification({
+          recipientId: userId,
+          type: notificationType,
+          title: notificationTitle,
+          message: notificationMessage,
+          relatedData: {
+            taskId,
+            commentId: newComment._id,
+            actorId: req.user._id,
+          },
+        }).catch(err => console.error("Notification error:", err.message))
+      );
     }
 
-    // Record activity
-    await recordActivity(req.user._id, "added_comment", "Comment", taskId, {
-      taskId,
-      newCommentId: newComment._id,
-      description: `добавил комментарий: ${
-        commentText.substring(0, 50) + (commentText.length > 50 ? "..." : "")
-      }`,
-    });
-
-    // Populate author details for response
-    const populatedComment = await Comment.findById(newComment._id).populate(
-      "author",
-      "name profilePicture"
+    // Record activity (в фоне)
+    notificationPromises.push(
+      recordActivity(req.user._id, "added_comment", "Comment", taskId, {
+        taskId,
+        newCommentId: newComment._id,
+        description: `добавил комментарий: ${
+          commentText.substring(0, 50) + (commentText.length > 50 ? "..." : "")
+        }`,
+      }).catch(err => console.error("Activity log error:", err.message))
     );
 
-    res.status(201).json(populatedComment);
+    // Выполнить все в фоне параллельно
+    Promise.all(notificationPromises).catch(err =>
+      console.error("Background notifications error:", err.message)
+    );
   } catch (error) {
     console.error("Error creating comment:", error);
     res.status(500).json({ message: "Server error" });
@@ -252,46 +266,62 @@ const createTask = async (req, res) => {
       { path: 'responsibleManager', select: 'name email' }
     ]);
 
+    // Отправить ответ СРАЗУ, уведомления выполняем в фоне
+    res.status(201).json(newTask);
+
+    // === ФОНОВЫЕ ОПЕРАЦИИ (не блокируют ответ) ===
+    // Собираем все уведомления в массив промисов
+    const notificationPromises = [];
+
     // Уведомить назначенных пользователей (Email + SMS)
     if (assignees && assignees.length > 0) {
       for (const userId of assignees) {
         // Не уведомлять создателя, если он назначил себя
         if (userId.toString() !== req.user._id.toString()) {
-          await sendNotification({
-            recipientId: userId,
-            type: "task_assigned",
-            title: "Вам назначена новая задача",
-            message: `${req.user.name} назначил вам задачу: ${title}`,
-            relatedData: {
-              taskId: newTask._id,
-              actorId: req.user._id,
-            },
-          });
+          notificationPromises.push(
+            sendNotification({
+              recipientId: userId,
+              type: "task_assigned",
+              title: "Вам назначена новая задача",
+              message: `${req.user.name} назначил вам задачу: ${title}`,
+              relatedData: {
+                taskId: newTask._id,
+                actorId: req.user._id,
+              },
+            }).catch(err => console.error("Notification error:", err.message))
+          );
         }
       }
     }
 
     // Уведомить ответственного менеджера (Email + SMS)
     if (responsibleManager && responsibleManager.toString() !== req.user._id.toString()) {
-      await sendNotification({
-        recipientId: responsibleManager,
-        type: "task_assigned_as_manager",
-        title: "Вы назначены ответственным менеджером",
-        message: `${req.user.name} назначил вас ответственным менеджером задачи: ${title}`,
-        relatedData: {
-          taskId: newTask._id,
-          actorId: req.user._id,
-        },
-      });
+      notificationPromises.push(
+        sendNotification({
+          recipientId: responsibleManager,
+          type: "task_assigned_as_manager",
+          title: "Вы назначены ответственным менеджером",
+          message: `${req.user.name} назначил вас ответственным менеджером задачи: ${title}`,
+          relatedData: {
+            taskId: newTask._id,
+            actorId: req.user._id,
+          },
+        }).catch(err => console.error("Notification error:", err.message))
+      );
     }
 
-    // Записать активность
-    await recordActivity(req.user._id, "created_task", "Task", newTask._id, {
-      title,
-      description: `создал задачу ${title}`,
-    });
+    // Записать активность (тоже в фоне)
+    notificationPromises.push(
+      recordActivity(req.user._id, "created_task", "Task", newTask._id, {
+        title,
+        description: `создал задачу ${title}`,
+      }).catch(err => console.error("Activity log error:", err.message))
+    );
 
-    res.status(201).json(newTask);
+    // Выполнить все уведомления параллельно в фоне
+    Promise.all(notificationPromises).catch(err =>
+      console.error("Background notifications error:", err.message)
+    );
   } catch (error) {
     console.error("Ошибка создания задачи:", error);
     res.status(500).json({ message: "Ошибка сервера" });
@@ -946,12 +976,12 @@ const getAllTasks = async (req, res) => {
   }
 };
 
-// Получить аналитику задач (только для админов, супер админов и менеджеров)
+// Получить аналитику задач (только для админов, супер админов, главных менеджеров и менеджеров)
 const getTasksAnalytics = async (req, res) => {
   try {
     // Проверить права доступа
-    if (!["admin", "manager", "super_admin"].includes(req.user.role)) {
-      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы и менеджеры могут просматривать аналитику." });
+    if (!["admin", "manager", "super_admin", "chief_manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Доступ запрещен. Только админы, супер админы, главные менеджеры и менеджеры могут просматривать аналитику." });
     }
 
     // Статистика по статусам
@@ -1157,7 +1187,17 @@ const createResponse = async (req, res) => {
     task.responses.push(newResponse._id);
     await task.save();
 
-    // Уведомить только участников задачи и ответственного менеджера
+    // Заполнить данные автора для ответа
+    const populatedResponse = await Response.findById(newResponse._id).populate(
+      "author",
+      "name profilePicture"
+    );
+
+    // Отправить ответ СРАЗУ, уведомления выполняем в фоне
+    res.status(201).json(populatedResponse);
+
+    // === ФОНОВЫЕ ОПЕРАЦИИ (не блокируют ответ) ===
+    // Собираем получателей
     const uniqueRecipients = new Set();
 
     // Добавить участников задачи (assignees)
@@ -1178,37 +1218,41 @@ const createResponse = async (req, res) => {
       }
     }
 
+    // Собираем уведомления
+    const notificationPromises = [];
+
     // Создать уведомления и отправить email + SMS только участникам и менеджеру
     for (const userId of uniqueRecipients) {
-      await createNotification(
-        userId,
-        "response_added",
-        "Новый ответ на задачу",
-        `${req.user.name} ответил на задачу: ${task.title}`,
-        {
-          taskId,
-          responseId: newResponse._id,
-          actorId: req.user._id,
-        }
+      notificationPromises.push(
+        createNotification(
+          userId,
+          "response_added",
+          "Новый ответ на задачу",
+          `${req.user.name} ответил на задачу: ${task.title}`,
+          {
+            taskId,
+            responseId: newResponse._id,
+            actorId: req.user._id,
+          }
+        ).catch(err => console.error("Notification error:", err.message))
       );
     }
 
-    // Записать активность
-    await recordActivity(req.user._id, "added_response", "Response", taskId, {
-      taskId,
-      newResponseId: newResponse._id,
-      description: `добавил ответ: ${
-        text ? text.substring(0, 50) + (text.length > 50 ? "..." : "") : "прикрепил файлы"
-      }`,
-    });
-
-    // Заполнить данные автора для ответа
-    const populatedResponse = await Response.findById(newResponse._id).populate(
-      "author",
-      "name profilePicture"
+    // Записать активность (в фоне)
+    notificationPromises.push(
+      recordActivity(req.user._id, "added_response", "Response", taskId, {
+        taskId,
+        newResponseId: newResponse._id,
+        description: `добавил ответ: ${
+          text ? text.substring(0, 50) + (text.length > 50 ? "..." : "") : "прикрепил файлы"
+        }`,
+      }).catch(err => console.error("Activity log error:", err.message))
     );
 
-    res.status(201).json(populatedResponse);
+    // Выполнить все в фоне параллельно
+    Promise.all(notificationPromises).catch(err =>
+      console.error("Background notifications error:", err.message)
+    );
   } catch (error) {
     console.error("Error creating response:", error);
     res.status(500).json({ message: "Server error" });
