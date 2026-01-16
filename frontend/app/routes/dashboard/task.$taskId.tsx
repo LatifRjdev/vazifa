@@ -60,6 +60,28 @@ const TaskDetailPage = () => {
   const comments = data?.comments || [];
   const subTasks = data?.subTasks || [];
 
+  // Проверка, является ли пользователь ответственным менеджером
+  const isResponsibleManager = task?.responsibleManager && (
+    typeof task.responsibleManager === 'string'
+      ? task.responsibleManager === user?._id
+      : task.responsibleManager._id === user?._id
+  );
+
+  // Проверка прав на изменение статуса (админы, главные менеджеры, ответственный менеджер)
+  const canChangeStatus = user?.role && (
+    ["admin", "super_admin", "chief_manager"].includes(user.role) ||
+    isResponsibleManager
+  );
+
+  // Проверка прав на отмену задачи (админы, главные менеджеры, ответственный менеджер)
+  const canCancel = user?.role && (
+    ["admin", "super_admin", "chief_manager"].includes(user.role) ||
+    isResponsibleManager
+  );
+
+  // Проверка прав на редактирование (админы, главные менеджеры, менеджеры)
+  const canEdit = user?.role && ["admin", "super_admin", "chief_manager", "manager"].includes(user.role);
+
   // Мутация для добавления комментария
   const addCommentMutation = useMutation({
     mutationFn: (content: string) => postData(`/tasks/${taskId}/comments`, { content }),
@@ -264,8 +286,8 @@ const TaskDetailPage = () => {
             </Button>
           )}
           
-          {/* Кнопка наблюдения только для админов, супер админов и менеджеров */}
-          {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'manager') && (
+          {/* Кнопка наблюдения только для админов, супер админов, главных менеджеров и менеджеров */}
+          {canEdit && (
             <Button
               variant="outline"
               size="sm"
@@ -314,7 +336,7 @@ const TaskDetailPage = () => {
                     )}
                   </div>
                 </div>
-                {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'manager') && (
+                {canChangeStatus && (
                   <div className="flex items-center space-x-2">
                     <Select onValueChange={handleStatusChange} value={selectedStatus}>
                       <SelectTrigger className="w-40">
@@ -324,6 +346,7 @@ const TaskDetailPage = () => {
                         <SelectItem value="To Do">К выполнению</SelectItem>
                         <SelectItem value="In Progress">В процессе</SelectItem>
                         <SelectItem value="Done">Выполнено</SelectItem>
+                        {canCancel && <SelectItem value="Cancelled">Отменен</SelectItem>}
                       </SelectContent>
                     </Select>
                     {selectedStatus !== task.status && (
@@ -353,8 +376,8 @@ const TaskDetailPage = () => {
                         ? task.assignees.map(assignee => assignee?.name || 'Неизвестный').join(', ')
                         : "Не назначены"}
                     </span>
-                    {/* Кнопка редактирования исполнителей только для админов, супер админов и менеджеров */}
-                    {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'manager') && (
+                    {/* Кнопка редактирования исполнителей только для админов, супер админов, главных менеджеров и менеджеров */}
+                    {canEdit && (
                       <Dialog open={showEditAssignees} onOpenChange={setShowEditAssignees}>
                         <DialogTrigger asChild>
                           <Button
@@ -580,8 +603,8 @@ const TaskDetailPage = () => {
           {/* Ответы - видны всем пользователям */}
           <ResponseSection taskId={taskId!} task={task} />
 
-          {/* Комментарии для админов, супер админов и менеджеров */}
-          {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'manager') && (
+          {/* Комментарии для админов, супер админов, главных менеджеров и менеджеров */}
+          {canEdit && (
             <CommentSection taskId={taskId!} members={[]} />
           )}
         </div>
