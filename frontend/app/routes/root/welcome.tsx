@@ -655,7 +655,14 @@ const Welcome = () => {
           </div>
         </div>
         <div className="container px-4 mt-8 flex flex-col sm:flex-row justify-between items-center text-sm text-muted-foreground">
-          <p>© 2025 Vazifa. Все права защищены.</p>
+          <a
+            href="https://itlsolutions.net"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted-foreground hover:text-blue-600 hover:underline"
+          >
+            © 2026 Протокол. Все права защищены - by ITls
+          </a>
           <div className="flex items-center gap-4 mt-4 sm:mt-0">
             <Link to="#" className="hover:text-foreground">
               <svg

@@ -73,6 +73,17 @@ const DashboardLayout = () => {
           <div className="container mx-auto px-2 sm:px-4 lg:px-6 xl:px-8 py-2 sm:py-4 lg:py-6 xl:py-8 w-full">
             <Outlet />
           </div>
+
+          <footer className="py-4 text-center text-sm border-t">
+            <a
+              href="https://itlsolutions.net"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-blue-600 hover:underline"
+            >
+              © 2026 Протокол. Все права защищены - by ITls
+            </a>
+          </footer>
         </main>
       </div>
 

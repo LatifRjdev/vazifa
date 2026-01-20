@@ -204,6 +204,17 @@ const ResetPasswordPage = () => {
             </div>
           </CardFooter>
         </Card>
+
+        <footer className="mt-8 text-center text-sm">
+          <a
+            href="https://itlsolutions.net"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted-foreground hover:text-blue-600 hover:underline"
+          >
+            © 2026 Протокол. Все права защищены - by ITls
+          </a>
+        </footer>
       </div>
     </div>
   );
